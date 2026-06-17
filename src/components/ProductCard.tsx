@@ -44,23 +44,15 @@ export default function ProductCard({ product, onFavoriteToggle }: ProductCardPr
   const images = Array.isArray(product.product_images) 
     ? product.product_images.map((i: any) => i.image_url) 
     : [];
-  const mainImg = images[currentImgIndex] || '/placeholder-mobile.png';
 
-  // Handle Carousel Next
-  const handleNext = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (images.length > 1) {
-      setCurrentImgIndex((prev) => (prev + 1) % images.length);
-    }
-  };
-
-  // Handle Carousel Prev
-  const handlePrev = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (images.length > 1) {
-      setCurrentImgIndex((prev) => (prev - 1 + images.length) % images.length);
+  // Handle Carousel Scroll calculations for RTL layout
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const container = e.currentTarget;
+    const width = container.clientWidth;
+    const scrollLeft = Math.abs(container.scrollLeft);
+    const index = Math.round(scrollLeft / width);
+    if (index !== currentImgIndex && index >= 0 && index < images.length) {
+      setCurrentImgIndex(index);
     }
   };
 
@@ -92,40 +84,45 @@ export default function ProductCard({ product, onFavoriteToggle }: ProductCardPr
 
       <Link href={`/mobiles/${product.slug}`} className="flex flex-col flex-1">
         
-        {/* Product Image Area / Mini Carousel */}
-        <div className="relative aspect-square w-full bg-slate-50 dark:bg-slate-950/40 flex items-center justify-center p-3.5 md:p-4 overflow-hidden border-b border-slate-50 dark:border-slate-855/50">
+        {/* Product Image Area / Scrollable Gallery */}
+        <div className="relative aspect-square w-full bg-slate-50 dark:bg-slate-950/40 border-b border-slate-50 dark:border-slate-855/50 overflow-hidden">
           
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img 
-            src={mainImg} 
-            alt={product.name} 
-            className="object-contain h-full w-auto max-w-full transition-transform duration-500 drop-shadow-md"
-            loading="lazy"
-          />
-
-          {/* Slider Navigation Arrows (Visible always on multi-image products) */}
-          {images.length > 1 && (
-            <>
-              <button 
-                onClick={handlePrev}
-                className="absolute left-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50 flex items-center justify-center text-slate-700 dark:text-slate-200 shadow-sm active:scale-90 transition-all z-10 hover:bg-white dark:hover:bg-slate-700"
-                title="الصورة السابقة"
+          {/* Scrollable container with snap scrolling */}
+          <div 
+            onScroll={handleScroll}
+            className="w-full h-full flex overflow-x-auto snap-x snap-mandatory scrollbar-none scroll-smooth"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
+            {images.map((img, idx) => (
+              <div 
+                key={idx}
+                className="w-full h-full shrink-0 snap-start flex items-center justify-center p-3.5 md:p-4"
               >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button 
-                onClick={handleNext}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50 flex items-center justify-center text-slate-700 dark:text-slate-200 shadow-sm active:scale-90 transition-all z-10 hover:bg-white dark:hover:bg-slate-700"
-                title="الصورة التالية"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </>
-          )}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img 
+                  src={img} 
+                  alt={`${product.name} - ${idx + 1}`} 
+                  className="object-contain h-full w-auto max-w-full drop-shadow-md"
+                  loading="lazy"
+                />
+              </div>
+            ))}
+            {images.length === 0 && (
+              <div className="w-full h-full flex items-center justify-center p-3.5 md:p-4">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img 
+                  src="/placeholder-mobile.png" 
+                  alt={product.name} 
+                  className="object-contain h-full w-auto max-w-full drop-shadow-md"
+                  loading="lazy"
+                />
+              </div>
+            )}
+          </div>
 
           {/* Carousel Pagination Dots */}
           {images.length > 1 && (
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10 pointer-events-none">
               {images.map((_, idx) => (
                 <span 
                   key={idx}
@@ -140,7 +137,7 @@ export default function ProductCard({ product, onFavoriteToggle }: ProductCardPr
           )}
 
           {/* Condition Badge (Floating Bottom Right) */}
-          <span className={`absolute bottom-2 right-2 text-[9px] md:text-[10px] font-black px-2 py-0.5 rounded-md shadow-sm ${conditionClass}`}>
+          <span className={`absolute bottom-2 right-2 text-[9px] md:text-[10px] font-black px-2 py-0.5 rounded-md shadow-sm ${conditionClass} z-10 pointer-events-none`}>
             {product.condition}
           </span>
         </div>

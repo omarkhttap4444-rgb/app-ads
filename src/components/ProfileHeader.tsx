@@ -249,7 +249,6 @@ export default function ProfileHeader({ store: initialStore, productsCount }: Pr
     }
   };
 
-  const coverImage = store.cover_image_url || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1000&q=80';
   const profileImage = store.profile_image_url || '';
 
   return (
@@ -288,10 +287,12 @@ export default function ProfileHeader({ store: initialStore, productsCount }: Pr
       )}
 
       {/* Store Header / Cover */}
-      <div className="h-60 md:h-72 w-full relative bg-slate-800 overflow-hidden group/cover">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={coverImage} alt="Cover" className="w-full h-full object-cover opacity-60 transition-all duration-300" />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 to-transparent"></div>
+      <div className="h-60 md:h-72 w-full relative bg-gradient-to-r from-slate-850 via-teal-950 to-slate-900 overflow-hidden group/cover">
+        {store.cover_image_url && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={store.cover_image_url} alt="Cover" className="w-full h-full object-cover opacity-60 transition-all duration-300" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent"></div>
 
         {/* Cover Edit Overlay */}
         {isOwner && (
