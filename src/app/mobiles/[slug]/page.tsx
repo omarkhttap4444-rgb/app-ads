@@ -326,18 +326,18 @@ export default async function ProductPage(props: Props) {
               <div className="pt-6 border-t border-slate-100 dark:border-slate-800 mt-6">
                 <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-3.5">معلومات البائع</h3>
                 <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-50/60 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800 p-4 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                  <div className="w-12 h-12 bg-gradient-to-tr from-teal-105 to-cyan-50 dark:from-teal-900 dark:to-cyan-950 rounded-xl flex items-center justify-center text-teal-700 dark:text-teal-400 font-extrabold text-lg overflow-hidden shrink-0 border border-teal-100 dark:border-teal-850 shadow-inner">
-                    {product.seller_avatar ? (
+                  <div className="w-12 h-12 bg-gradient-to-tr from-teal-100 to-cyan-100 dark:from-teal-900/40 dark:to-cyan-950/40 rounded-xl flex items-center justify-center text-teal-700 dark:text-teal-400 font-extrabold text-lg overflow-hidden shrink-0 border border-teal-200/50 dark:border-teal-800/80 shadow-inner">
+                    {seller?.profile_image_url ? (
                        /* eslint-disable-next-line @next/next/no-img-element */
-                       <img src={product.seller_avatar} alt={product.seller_name} className="object-cover w-full h-full" />
+                       <img src={seller.profile_image_url} alt={seller.name || 'البائع'} className="object-cover w-full h-full" />
                     ) : (
-                      product.seller_name?.charAt(0) || 'م'
+                      seller?.name?.charAt(0) || 'م'
                     )}
                   </div>
                   
                   <div className="text-center sm:text-right">
                     <Link href={`/store/${product.seller_id}`} className="font-extrabold text-slate-800 dark:text-white hover:text-teal-600 dark:hover:text-teal-400 text-base transition-colors flex items-center gap-1 justify-center sm:justify-start">
-                      {product.seller_name}
+                      {seller?.name || 'بائع سوق فون'}
                       <ShieldCheck className="w-4 h-4 text-teal-500 fill-teal-50 dark:fill-teal-900/30" />
                     </Link>
                     <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
@@ -348,8 +348,8 @@ export default async function ProductPage(props: Props) {
                   {/* Client-side contact handler */}
                   <ContactSellerButton 
                     sellerId={product.seller_id}
-                    sellerName={product.seller_name}
-                    sellerAvatar={product.seller_avatar || undefined}
+                    sellerName={seller?.name || 'بائع سوق فون'}
+                    sellerAvatar={seller?.profile_image_url || undefined}
                     productId={product.id}
                     productSlug={product.slug}
                   />
