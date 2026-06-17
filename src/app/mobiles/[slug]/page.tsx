@@ -122,7 +122,7 @@ export default async function ProductPage(props: Props) {
   const images: string[] = product.product_images?.map((img: any) => img.image_url) || [];
 
   return (
-    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-8 pb-28 md:py-12 transition-colors duration-200">
+    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-8 pb-28 md:py-12">
       <div className="container mx-auto px-4 max-w-6xl">
         
         {/* Breadcrumb */}
@@ -134,7 +134,7 @@ export default async function ProductPage(props: Props) {
           <span className="text-slate-600 dark:text-slate-350 truncate max-w-[200px]">{brand || model ? `${brand} ${model}`.trim() : product.name}</span>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden transition-colors">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 p-6 md:p-10">
             
             {/* Right Column: Images (5 Cols) */}
@@ -182,7 +182,7 @@ export default async function ProductPage(props: Props) {
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     
                     {/* Storage */}
-                    <div className="bg-slate-50/60 dark:bg-slate-950/40 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
+                    <div className="bg-slate-50/60 dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
                       <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
                         <Smartphone className="w-4.5 h-4.5" />
                       </div>
@@ -193,7 +193,7 @@ export default async function ProductPage(props: Props) {
                     </div>
 
                     {/* RAM */}
-                    <div className="bg-slate-50/60 dark:bg-slate-950/40 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
+                    <div className="bg-slate-50/60 dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
                       <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
                         <Cpu className="w-4.5 h-4.5" />
                       </div>
@@ -204,7 +204,7 @@ export default async function ProductPage(props: Props) {
                     </div>
 
                     {/* Color */}
-                    <div className="bg-slate-50/60 dark:bg-slate-950/40 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
+                    <div className="bg-slate-50/60 dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
                       <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
                         <Palette className="w-4.5 h-4.5" />
                       </div>
@@ -216,7 +216,7 @@ export default async function ProductPage(props: Props) {
 
                     {/* Battery Health (Apple only) */}
                     {batteryHealth && (
-                      <div className="bg-slate-50/60 dark:bg-slate-950/40 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
+                      <div className="bg-slate-50/60 dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
                           <BatteryCharging className="w-4.5 h-4.5" />
                         </div>
@@ -228,7 +228,7 @@ export default async function ProductPage(props: Props) {
                     )}
 
                     {/* Device Opened / Serviced */}
-                    <div className="bg-slate-50/60 dark:bg-slate-950/40 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
+                    <div className="bg-slate-50/60 dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
                       <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
                         <Wrench className="w-4.5 h-4.5" />
                       </div>
@@ -239,7 +239,7 @@ export default async function ProductPage(props: Props) {
                     </div>
 
                     {/* NTRA Customs Tax Paid */}
-                    <div className="bg-slate-50/60 dark:bg-slate-950/40 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
+                    <div className="bg-slate-50/60 dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
                       <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
                         <Scale className="w-4.5 h-4.5" />
                       </div>
@@ -250,7 +250,7 @@ export default async function ProductPage(props: Props) {
                     </div>
 
                     {/* Warranty */}
-                    <div className="bg-slate-50/60 dark:bg-slate-950/40 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
+                    <div className="bg-slate-50/60 dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
                       <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
                         <ShieldCheck className="w-4.5 h-4.5" />
                       </div>
@@ -261,7 +261,7 @@ export default async function ProductPage(props: Props) {
                     </div>
 
                     {/* Accepts Exchange */}
-                    <div className="bg-slate-50/60 dark:bg-slate-950/40 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
+                    <div className="bg-slate-50/60 dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
                       <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
                         <RefreshCw className="w-4.5 h-4.5" />
                       </div>
@@ -273,7 +273,7 @@ export default async function ProductPage(props: Props) {
 
                     {/* CPU (optional) */}
                     {cpu && (
-                      <div className="bg-slate-50/60 dark:bg-slate-950/40 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
+                      <div className="bg-slate-50/60 dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
                           <Cpu className="w-4.5 h-4.5 animate-pulse" />
                         </div>
@@ -286,7 +286,7 @@ export default async function ProductPage(props: Props) {
 
                     {/* Battery Capacity (optional) */}
                     {batteryCapacity && (
-                      <div className="bg-slate-50/60 dark:bg-slate-950/40 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
+                      <div className="bg-slate-50/60 dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
                           <BatteryCharging className="w-4.5 h-4.5" />
                         </div>
@@ -299,7 +299,7 @@ export default async function ProductPage(props: Props) {
 
                     {/* Accessories (optional) */}
                     {accessories && (
-                      <div className="col-span-2 sm:col-span-3 bg-slate-50/60 dark:bg-slate-950/40 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
+                      <div className="col-span-2 sm:col-span-3 bg-slate-50/60 dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
                           <Package className="w-4.5 h-4.5" />
                         </div>
@@ -316,7 +316,7 @@ export default async function ProductPage(props: Props) {
                 {/* Description */}
                 <div className="space-y-3.5">
                   <h3 className="text-base font-bold text-slate-805 dark:text-white">وصف الإعلان</h3>
-                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-sm whitespace-pre-wrap bg-slate-50/50 dark:bg-slate-950/25 p-5 rounded-2xl border border-slate-100/50 dark:border-slate-850">
+                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-sm whitespace-pre-wrap bg-slate-50/50 dark:bg-slate-800 p-5 rounded-2xl border border-slate-100/50 dark:border-slate-800">
                     {product.description || 'لا يوجد وصف مضاف لهذا الجهاز.'}
                   </p>
                 </div>
@@ -325,7 +325,7 @@ export default async function ProductPage(props: Props) {
               {/* Seller Card */}
               <div className="pt-6 border-t border-slate-100 dark:border-slate-800 mt-6">
                 <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-3.5">معلومات البائع</h3>
-                <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-50/60 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800 p-4 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-50/60 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 p-4 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
                   <div className="w-12 h-12 bg-teal-100 dark:bg-teal-950 rounded-xl flex items-center justify-center text-teal-700 dark:text-teal-400 font-extrabold text-lg overflow-hidden shrink-0 border border-teal-200/50 dark:border-teal-800/80 shadow-inner">
                     {seller?.profile_image_url ? (
                        /* eslint-disable-next-line @next/next/no-img-element */

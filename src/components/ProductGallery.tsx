@@ -41,7 +41,7 @@ export default function ProductGallery({ images, productName }: ProductGalleryPr
 
         {/* Image Counter Badge */}
         {images.length > 1 && (
-          <span className="absolute top-4 left-4 bg-black/60 backdrop-blur-sm text-white text-[11px] font-bold px-3 py-1 rounded-full dir-ltr">
+          <span className="absolute top-4 left-4 bg-black/80 text-white text-[11px] font-bold px-3 py-1 rounded-full dir-ltr">
             {activeIndex + 1} / {images.length}
           </span>
         )}
@@ -52,7 +52,7 @@ export default function ProductGallery({ images, productName }: ProductGalleryPr
             {/* Prev (Left in RTL, but we do next/prev absolute matching browser directions) */}
             <button
               onClick={handlePrev}
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-md border border-slate-100 dark:border-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-900 active:scale-95 transition-all cursor-pointer opacity-0 group-hover:opacity-100"
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 active:scale-95 transition-all cursor-pointer opacity-0 group-hover:opacity-100"
               title="الصورة السابقة"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -61,7 +61,7 @@ export default function ProductGallery({ images, productName }: ProductGalleryPr
             {/* Next (Right) */}
             <button
               onClick={handleNext}
-              className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-md border border-slate-100 dark:border-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-900 active:scale-95 transition-all cursor-pointer opacity-0 group-hover:opacity-100"
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 active:scale-95 transition-all cursor-pointer opacity-0 group-hover:opacity-100"
               title="الصورة التالية"
             >
               <ChevronRight className="w-5 h-5" />
