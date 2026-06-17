@@ -1,10 +1,48 @@
 import type { Metadata } from "next";
+import { Cairo } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 
+const cairo = Cairo({
+  subsets: ["arabic", "latin"],
+  display: "swap",
+  weight: ["200", "300", "400", "500", "600", "700", "800", "900"],
+});
+
 export const metadata: Metadata = {
-  title: "سوق فون | المنصة الأولى لبيع وشراء الهواتف",
-  description: "سوق فون - سوق الموبايلات الأول في مصر لبيع وشراء الهواتف المستعملة والجديدة وتواصل مباشر مع البائعين",
+  metadataBase: new URL("https://souqphone.com"),
+  title: "سوق فون | المنصة الأولى لبيع وشراء الهواتف في مصر",
+  description: "سوق فون - سوق الموبايلات الأول في مصر لبيع وشراء الهواتف المستعملة والجديدة وتواصل مباشر مع البائعين بدون عمولات",
+  icons: {
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
+  openGraph: {
+    title: "سوق فون | المنصة الأولى لبيع وشراء الهواتف في مصر",
+    description: "سوق فون - سوق الموبايلات الأول في مصر لبيع وشراء الهواتف المستعملة والجديدة وتواصل مباشر مع البائعين بدون عمولات",
+    url: "https://souqphone.com",
+    siteName: "سوق فون",
+    images: [
+      {
+        url: "/logo.png",
+        width: 512,
+        height: 512,
+        alt: "سوق فون Logo",
+      },
+    ],
+    locale: "ar_EG",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "سوق فون | المنصة الأولى لبيع وشراء الهواتف في مصر",
+    description: "سوق فون - سوق الموبايلات الأول في مصر لبيع وشراء الهواتف المستعملة والجديدة وتواصل مباشر مع البائعين بدون عمولات",
+    images: ["/logo.png"],
+  },
+  verification: {
+    google: "YOUR_GOOGLE_VERIFICATION_ID", // استبدل هذا الكود بكود التحقق الخاص بك من Google Search Console لتأكيد ملكية الموقع
+  },
 };
 
 const themeScript = `
@@ -33,7 +71,7 @@ export default function RootLayout({
     <html
       lang="ar"
       dir="rtl"
-      className="h-full antialiased"
+      className={`${cairo.className} h-full antialiased`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />

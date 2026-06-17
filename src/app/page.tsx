@@ -87,8 +87,6 @@ export default async function Home() {
     .eq('is_active', true)
     .eq('placement', 'home_top')
     .order('sort_order', { ascending: true });
-
-  // Quick search brands list
   const quickBrands = [
     { name: 'آيفون', query: 'iphone', icon: '🍏' },
     { name: 'سامسونج', query: 'samsung', icon: '📱' },
@@ -96,12 +94,14 @@ export default async function Home() {
     { name: 'ريلمي', query: 'realme', icon: '🔋' },
     { name: 'أوبو', query: 'oppo', icon: '📸' },
     { name: 'إنفينيكس', query: 'infinix', icon: '🚀' },
+    { name: 'هونر', query: 'honor', icon: '👑' },
+    { name: 'فيفو', query: 'vivo', icon: '💎' },
   ];
 
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-200 pb-12">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-teal-850 via-teal-955 to-slate-900 text-white py-20 text-center relative overflow-hidden">
+      <section className="bg-gradient-to-br from-teal-850 via-teal-955 to-slate-900 text-white py-12 md:py-20 text-center relative overflow-hidden">
         {/* Background Decorative Blur Blobs */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-20 pointer-events-none">
           <div className="absolute -top-24 -left-24 w-96 h-96 bg-cyan-400 rounded-full blur-3xl"></div>
@@ -109,15 +109,15 @@ export default async function Home() {
         </div>
 
         <div className="container mx-auto px-4 max-w-4xl relative z-10">
-          <span className="inline-flex items-center gap-1.5 bg-teal-500/10 border border-teal-500/20 text-teal-300 px-4 py-1.5 rounded-full text-xs font-bold mb-6 backdrop-blur-sm animate-pulse">
+          <span className="inline-flex items-center gap-1.5 bg-teal-500/10 border border-teal-500/20 text-teal-300 px-4 py-1.5 rounded-full text-xs font-bold mb-4 md:mb-6 backdrop-blur-sm animate-pulse">
             <Sparkles className="w-3.5 h-3.5" />
             بيع واشتري موبايلك بضغطة زر وبدون عمولة!
           </span>
           
-          <h1 className="text-4xl md:text-6xl font-black mb-6 leading-tight drop-shadow-md">
+          <h1 className="text-3xl md:text-6xl font-black mb-4 md:mb-6 leading-tight drop-shadow-md">
             سوق فون - سوق الموبايلات الأول في مصر
           </h1>
-          <p className="text-lg md:text-2xl text-slate-300 mb-12 drop-shadow-sm font-light max-w-2xl mx-auto">
+          <p className="text-sm md:text-2xl text-slate-350 dark:text-slate-300 mb-8 md:mb-12 drop-shadow-sm font-light max-w-2xl mx-auto max-md:hidden">
             تصفح آلاف الهواتف المستعملة والجديدة، وتواصل مع البائعين بشكل مباشر وآمن.
           </p>
           
@@ -143,7 +143,7 @@ export default async function Home() {
           </form>
 
           {/* Download App Button in Hero */}
-          <div className="mt-8 flex justify-center">
+          <div className="mt-8 flex justify-center max-md:hidden">
             <a 
               href="https://play.google.com/store/apps/details?id=com.souqphone.app"
               target="_blank"
@@ -161,8 +161,8 @@ export default async function Home() {
             </a>
           </div>
 
-          {/* Quick Search Tags */}
-          <div className="mt-10 flex flex-wrap justify-center items-center gap-2 text-xs md:text-sm text-slate-300">
+          {/* Quick Search Tags (Visible on Desktop) */}
+          <div className="mt-10 flex flex-wrap justify-center items-center gap-2 text-xs md:text-sm text-slate-300 max-md:hidden">
             <span className="font-semibold text-slate-400">بحث سريع:</span>
             {quickBrands.map((cat) => (
               <Link
@@ -175,6 +175,30 @@ export default async function Home() {
               </Link>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Brands Scrollable Chips (Mirroring App Circular Chips on mobile) */}
+      <section className="mt-8 container mx-auto px-4 max-w-7xl">
+        <h2 className="text-base font-black text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+          <span className="w-1.5 h-5 bg-teal-500 rounded-full"></span>
+          أشهر الماركات
+        </h2>
+        <div className="flex gap-4 overflow-x-auto pb-4 pt-1 scrollbar-none" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          {quickBrands.map((brand) => (
+            <Link
+              key={brand.name}
+              href={`/mobiles?q=${brand.query}`}
+              className="flex flex-col items-center gap-2 shrink-0 group focus:outline-none cursor-pointer"
+            >
+              <div className="w-16 h-16 rounded-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-center text-2xl group-hover:scale-105 group-hover:shadow-md transition-all duration-300">
+                {brand.icon}
+              </div>
+              <span className="text-xs font-bold text-slate-600 dark:text-slate-400 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
+                {brand.name}
+              </span>
+            </Link>
+          ))}
         </div>
       </section>
 
@@ -253,23 +277,23 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Categories Grid Section */}
+      {/* Categories Grid Section (Redesigned with circular app icons Noon/Amazon style) */}
       <section className="mt-8 container mx-auto px-4 max-w-7xl">
         <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
-          <h2 className="text-xl font-black text-slate-800 dark:text-white mb-6 flex items-center gap-2">
-            <span className="w-1.5 h-6 bg-teal-650 rounded-full"></span>
+          <h2 className="text-base font-black text-slate-800 dark:text-white mb-6 flex items-center gap-2">
+            <span className="w-1.5 h-5 bg-teal-500 rounded-full"></span>
             تصفح حسب القسم
           </h2>
-          <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-4">
+          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-9 gap-6 justify-center">
             {dbCategories?.map((cat: any) => {
               const imgUrl = getCategoryImageUrl(cat.name);
               return (
                 <Link
                   key={cat.id}
                   href={`/mobiles?category=${encodeURIComponent(cat.name)}`}
-                  className="bg-slate-50 dark:bg-slate-900/40 hover:bg-teal-50/50 dark:hover:bg-teal-950/20 border border-slate-100 dark:border-slate-800 hover:border-teal-150 dark:hover:border-teal-900 p-4 md:p-5 rounded-2xl flex flex-col items-center justify-center text-center gap-3 transition-all duration-300 group hover:shadow-md cursor-pointer"
+                  className="flex flex-col items-center justify-center text-center gap-2.5 group cursor-pointer"
                 >
-                  <div className="w-16 h-12 md:w-20 md:h-15 relative flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
+                  <div className="w-16 h-16 rounded-full bg-slate-50 dark:bg-slate-800/50 border border-slate-100/50 dark:border-slate-800/80 p-3 flex items-center justify-center shadow-inner group-hover:scale-105 group-hover:shadow-md transition-all duration-300">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img 
                       src={imgUrl} 
@@ -277,7 +301,7 @@ export default async function Home() {
                       className="object-contain w-full h-full" 
                     />
                   </div>
-                  <span className="text-xs md:text-sm font-bold text-slate-700 dark:text-slate-300 group-hover:text-teal-700 dark:group-hover:text-teal-400 transition-colors truncate w-full">
+                  <span className="text-[11px] md:text-xs font-bold text-slate-700 dark:text-slate-350 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors truncate w-full">
                     {cat.name}
                   </span>
                 </Link>

@@ -2,7 +2,22 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import ContactSellerButton from '@/components/ContactSellerButton';
-import { MapPin, Eye, Sparkles, Smartphone, ShieldCheck, ChevronLeft } from 'lucide-react';
+import MobileContactBar from '@/components/MobileContactBar';
+import { 
+  MapPin, 
+  Eye, 
+  Sparkles, 
+  Smartphone, 
+  ShieldCheck, 
+  ChevronLeft, 
+  Cpu, 
+  Palette, 
+  BatteryCharging, 
+  Wrench, 
+  Scale, 
+  RefreshCw, 
+  Package 
+} from 'lucide-react';
 import Link from 'next/link';
 import FavoriteButton from '@/components/FavoriteButton';
 import ProductGallery from '@/components/ProductGallery';
@@ -79,19 +94,39 @@ export default async function ProductPage(props: Props) {
     notFound();
   }
 
-  const brand = product.specifications?.brand || 'غير محدد';
-  const model = product.specifications?.model || 'غير محدد';
-  const storage = product.specifications?.storage || 'غير محدد';
-  const ram = product.specifications?.ram || 'غير محدد';
+  // Fetch seller details (phone number) from users table
+  const { data: seller } = await supabase
+    .from('users')
+    .select('phone, name, profile_image_url')
+    .eq('id', product.seller_id)
+    .single();
+
+  const sellerPhone = seller?.phone || null;
+
+  const specifications = product.specifications || {};
+  const brand = specifications.brand || 'غير محدد';
+  const model = specifications.model || 'غير محدد';
+  const storage = specifications.storage || 'غير محدد';
+  const ram = specifications.ram || 'غير محدد';
+  const color = specifications.color || 'غير محدد';
+  
+  const isOpened = specifications.is_opened || 'غير محدد';
+  const ntraTax = specifications.ntra_tax || 'غير محدد';
+  const batteryHealth = specifications.battery_health ? `${specifications.battery_health}%` : null;
+  const cpu = specifications.cpu || null;
+  const batteryCapacity = specifications.battery_capacity ? `${specifications.battery_capacity} mAh` : null;
+  const warranty = specifications.warranty || 'غير محدد';
+  const acceptsExchange = specifications.accepts_exchange || 'غير محدد';
+  const accessories = specifications.accessories || null;
   
   const images: string[] = product.product_images?.map((img: any) => img.image_url) || [];
 
   return (
-    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 py-8 md:py-12 transition-colors duration-200">
+    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-8 pb-28 md:py-12 transition-colors duration-200">
       <div className="container mx-auto px-4 max-w-6xl">
         
         {/* Breadcrumb */}
-        <div className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-555 font-medium mb-6">
+        <div className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-550 font-medium mb-6">
           <Link href="/" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">الرئيسية</Link>
           <ChevronLeft className="w-3 h-3" />
           <Link href="/mobiles" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">الهواتف</Link>
@@ -141,18 +176,140 @@ export default async function ProductPage(props: Props) {
                   </span>
                 </div>
 
-                {/* Specifications */}
-                <div className="space-y-3.5">
+                {/* Specifications Grid */}
+                <div className="space-y-4">
                   <h3 className="text-base font-bold text-slate-805 dark:text-white">المواصفات الفنية</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-slate-50/80 dark:bg-slate-950/40 p-4 rounded-2xl border border-slate-100/50 dark:border-slate-850/70 hover:shadow-sm transition-shadow">
-                      <p className="text-xs text-slate-400 dark:text-slate-500 mb-1 font-semibold">المساحة التخزينية</p>
-                      <p className="font-extrabold text-slate-700 dark:text-slate-205 text-base">{storage}</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    
+                    {/* Storage */}
+                    <div className="bg-slate-50/60 dark:bg-slate-950/40 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
+                        <Smartphone className="w-4.5 h-4.5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">المساحة</p>
+                        <p className="font-extrabold text-slate-700 dark:text-slate-200 text-xs truncate">{storage}</p>
+                      </div>
                     </div>
-                    <div className="bg-slate-50/80 dark:bg-slate-950/40 p-4 rounded-2xl border border-slate-100/50 dark:border-slate-850/70 hover:shadow-sm transition-shadow">
-                      <p className="text-xs text-slate-400 dark:text-slate-500 mb-1 font-semibold">الذاكرة العشوائية (RAM)</p>
-                      <p className="font-extrabold text-slate-700 dark:text-slate-205 text-base">{ram}</p>
+
+                    {/* RAM */}
+                    <div className="bg-slate-50/60 dark:bg-slate-950/40 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
+                        <Cpu className="w-4.5 h-4.5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">الرام (RAM)</p>
+                        <p className="font-extrabold text-slate-700 dark:text-slate-200 text-xs truncate">{ram}</p>
+                      </div>
                     </div>
+
+                    {/* Color */}
+                    <div className="bg-slate-50/60 dark:bg-slate-950/40 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
+                        <Palette className="w-4.5 h-4.5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">الون</p>
+                        <p className="font-extrabold text-slate-700 dark:text-slate-200 text-xs truncate">{color}</p>
+                      </div>
+                    </div>
+
+                    {/* Battery Health (Apple only) */}
+                    {batteryHealth && (
+                      <div className="bg-slate-50/60 dark:bg-slate-950/40 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
+                          <BatteryCharging className="w-4.5 h-4.5" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">صحة البطارية</p>
+                          <p className="font-extrabold text-slate-700 dark:text-slate-200 text-xs truncate">{batteryHealth}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Device Opened / Serviced */}
+                    <div className="bg-slate-50/60 dark:bg-slate-950/40 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
+                        <Wrench className="w-4.5 h-4.5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">هل تم فتحه؟</p>
+                        <p className="font-extrabold text-slate-700 dark:text-slate-200 text-xs truncate">{isOpened}</p>
+                      </div>
+                    </div>
+
+                    {/* NTRA Customs Tax Paid */}
+                    <div className="bg-slate-50/60 dark:bg-slate-950/40 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
+                        <Scale className="w-4.5 h-4.5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">مسجل شبكة / جمارك</p>
+                        <p className="font-extrabold text-slate-700 dark:text-slate-200 text-xs truncate">{ntraTax}</p>
+                      </div>
+                    </div>
+
+                    {/* Warranty */}
+                    <div className="bg-slate-50/60 dark:bg-slate-950/40 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
+                        <ShieldCheck className="w-4.5 h-4.5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">الضمان</p>
+                        <p className="font-extrabold text-slate-700 dark:text-slate-200 text-xs truncate">{warranty}</p>
+                      </div>
+                    </div>
+
+                    {/* Accepts Exchange */}
+                    <div className="bg-slate-50/60 dark:bg-slate-950/40 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
+                        <RefreshCw className="w-4.5 h-4.5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">يقبل البدل</p>
+                        <p className="font-extrabold text-slate-700 dark:text-slate-200 text-xs truncate">{acceptsExchange}</p>
+                      </div>
+                    </div>
+
+                    {/* CPU (optional) */}
+                    {cpu && (
+                      <div className="bg-slate-50/60 dark:bg-slate-950/40 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
+                          <Cpu className="w-4.5 h-4.5 animate-pulse" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">المعالج</p>
+                          <p className="font-extrabold text-slate-700 dark:text-slate-200 text-xs truncate">{cpu}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Battery Capacity (optional) */}
+                    {batteryCapacity && (
+                      <div className="bg-slate-50/60 dark:bg-slate-950/40 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
+                          <BatteryCharging className="w-4.5 h-4.5" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">سعة البطارية</p>
+                          <p className="font-extrabold text-slate-700 dark:text-slate-200 text-xs truncate">{batteryCapacity}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Accessories (optional) */}
+                    {accessories && (
+                      <div className="col-span-2 sm:col-span-3 bg-slate-50/60 dark:bg-slate-950/40 p-3.5 rounded-2xl border border-slate-100/50 dark:border-slate-850/60 flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
+                          <Package className="w-4.5 h-4.5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">الملحقات المرفقة</p>
+                          <p className="font-extrabold text-slate-700 dark:text-slate-200 text-xs truncate">{accessories}</p>
+                        </div>
+                      </div>
+                    )}
+
                   </div>
                 </div>
 
@@ -203,6 +360,16 @@ export default async function ProductPage(props: Props) {
           </div>
         </div>
       </div>
+      
+      {/* Floating Bottom Contact Bar (Call, WhatsApp, Chat) for Mobile Devices */}
+      <MobileContactBar 
+        sellerId={product.seller_id}
+        sellerName={product.seller_name}
+        sellerPhone={sellerPhone}
+        productId={product.id}
+        productSlug={product.slug}
+        productName={product.name}
+      />
     </main>
   );
 }
