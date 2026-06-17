@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, Mail, Lock, User, Phone, MapPin, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 // Google Icon SVG
 const GoogleIcon = () => (
@@ -17,23 +17,15 @@ const GoogleIcon = () => (
   </svg>
 );
 
-const GOVERNORATES = [
-  'القاهرة','الجيزة','الإسكندرية','القليوبية','الشرقية','الدقهلية',
-  'الغربية','المنوفية','البحيرة','كفر الشيخ','دمياط','بورسعيد',
-  'الإسماعيلية','السويس','الفيوم','بني سويف','المنيا','أسيوط',
-  'سوهاج','قنا','الأقصر','أسوان','البحر الأحمر','الوادي الجديد',
-  'مطروح','شمال سيناء','جنوب سيناء'
-];
-
 export default function SignupPage() {
   const router = useRouter();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [governorate, setGovernorate] = useState(GOVERNORATES[0]);
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -62,12 +54,19 @@ export default function SignupPage() {
     }
   };
 
-  // ── Email / Password ──────────────────────────────────────────────
+  // ── Email / Password Sign Up ──────────────────────────────────────
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     setSuccess(null);
+
+    // Validate password match
+    if (password !== confirmPassword) {
+      setError('كلمتا المرور غير متطابقتين');
+      setLoading(false);
+      return;
+    }
 
     const { data, error: signupError } = await supabase.auth.signUp({
       email,
@@ -86,10 +85,15 @@ export default function SignupPage() {
     }
 
     if (data?.user) {
-      await supabase
+      // Upsert/Update user record in public.users
+      const { error: dbError } = await supabase
         .from('users')
-        .update({ phone, governorate, name })
+        .update({ name })
         .eq('id', data.user.id);
+
+      if (dbError) {
+        console.error('Database user profile update error:', dbError);
+      }
 
       setSuccess('تم إنشاء الحساب بنجاح! جاري توجيهك...');
       setTimeout(() => router.push('/login'), 2000);
@@ -166,7 +170,7 @@ export default function SignupPage() {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="مثال: أحمد محمد"
                   required
-                  className="w-full pr-10 pl-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-sm text-slate-800 dark:text-white placeholder:text-slate-400"
+                  className="w-full pr-10 pl-4 py-3 bg-slate-50 dark:bg-slate-805 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-sm text-slate-800 dark:text-white placeholder:text-slate-400"
                 />
               </div>
             </div>
@@ -183,43 +187,8 @@ export default function SignupPage() {
                   placeholder="name@example.com"
                   required
                   dir="ltr"
-                  className="w-full pr-10 pl-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-sm text-slate-800 dark:text-white placeholder:text-slate-400"
+                  className="w-full pr-10 pl-4 py-3 bg-slate-50 dark:bg-slate-805 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-sm text-slate-800 dark:text-white placeholder:text-slate-400"
                 />
-              </div>
-            </div>
-
-            {/* Phone + Governorate side by side on md+ */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400">رقم الهاتف</label>
-                <div className="relative">
-                  <Phone className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="01xxxxxxxxx"
-                    required
-                    dir="ltr"
-                    className="w-full pr-10 pl-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-sm text-slate-800 dark:text-white placeholder:text-slate-400"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400">المحافظة</label>
-                <div className="relative">
-                  <MapPin className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                  <select
-                    value={governorate}
-                    onChange={(e) => setGovernorate(e.target.value)}
-                    className="w-full pr-10 pl-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-sm text-slate-800 dark:text-white appearance-none cursor-pointer"
-                  >
-                    {GOVERNORATES.map((gov) => (
-                      <option key={gov} value={gov}>{gov}</option>
-                    ))}
-                  </select>
-                </div>
               </div>
             </div>
 
@@ -236,7 +205,7 @@ export default function SignupPage() {
                   required
                   minLength={6}
                   dir="ltr"
-                  className="w-full pr-10 pl-10 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-sm text-slate-800 dark:text-white placeholder:text-slate-400"
+                  className="w-full pr-10 pl-10 py-3 bg-slate-50 dark:bg-slate-805 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-sm text-slate-800 dark:text-white placeholder:text-slate-400"
                 />
                 <button
                   type="button"
@@ -244,6 +213,31 @@ export default function SignupPage() {
                   className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Confirm Password */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-600 dark:text-slate-400">تأكيد كلمة المرور</label>
+              <div className="relative">
+                <Lock className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="أعد إدخال كلمة المرور"
+                  required
+                  minLength={6}
+                  dir="ltr"
+                  className="w-full pr-10 pl-10 py-3 bg-slate-50 dark:bg-slate-805 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-sm text-slate-800 dark:text-white placeholder:text-slate-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
