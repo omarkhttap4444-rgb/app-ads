@@ -287,7 +287,7 @@ export default function ProfileHeader({ store: initialStore, productsCount }: Pr
       )}
 
       {/* Store Header / Cover */}
-      <div className="h-60 md:h-72 w-full relative bg-gradient-to-r from-slate-850 via-teal-950 to-slate-900 overflow-hidden group/cover">
+      <div className="h-60 md:h-72 w-full relative bg-slate-900 dark:bg-black overflow-hidden group/cover">
         {store.cover_image_url && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={store.cover_image_url} alt="Cover" className="w-full h-full object-cover opacity-60 transition-all duration-300" />
@@ -319,7 +319,7 @@ export default function ProfileHeader({ store: initialStore, productsCount }: Pr
           {/* Avatar with Edit Overlay */}
           <div className="relative shrink-0 group/avatar">
             <div 
-              className="w-32 h-32 md:w-36 md:h-36 rounded-2xl border-4 border-white dark:border-slate-900 shadow-xl bg-teal-50 dark:bg-teal-950/30 text-teal-600 dark:text-teal-400 font-black text-5xl flex items-center justify-center overflow-hidden bg-cover bg-center" 
+              className="w-32 h-32 md:w-36 md:h-36 rounded-2xl border-4 border-white dark:border-slate-900 shadow-xl bg-teal-50 dark:bg-teal-950 text-teal-600 dark:text-teal-400 font-black text-5xl flex items-center justify-center overflow-hidden bg-cover bg-center" 
               style={profileImage ? { backgroundImage: `url(${profileImage})` } : {}}
             >
               {!profileImage && store.name.charAt(0)}

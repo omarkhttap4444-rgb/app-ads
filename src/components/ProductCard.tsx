@@ -45,7 +45,6 @@ export default function ProductCard({ product, onFavoriteToggle }: ProductCardPr
     ? product.product_images.map((i: any) => i.image_url) 
     : [];
 
-  // Handle Carousel Scroll calculations for RTL layout
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const container = e.currentTarget;
     const width = container.clientWidth;
@@ -54,6 +53,31 @@ export default function ProductCard({ product, onFavoriteToggle }: ProductCardPr
     if (index !== currentImgIndex && index >= 0 && index < images.length) {
       setCurrentImgIndex(index);
     }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (images.length <= 1) return;
+    const { left, width } = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - left;
+    // For RTL, 0 is right side, but x is calculated from left side.
+    // If it's LTR, x=0 is left. We want to divide the width by number of images
+    // Assuming LTR coordinates from getBoundingClientRect (which it is):
+    const sectionWidth = width / images.length;
+    let index = Math.floor(x / sectionWidth);
+    if (index < 0) index = 0;
+    if (index >= images.length) index = images.length - 1;
+    
+    // In RTL, we might want to invert it, but usually standard left-to-right hovering feels fine.
+    // Let's invert it so moving mouse right-to-left goes to next images (since it's RTL)
+    index = (images.length - 1) - index;
+
+    if (index !== currentImgIndex) {
+      setCurrentImgIndex(index);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setCurrentImgIndex(0);
   };
 
   // Native App styling for product condition badges
@@ -85,38 +109,30 @@ export default function ProductCard({ product, onFavoriteToggle }: ProductCardPr
       <Link href={`/mobiles/${product.slug}`} className="flex flex-col flex-1">
         
         {/* Product Image Area / Scrollable Gallery */}
-        <div className="relative aspect-square w-full bg-slate-50 dark:bg-slate-950/40 border-b border-slate-50 dark:border-slate-855/50 overflow-hidden">
+        <div 
+          className="relative aspect-square w-full bg-slate-50 dark:bg-slate-950/40 border-b border-slate-50 dark:border-slate-800/50 overflow-hidden"
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+        >
           
-          {/* Scrollable container with snap scrolling */}
-          <div 
-            onScroll={handleScroll}
-            className="w-full h-full flex overflow-x-auto snap-x snap-mandatory scrollbar-none scroll-smooth"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-          >
-            {images.map((img, idx) => (
-              <div 
-                key={idx}
-                className="w-full h-full shrink-0 snap-start flex items-center justify-center p-3.5 md:p-4"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img 
-                  src={img} 
-                  alt={`${product.name} - ${idx + 1}`} 
-                  className="object-contain h-full w-auto max-w-full drop-shadow-md"
-                  loading="lazy"
-                />
-              </div>
-            ))}
-            {images.length === 0 && (
-              <div className="w-full h-full flex items-center justify-center p-3.5 md:p-4">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img 
-                  src="/placeholder-mobile.png" 
-                  alt={product.name} 
-                  className="object-contain h-full w-auto max-w-full drop-shadow-md"
-                  loading="lazy"
-                />
-              </div>
+          {/* Main Image Display (Hover-based switching) */}
+          <div className="w-full h-full flex items-center justify-center p-3.5 md:p-4">
+            {images.length > 0 ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img 
+                src={images[currentImgIndex] || images[0]} 
+                alt={`${product.name} - ${currentImgIndex + 1}`} 
+                className="object-contain h-full w-auto max-w-full drop-shadow-md transition-opacity duration-300"
+                loading="lazy"
+              />
+            ) : (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img 
+                src="/placeholder-mobile.png" 
+                alt={product.name} 
+                className="object-contain h-full w-auto max-w-full drop-shadow-md"
+                loading="lazy"
+              />
             )}
           </div>
 

@@ -326,7 +326,7 @@ export default async function ProductPage(props: Props) {
               <div className="pt-6 border-t border-slate-100 dark:border-slate-800 mt-6">
                 <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-3.5">معلومات البائع</h3>
                 <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-50/60 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800 p-4 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                  <div className="w-12 h-12 bg-gradient-to-tr from-teal-100 to-cyan-100 dark:from-teal-900/40 dark:to-cyan-950/40 rounded-xl flex items-center justify-center text-teal-700 dark:text-teal-400 font-extrabold text-lg overflow-hidden shrink-0 border border-teal-200/50 dark:border-teal-800/80 shadow-inner">
+                  <div className="w-12 h-12 bg-teal-100 dark:bg-teal-950 rounded-xl flex items-center justify-center text-teal-700 dark:text-teal-400 font-extrabold text-lg overflow-hidden shrink-0 border border-teal-200/50 dark:border-teal-800/80 shadow-inner">
                     {seller?.profile_image_url ? (
                        /* eslint-disable-next-line @next/next/no-img-element */
                        <img src={seller.profile_image_url} alt={seller.name || 'البائع'} className="object-cover w-full h-full" />
