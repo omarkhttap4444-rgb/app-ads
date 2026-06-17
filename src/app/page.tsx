@@ -179,29 +179,7 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Brands Scrollable Chips (Mirroring App Circular Chips on mobile) */}
-      <section className="mt-8 container mx-auto px-4 max-w-7xl">
-        <h2 className="text-base font-black text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-          <span className="w-1.5 h-5 bg-teal-500 rounded-full"></span>
-          أشهر الماركات
-        </h2>
-        <div className="flex gap-4 overflow-x-auto pb-4 pt-1 scrollbar-none" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-          {quickBrands.map((brand) => (
-            <Link
-              key={brand.name}
-              href={`/mobiles?q=${brand.query}`}
-              className="flex flex-col items-center gap-2 shrink-0 group focus:outline-none cursor-pointer"
-            >
-              <div className="w-16 h-16 rounded-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-center text-2xl group-hover:scale-105 group-hover:shadow-md transition-all duration-300">
-                {brand.icon}
-              </div>
-              <span className="text-xs font-bold text-slate-600 dark:text-slate-400 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
-                {brand.name}
-              </span>
-            </Link>
-          ))}
-        </div>
-      </section>
+
 
       {/* Banners & Google Play sidebar Section */}
       <section className="mt-6 md:mt-8 container mx-auto px-0 md:px-4 max-w-7xl">

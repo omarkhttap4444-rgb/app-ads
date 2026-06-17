@@ -23,6 +23,20 @@
   --color-card: var(--card-bg);
   --color-card-border: var(--card-border);
   --font-sans: 'Cairo', var(--font-geist-sans), sans-serif;
+
+  /* Overrides to make teal/greenish-blue color extremely vibrant & glowing */
+  --color-teal-50: #e6fcf9;
+  --color-teal-100: #bbf7ee;
+  --color-teal-200: #7ff0dd;
+  --color-teal-300: #3ce5ca;
+  --color-teal-400: #10d4b6;
+  --color-teal-500: #00bfa5; /* Glowing primary teal */
+  --color-teal-600: #00aa93; /* Vibrant dark-teal */
+  --color-teal-650: #009b86;
+  --color-teal-700: #008775;
+  --color-teal-800: #006e5f;
+  --color-teal-900: #005a4e;
+  --color-teal-950: #00362f;
 }
 
 body {
