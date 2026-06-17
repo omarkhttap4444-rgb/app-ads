@@ -13,7 +13,9 @@ import {
   LogOut, 
   ChevronDown,
   Heart,
-  Plus
+  Plus,
+  Menu,
+  X
 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 
@@ -27,6 +29,7 @@ export default function Header() {
   const [unreadNotifications, setUnreadNotifications] = useState<number>(0);
   const [favoritesCount, setFavoritesCount] = useState<number>(0);
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
   // Auth & Session state
   useEffect(() => {
@@ -341,55 +344,79 @@ export default function Header() {
             )}
           </div>
 
-          {/* Mobile Profile Icon (Top bar) */}
-          <div className="flex md:hidden items-center gap-3">
-            <ThemeToggle />
-            
-            {user ? (
-              <Link href={`/store/${user.id}`} className="w-9 h-9 rounded-xl bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-350 font-bold text-sm flex items-center justify-center overflow-hidden border border-teal-200 dark:border-teal-800">
-                {profile?.profile_image_url ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={profile.profile_image_url} alt="Profile" className="w-full h-full object-cover" />
-                ) : (
-                  profile?.name?.charAt(0) || user.email?.charAt(0).toUpperCase()
+          {/* Mobile Navigation Controls (Top bar) */}
+          <div className="flex md:hidden items-center gap-1.5">
+            {/* Search Icon */}
+            <Link 
+              href="/mobiles" 
+              className="p-2 text-slate-550 dark:text-slate-400 hover:text-teal-650 dark:hover:text-teal-400 transition-colors"
+              title="تصفح الهواتف"
+            >
+              <Search className="w-5 h-5" />
+            </Link>
+
+            {/* Notifications Icon (Only visible if logged in) */}
+            {user && (
+              <Link 
+                href="/notifications" 
+                className="p-2 text-slate-550 dark:text-slate-400 hover:text-teal-650 dark:hover:text-teal-400 transition-colors relative"
+                title="الإشعارات"
+              >
+                <Bell className="w-5 h-5" />
+                {unreadNotifications > 0 && (
+                  <span className="absolute top-1.5 right-1.5 bg-rose-500 text-white text-[8px] font-bold px-1 py-0.2 rounded-full min-w-[12px] text-center animate-pulse">
+                    {unreadNotifications}
+                  </span>
                 )}
               </Link>
-            ) : (
-              <Link 
-                href="/login" 
-                className="bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-400 hover:bg-teal-100 dark:hover:bg-teal-900 font-bold text-xs px-4 py-2 rounded-xl transition-all"
-              >
-                دخول
-              </Link>
             )}
+
+            <ThemeToggle />
+
+            {/* Hamburger Menu Icon (Toggles Drawer) */}
+            <button 
+              onClick={() => setMobileMenuOpen(true)}
+              className="p-2 text-slate-550 dark:text-slate-400 hover:text-teal-655 dark:hover:text-teal-400 transition-colors cursor-pointer"
+              aria-label="القائمة الرئيسية"
+              title="القائمة"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
           </div>
 
         </div>
       </header>
 
       {/* Bottom Navigation Bar - Mobile View Only */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 border-t border-slate-100/90 dark:border-slate-800 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] px-4 py-2 flex justify-around items-center backdrop-blur-md transition-colors duration-200">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-slate-900 border-t border-slate-100/90 dark:border-slate-800 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] px-4 py-2 flex justify-around items-center backdrop-blur-md transition-colors duration-200">
+        {/* 1. الرئيسية */}
         <Link 
           href="/" 
           className={`flex flex-col items-center gap-1 py-1 transition-all ${
-            isActive('/') ? 'text-teal-600 dark:text-teal-400 scale-105' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+            isActive('/') ? 'text-teal-650 dark:text-teal-400 scale-105' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
           }`}
         >
           <Home className={`w-5 h-5 ${isActive('/') ? 'stroke-[2.5px]' : 'stroke-[1.8px]'}`} />
           <span className="text-[10px] font-medium">الرئيسية</span>
         </Link>
 
+        {/* 2. المفضلة */}
         <Link 
-          href="/mobiles" 
-          className={`flex flex-col items-center gap-1 py-1 transition-all ${
-            isActive('/mobiles') ? 'text-teal-600 dark:text-teal-400 scale-105' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+          href={user ? "/favorites" : "/login"} 
+          className={`flex flex-col items-center gap-1 py-1 transition-all relative ${
+            isActive('/favorites') ? 'text-teal-650 dark:text-teal-400 scale-105' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
           }`}
         >
-          <Search className={`w-5 h-5 ${isActive('/mobiles') ? 'stroke-[2.5px]' : 'stroke-[1.8px]'}`} />
-          <span className="text-[10px] font-medium">تصفح</span>
+          <Heart className={`w-5 h-5 ${isActive('/favorites') ? 'stroke-[2.5px]' : 'stroke-[1.8px]'}`} />
+          <span className="text-[10px] font-medium">المفضلة</span>
+          {favoritesCount > 0 && (
+            <span className="absolute top-0.5 right-2 bg-rose-500 text-white text-[9px] font-bold px-1 py-0.5 rounded-full min-w-[14px] text-center">
+              {favoritesCount}
+            </span>
+          )}
         </Link>
 
-        {/* Circular Add listing button in the center */}
+        {/* 3. الزر الأوسط (بيع الآن) */}
         <Link 
           href="/mobiles/add" 
           className="flex flex-col items-center transition-all relative z-50 cursor-pointer"
@@ -400,10 +427,11 @@ export default function Header() {
           <span className="text-[9px] font-bold text-teal-600 dark:text-teal-400 mt-0.5">بيع الآن</span>
         </Link>
 
+        {/* 4. المحادثات */}
         <Link 
           href={user ? "/chat" : "/login"} 
           className={`flex flex-col items-center gap-1 py-1 transition-all relative ${
-            isActive('/chat') ? 'text-teal-600 dark:text-teal-400 scale-105' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+            isActive('/chat') ? 'text-teal-650 dark:text-teal-400 scale-105' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
           }`}
         >
           <MessageSquare className={`w-5 h-5 ${isActive('/chat') ? 'stroke-[2.5px]' : 'stroke-[1.8px]'}`} />
@@ -415,41 +443,188 @@ export default function Header() {
           )}
         </Link>
 
+        {/* 5. حسابي */}
         <Link 
-          href={user ? "/notifications" : "/login"} 
-          className={`flex flex-col items-center gap-1 py-1 transition-all relative ${
-            isActive('/notifications') ? 'text-teal-600 dark:text-teal-400 scale-105' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+          href={user ? (profile ? `/store/${profile.id}` : `/store/${user.id}`) : "/login"} 
+          className={`flex flex-col items-center gap-1 py-1 transition-all ${
+            isActive('/login') || isActive('/signup') || pathname.startsWith('/store/') ? 'text-teal-650 dark:text-teal-400 scale-105' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
           }`}
         >
-          <Bell className={`w-5 h-5 ${isActive('/notifications') ? 'stroke-[2.5px]' : 'stroke-[1.8px]'}`} />
-          <span className="text-[10px] font-medium">الإشعارات</span>
-          {unreadNotifications > 0 && (
-            <span className="absolute top-0.5 right-2 bg-rose-500 text-white text-[9px] font-bold px-1 py-0.5 rounded-full min-w-[14px] text-center animate-bounce">
-              {unreadNotifications}
-            </span>
-          )}
+          <User className={`w-5 h-5 ${isActive('/login') || isActive('/signup') || pathname.startsWith('/store/') ? 'stroke-[2.5px]' : 'stroke-[1.8px]'}`} />
+          <span className="text-[10px] font-medium">حسابي</span>
         </Link>
-
-        {user ? (
-          <button 
-            onClick={handleLogout} 
-            className="flex flex-col items-center gap-1 py-1 text-slate-400 dark:text-slate-550 hover:text-rose-600 transition-all cursor-pointer"
-          >
-            <LogOut className="w-5 h-5 stroke-[1.8px]" />
-            <span className="text-[10px] font-medium">خروج</span>
-          </button>
-        ) : (
-          <Link 
-            href="/signup" 
-            className={`flex flex-col items-center gap-1 py-1 transition-all ${
-              isActive('/signup') ? 'text-teal-600 dark:text-teal-400 scale-105' : 'text-slate-400 dark:text-slate-550 hover:text-slate-600 dark:hover:text-slate-305'
-            }`}
-          >
-            <User className={`w-5 h-5 ${isActive('/signup') ? 'stroke-[2.5px]' : 'stroke-[1.8px]'}`} />
-            <span className="text-[10px] font-medium">حسابي</span>
-          </Link>
-        )}
       </nav>
+
+      {/* Mobile Hamburger Menu Drawer */}
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex" dir="rtl">
+          {/* Overlay Background */}
+          <div 
+            onClick={() => setMobileMenuOpen(false)}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300"
+          />
+          
+          {/* Side Drawer Content */}
+          <div className="relative flex flex-col w-72 max-w-xs h-full bg-white dark:bg-slate-900 border-l border-slate-100 dark:border-slate-800 shadow-2xl p-6 transition-transform duration-300 transform translate-x-0 ease-out z-50">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between mb-8 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <span className="text-lg font-black text-teal-650 dark:text-teal-400">القائمة</span>
+              <button 
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-2 text-slate-550 hover:text-slate-700 dark:hover:text-slate-300 rounded-xl bg-slate-50 dark:bg-slate-800 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* User Profile Card inside Drawer */}
+            <div className="mb-6">
+              {user ? (
+                <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/80">
+                  <div className="w-12 h-12 rounded-xl bg-teal-105 dark:bg-teal-900 text-teal-700 dark:text-teal-300 font-bold text-base flex items-center justify-center overflow-hidden border border-teal-200 dark:border-teal-850 shrink-0">
+                    {profile?.profile_image_url ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={profile.profile_image_url} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      profile?.name?.charAt(0) || user.email?.charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <div className="text-right min-w-0">
+                    <p className="text-xs text-slate-400 font-medium">مرحباً بك</p>
+                    <p className="text-sm font-black text-slate-800 dark:text-slate-100 truncate">{profile?.name || user.email}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/80 text-center">
+                  <p className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3">سجل دخولك لتجربة كاملة</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Link 
+                      href="/login" 
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="bg-teal-650 hover:bg-teal-755 text-white text-xs font-bold py-2 px-3 rounded-xl transition-all text-center"
+                    >
+                      تسجيل دخول
+                    </Link>
+                    <Link 
+                      href="/signup" 
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 text-slate-700 dark:text-slate-200 text-xs font-bold py-2 px-3 rounded-xl transition-all text-center"
+                    >
+                      حساب جديد
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Menu Links */}
+            <div className="flex-1 space-y-2 overflow-y-auto">
+              <Link 
+                href="/" 
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                  isActive('/') ? 'bg-teal-50 dark:bg-teal-950/30 text-teal-650 dark:text-teal-400' : 'text-slate-600 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                }`}
+              >
+                <Home className="w-5 h-5" />
+                الرئيسية
+              </Link>
+
+              <Link 
+                href="/mobiles" 
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                  isActive('/mobiles') ? 'bg-teal-50 dark:bg-teal-950/30 text-teal-650 dark:text-teal-400' : 'text-slate-600 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                }`}
+              >
+                <Search className="w-5 h-5" />
+                تصفح الهواتف
+              </Link>
+
+              {user && (
+                <>
+                  {profile && (
+                    <Link 
+                      href={`/store/${profile.id}`} 
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                        pathname.startsWith('/store/') ? 'bg-teal-50 dark:bg-teal-950/30 text-teal-650 dark:text-teal-400' : 'text-slate-600 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                      }`}
+                    >
+                      <User className="w-5 h-5" />
+                      ملفي الشخصي
+                    </Link>
+                  )}
+
+                  <Link 
+                    href="/favorites" 
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                      isActive('/favorites') ? 'bg-teal-50 dark:bg-teal-950/30 text-teal-650 dark:text-teal-400' : 'text-slate-600 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                    }`}
+                  >
+                    <Heart className="w-5 h-5" />
+                    المفضلة
+                    {favoritesCount > 0 && (
+                      <span className="mr-auto bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                        {favoritesCount}
+                      </span>
+                    )}
+                  </Link>
+
+                  <Link 
+                    href="/chat" 
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                      isActive('/chat') ? 'bg-teal-50 dark:bg-teal-950/30 text-teal-650 dark:text-teal-400' : 'text-slate-600 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                    }`}
+                  >
+                    <MessageSquare className="w-5 h-5" />
+                    المحادثات
+                    {unreadMessages > 0 && (
+                      <span className="mr-auto bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                        {unreadMessages}
+                      </span>
+                    )}
+                  </Link>
+
+                  <Link 
+                    href="/notifications" 
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                      isActive('/notifications') ? 'bg-teal-50 dark:bg-teal-950/30 text-teal-650 dark:text-teal-400' : 'text-slate-600 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                    }`}
+                  >
+                    <Bell className="w-5 h-5" />
+                    الإشعارات
+                    {unreadNotifications > 0 && (
+                      <span className="mr-auto bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                        {unreadNotifications}
+                      </span>
+                    )}
+                  </Link>
+                </>
+              )}
+            </div>
+
+            {/* Logout at bottom of Drawer */}
+            {user && (
+              <div className="border-t border-slate-100 dark:border-slate-800 pt-4 mt-auto">
+                <button 
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    handleLogout();
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-rose-650 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all cursor-pointer"
+                >
+                  <LogOut className="w-5 h-5" />
+                  تسجيل الخروج
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }
