@@ -346,20 +346,11 @@ export default function Header() {
 
           {/* Mobile Navigation Controls (Top bar) */}
           <div className="flex md:hidden items-center gap-1.5">
-            {/* Search Icon */}
-            <Link 
-              href="/mobiles" 
-              className="p-2 text-slate-550 dark:text-slate-400 hover:text-teal-650 dark:hover:text-teal-400 transition-colors"
-              title="تصفح الهواتف"
-            >
-              <Search className="w-5 h-5" />
-            </Link>
-
             {/* Notifications Icon (Only visible if logged in) */}
             {user && (
               <Link 
                 href="/notifications" 
-                className="p-2 text-slate-550 dark:text-slate-400 hover:text-teal-650 dark:hover:text-teal-400 transition-colors relative"
+                className="p-2 text-slate-550 dark:text-slate-400 hover:text-teal-655 dark:hover:text-teal-400 transition-colors relative"
                 title="الإشعارات"
               >
                 <Bell className="w-5 h-5" />
@@ -372,6 +363,25 @@ export default function Header() {
             )}
 
             <ThemeToggle />
+
+            {/* Profile Avatar / Login Button outside (exactly as it was) */}
+            {user ? (
+              <Link href={`/store/${user.id}`} className="w-9 h-9 rounded-xl bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-350 font-bold text-sm flex items-center justify-center overflow-hidden border border-teal-200 dark:border-teal-800">
+                {profile?.profile_image_url ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={profile.profile_image_url} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  profile?.name?.charAt(0) || user.email?.charAt(0).toUpperCase()
+                )}
+              </Link>
+            ) : (
+              <Link 
+                href="/login" 
+                className="bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-400 hover:bg-teal-100 dark:hover:bg-teal-900 font-bold text-xs px-4 py-2 rounded-xl transition-all"
+              >
+                دخول
+              </Link>
+            )}
 
             {/* Hamburger Menu Icon (Toggles Drawer) */}
             <button 

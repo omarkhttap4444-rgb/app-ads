@@ -10,8 +10,13 @@ async function main() {
     p_query: 'ايفون',
     p_category: null,
     p_condition: null,
-    p_limit: 10
+    p_min_price: null,
+    p_max_price: null,
+    p_user_id: null,
+    p_limit: 10,
+    p_offset: 0
   });
-  console.log('Error code:', error?.code);
+  console.log('Error:', error);
+  console.log('Data count:', data?.length);
 }
 main();

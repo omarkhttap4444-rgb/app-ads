@@ -4,6 +4,7 @@ import { Metadata } from 'next';
 import { Search, Flame, MapPin, Sparkles, Smartphone, Download, ShieldCheck, Star, Bell, Zap, MessageSquare, Heart } from 'lucide-react';
 import BannerCarousel from '@/components/BannerCarousel';
 import FavoriteButton from '@/components/FavoriteButton';
+import SmartSearchInput from '@/components/SmartSearchInput';
 
 export const metadata: Metadata = {
   title: 'سوق فون | المنصة الأولى لبيع وشراء الهواتف في مصر',
@@ -128,11 +129,9 @@ export default async function Home() {
           >
             <div className="flex-1 flex items-center px-4">
               <Search className="text-slate-400 w-5 h-5 shrink-0" />
-              <input 
-                type="text" 
-                name="q"
+              <SmartSearchInput 
                 placeholder="ابحث عن موبايل (مثال: آيفون 13 برو ماكس)..." 
-                className="w-full bg-transparent px-4 py-3.5 text-slate-850 dark:text-white outline-none text-base font-medium placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                className="w-full bg-transparent px-4 py-3.5 text-slate-850 dark:text-white outline-none text-base font-medium placeholder:text-slate-400 dark:placeholder:text-slate-650"
               />
             </div>
             <button 

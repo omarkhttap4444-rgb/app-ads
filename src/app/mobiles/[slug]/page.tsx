@@ -5,6 +5,7 @@ import ContactSellerButton from '@/components/ContactSellerButton';
 import { MapPin, Eye, Sparkles, Smartphone, ShieldCheck, ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import FavoriteButton from '@/components/FavoriteButton';
+import ProductGallery from '@/components/ProductGallery';
 
 // Revalidate every 60 seconds
 export const revalidate = 60;
@@ -90,7 +91,7 @@ export default async function ProductPage(props: Props) {
       <div className="container mx-auto px-4 max-w-6xl">
         
         {/* Breadcrumb */}
-        <div className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 font-medium mb-6">
+        <div className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-555 font-medium mb-6">
           <Link href="/" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">الرئيسية</Link>
           <ChevronLeft className="w-3 h-3" />
           <Link href="/mobiles" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">الهواتف</Link>
@@ -102,37 +103,12 @@ export default async function ProductPage(props: Props) {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 p-6 md:p-10">
             
             {/* Right Column: Images (5 Cols) */}
-            <div className="lg:col-span-5 space-y-4">
-              <div className="aspect-[4/5] md:aspect-square bg-slate-50 dark:bg-slate-950 rounded-2xl overflow-hidden relative border border-slate-100/50 dark:border-slate-800 flex items-center justify-center">
-                {/* Heart Icon Button overlay */}
-                <div className="absolute top-4 left-4 z-20">
-                  <FavoriteButton productId={product.id} />
-                </div>
-                {images.length > 0 ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img 
-                    src={images[0]} 
-                    alt={product.name}
-                    className="object-contain w-full h-full p-4 hover:scale-105 transition-transform duration-500"
-                  />
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-slate-400 dark:text-slate-550 text-sm gap-2">
-                    <Smartphone className="w-8 h-8 text-slate-300 dark:text-slate-700" />
-                    <span>لا توجد صور متوفرة</span>
-                  </div>
-                )}
+            <div className="lg:col-span-5 relative">
+              {/* Heart Icon Button overlay */}
+              <div className="absolute top-4 left-4 z-20">
+                <FavoriteButton productId={product.id} />
               </div>
-              
-              {images.length > 1 && (
-                <div className="grid grid-cols-4 gap-3">
-                  {images.slice(1, 5).map((img, idx) => (
-                    <div key={idx} className="aspect-square rounded-xl bg-slate-50 dark:bg-slate-950 relative overflow-hidden border border-slate-100 dark:border-slate-800 cursor-pointer hover:border-teal-500 dark:hover:border-teal-400 transition-all">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={img} alt="صورة إضافية" className="object-cover w-full h-full" />
-                    </div>
-                  ))}
-                </div>
-              )}
+              <ProductGallery images={images} productName={product.name} />
             </div>
 
             {/* Left Column: Product Details (7 Cols) */}
