@@ -360,7 +360,8 @@ export default function SignupPage() {
           {step === 'signup' ? (
             /* ─── STEP 1: Registration Form ─── */
             <>
-              {/* Google Button */}
+              {/* Google Button (Temporarily Hidden) */}
+              {/*
               <button
                 type="button"
                 onClick={handleGoogleSignup}
@@ -375,12 +376,12 @@ export default function SignupPage() {
                 <span className="text-sm">{googleLoading ? 'جاري التوجيه...' : 'التسجيل السريع بحساب Google'}</span>
               </button>
 
-              {/* Divider */}
               <div className="flex items-center gap-3 mb-5">
                 <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800" />
                 <span className="text-xs text-slate-400 font-medium">أو سجل ببريدك الإلكتروني</span>
                 <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800" />
               </div>
+              */}
 
               <form onSubmit={handleSignupSubmit} className="space-y-4">
                 {/* Name */}

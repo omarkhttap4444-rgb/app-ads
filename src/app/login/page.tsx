@@ -92,7 +92,8 @@ function LoginForm() {
           <p className="text-slate-400 dark:text-slate-500 mt-1 text-sm">مرحباً بك مجدداً في سوق فون</p>
         </div>
 
-        {/* ── Google Button ── */}
+        {/* ── Google Button (Temporarily Hidden) ── */}
+        {/*
         <button
           onClick={handleGoogleLogin}
           disabled={googleLoading || loading}
@@ -106,12 +107,12 @@ function LoginForm() {
           <span className="text-sm">{googleLoading ? 'جاري التوجيه...' : 'المتابعة بحساب Google'}</span>
         </button>
 
-        {/* Divider */}
         <div className="flex items-center gap-3 mb-5">
           <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800" />
           <span className="text-xs text-slate-400 font-medium">أو</span>
           <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800" />
         </div>
+        */}
 
         {/* Alerts */}
         {error && (
