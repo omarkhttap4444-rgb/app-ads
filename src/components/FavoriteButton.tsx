@@ -8,9 +8,10 @@ import { useRouter } from 'next/navigation';
 type Props = {
   productId: string;
   className?: string;
+  onToggle?: (isFavorited: boolean) => void;
 };
 
-export default function FavoriteButton({ productId, className = '' }: Props) {
+export default function FavoriteButton({ productId, className = '', onToggle }: Props) {
   const router = useRouter();
   
   const [user, setUser] = useState<any>(null);
@@ -55,6 +56,9 @@ export default function FavoriteButton({ productId, className = '' }: Props) {
 
     const targetState = !isFavorited;
     setIsFavorited(targetState); // Optimistic update
+    if (onToggle) {
+      onToggle(targetState);
+    }
 
     try {
       if (targetState) {

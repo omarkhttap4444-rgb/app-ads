@@ -5,6 +5,7 @@ import { Search, Flame, MapPin, Sparkles, Smartphone, Download, ShieldCheck, Sta
 import BannerCarousel from '@/components/BannerCarousel';
 import FavoriteButton from '@/components/FavoriteButton';
 import SmartSearchInput from '@/components/SmartSearchInput';
+import ProductCard from '@/components/ProductCard';
 
 export const metadata: Metadata = {
   title: 'سوق فون | المنصة الأولى لبيع وشراء الهواتف في مصر',
@@ -330,65 +331,10 @@ export default async function Home() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {latestProducts?.map((product) => {
-              const brand = product.specifications?.brand || '';
-              const model = product.specifications?.model || '';
-              const images = product.product_images?.map((i: any) => i.image_url) || [];
-              const mainImg = images[0] || '/placeholder-mobile.png';
-              const conditionBadge =
-                product.condition === 'جديد'
-                  ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-800/40'
-                  : product.condition === 'كسر زيرو'
-                  ? 'bg-sky-100 dark:bg-sky-900/60 text-sky-700 dark:text-sky-400 border border-sky-200/80 dark:border-sky-800/40'
-                  : 'bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-400 border border-amber-200/80 dark:border-amber-800/40';
-
-              return (
-                <div 
-                  key={product.id}
-                  className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm hover:shadow-2xl hover:shadow-teal-500/8 hover:-translate-y-2 transition-all duration-300 border border-slate-100 dark:border-slate-800 hover:border-teal-200/70 dark:hover:border-teal-800/50 overflow-hidden group flex flex-col relative"
-                >
-                  {/* Favorite Button */}
-                  <div className="absolute top-3 right-3 z-20">
-                    <FavoriteButton productId={product.id} />
-                  </div>
-
-                  <Link href={`/mobiles/${product.slug}`} className="flex flex-col flex-1">
-                    {/* Image Area */}
-                    <div className="relative h-[220px] bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-800/70 dark:via-slate-800/40 dark:to-slate-900/80 flex items-center justify-center overflow-hidden px-4 pt-5 pb-3">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img 
-                        src={mainImg} 
-                        alt={product.name} 
-                        className="object-contain h-full w-auto max-w-full group-hover:scale-110 transition-transform duration-500 drop-shadow-lg"
-                      />
-                      {/* Condition badge */}
-                      <span className={`absolute bottom-2.5 left-2.5 text-[10px] font-bold px-2 py-0.5 rounded-md ${conditionBadge}`}>
-                        {product.condition}
-                      </span>
-                    </div>
-
-                    {/* Details */}
-                    <div className="p-4 flex flex-col flex-1">
-                      <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm line-clamp-2 mb-3 leading-snug group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors min-h-[2.5rem]">
-                        {brand || model ? `${brand} ${model}`.trim() : product.name}
-                      </h3>
-
-                      <div className="mt-auto pt-3 border-t border-slate-50 dark:border-slate-800/80">
-                        <div className="text-teal-600 dark:text-teal-400 font-black text-lg flex items-baseline gap-1">
-                          {product.price.toLocaleString('ar-EG')}
-                          <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">جنيه</span>
-                        </div>
-                        <div className="mt-1.5 flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500">
-                          <MapPin className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{product.location}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                </div>
-              );
-            })}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5">
+            {latestProducts?.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
           </div>
           
           {(!latestProducts || latestProducts.length === 0) && (
