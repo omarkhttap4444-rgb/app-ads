@@ -80,7 +80,7 @@ export default async function ProductPage(props: Props) {
   const ntraTax = specs.ntra_tax || 'غير محدد';
   const batteryHealth = specs.battery_health ? `${specs.battery_health}%` : null;
   const warranty = specs.warranty || 'غير محدد';
-  const acceptsExchange = specs.accepts_exchange || 'غير محدد';
+  const acceptsExchange = specs.accepts_exchange === true || specs.accepts_exchange === 'true' || specs.accepts_exchange === 'نعم' || specs.accepts_exchange === '1';
   const accessories = specs.accessories || null;
   const images: string[] = product.product_images?.map((img: any) => img.image_url) || [];
 
@@ -92,7 +92,7 @@ export default async function ProductPage(props: Props) {
     { icon: Wrench, label: 'هل تم فتحه؟', value: isOpened },
     { icon: Scale, label: 'مسجل / جمارك', value: ntraTax },
     { icon: ShieldCheck, label: 'الضمان', value: warranty },
-    { icon: RefreshCw, label: 'يقبل البدل', value: acceptsExchange },
+    ...(acceptsExchange ? [{ icon: RefreshCw, label: 'يقبل البدل', value: 'نعم' }] : []),
   ];
 
   return (

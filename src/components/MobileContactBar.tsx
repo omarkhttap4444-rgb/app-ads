@@ -107,7 +107,7 @@ export default function MobileContactBar({
           ) : (
             <MessageSquare className="w-4 h-4" />
           )}
-          <span>{loadingChat ? 'جاري الفتح...' : 'دردشة فورية'}</span>
+          <span>{loadingChat ? '...' : 'مراسلة'}</span>
         </button>
 
         {/* Call Button */}
@@ -117,7 +117,7 @@ export default function MobileContactBar({
             className="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 py-3 rounded-2xl flex items-center justify-center gap-2 font-bold text-xs shadow-sm cursor-pointer"
           >
             <Phone className="w-4 h-4" />
-            <span>اتصال هاتفي</span>
+            <span>اتصال</span>
           </a>
         )}
       </div>

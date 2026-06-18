@@ -22,7 +22,7 @@ export type ProductCardProps = {
       ram?: string;
       battery_health?: string;
       color?: string;
-      accepts_exchange?: string;
+      accepts_exchange?: string | boolean;
     };
     product_images?: Array<{ image_url: string }> | { image_url: string }[];
   };
@@ -38,7 +38,7 @@ export default function ProductCard({ product, onFavoriteToggle }: ProductCardPr
   const storage = product.specifications?.storage || '';
   const ram = product.specifications?.ram || '';
   const battery = product.specifications?.battery_health || '';
-  const acceptsExchange = product.specifications?.accepts_exchange || '';
+  const acceptsExchange = product.specifications?.accepts_exchange === true || product.specifications?.accepts_exchange === 'true' || product.specifications?.accepts_exchange === 'نعم' || product.specifications?.accepts_exchange === '1';
 
   const displayTitle = brand || model 
     ? `${brand} ${model}`.trim() 
@@ -65,14 +65,14 @@ export default function ProductCard({ product, onFavoriteToggle }: ProductCardPr
 
   // Premium condition badge styling
   const conditionStyles: Record<string, string> = {
-    'جديد': 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30',
-    'كسر زيرو': 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30',
-    'مستعمل': 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30',
+    'جديد': 'bg-gradient-to-r from-emerald-500 to-teal-400 text-white shadow-[0_4px_10px_rgba(16,185,129,0.2)] border-none',
+    'كسر زيرو': 'bg-gradient-to-r from-blue-500 to-indigo-400 text-white shadow-[0_4px_10px_rgba(59,130,246,0.2)] border-none',
+    'مستعمل': 'bg-gradient-to-r from-amber-500 to-orange-400 text-white shadow-[0_4px_10px_rgba(245,158,11,0.2)] border-none',
   };
-  const conditionClass = conditionStyles[product.condition] || 'bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-350 border border-slate-100 dark:border-slate-700/50';
+  const conditionClass = conditionStyles[product.condition] || 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-none';
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/80 overflow-hidden card-hover flex flex-col relative group h-full shadow-xs">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/60 overflow-hidden flex flex-col relative group h-full shadow-sm hover:shadow-2xl hover:shadow-ocean-500/10 transition-all duration-300 hover:-translate-y-1.5">
       
       {/* Favorite Button */}
       <div className="absolute top-2.5 left-2.5 z-20 transition-transform duration-200 hover:scale-110 active:scale-95">
@@ -93,7 +93,7 @@ export default function ProductCard({ product, onFavoriteToggle }: ProductCardPr
         
         {/* Product Image */}
         <div 
-          className="product-image-container aspect-square w-full relative overflow-hidden bg-slate-50/60 dark:bg-slate-900/40"
+          className="product-image-container aspect-square w-full relative overflow-hidden bg-gradient-to-b from-slate-50/80 to-slate-100/50 dark:from-slate-800/40 dark:to-slate-900/40"
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
         >
@@ -151,17 +151,17 @@ export default function ProductCard({ product, onFavoriteToggle }: ProductCardPr
           {(storage || ram || battery) && (
             <div className="flex flex-wrap gap-1.5 mt-0.5">
               {storage && (
-                <span className="text-[9px] font-bold bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md">
+                <span className="text-[9px] font-bold bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
                   {storage}
                 </span>
               )}
               {ram && (
-                <span className="text-[9px] font-bold bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md">
+                <span className="text-[9px] font-bold bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
                   {ram} رام
                 </span>
               )}
               {battery && (
-                <span className="text-[9px] font-bold bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md">
+                <span className="text-[9px] font-bold bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
                   🔋 {battery}%
                 </span>
               )}
@@ -184,8 +184,8 @@ export default function ProductCard({ product, onFavoriteToggle }: ProductCardPr
                     قابل للتفاوض
                   </span>
                 )}
-                {acceptsExchange === 'نعم' && (
-                  <span className="text-[9px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-450 px-1.5 py-0.5 rounded-md border border-emerald-100 dark:border-emerald-900/20">
+                {acceptsExchange && (
+                  <span className="text-[9px] font-bold bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 text-emerald-700 dark:text-emerald-450 px-1.5 py-0.5 rounded-md border border-emerald-100 dark:border-emerald-900/20 shadow-sm">
                     يقبل البدل
                   </span>
                 )}
@@ -208,10 +208,10 @@ export default function ProductCard({ product, onFavoriteToggle }: ProductCardPr
             </div>
 
             {/* Desktop Slide-up Button */}
-            <div className="hidden md:block overflow-hidden transition-all duration-300 max-h-0 group-hover:max-h-12 group-hover:mt-2">
-              <div className="w-full bg-ocean-600 hover:bg-ocean-500 text-white font-extrabold text-xs py-2.5 rounded-xl text-center flex items-center justify-center gap-1 transition-all shadow-xs">
+            <div className="hidden md:block overflow-hidden transition-all duration-300 max-h-0 group-hover:max-h-12 group-hover:mt-2 opacity-0 group-hover:opacity-100">
+              <div className="w-full bg-gradient-to-r from-ocean-600 to-ocean-500 hover:from-ocean-500 hover:to-ocean-400 text-white font-extrabold text-xs py-2.5 rounded-xl text-center flex items-center justify-center gap-1 transition-all shadow-[0_4px_10px_rgba(14,165,233,0.3)]">
                 <span>عرض التفاصيل</span>
-                <ChevronLeft className="w-3.5 h-3.5 transition-transform duration-200 group-hover:-translate-x-0.5" />
+                <ChevronLeft className="w-3.5 h-3.5 transition-transform duration-300 group-hover:-translate-x-1" />
               </div>
             </div>
 
