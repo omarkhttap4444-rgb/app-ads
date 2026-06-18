@@ -43,6 +43,7 @@ export default function FavoritesPage() {
             location,
             condition,
             slug,
+            is_negotiable,
             specifications,
             product_images (image_url)
           )

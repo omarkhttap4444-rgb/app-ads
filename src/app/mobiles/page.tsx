@@ -1,8 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { Metadata } from 'next';
-import { Search, MapPin, SlidersHorizontal, ArrowUpDown, Tag } from 'lucide-react';
-import FavoriteButton from '@/components/FavoriteButton';
+import { Search, SlidersHorizontal, X } from 'lucide-react';
 import MobilesFiltersWrapper from '@/components/MobilesFiltersWrapper';
 import ProductCard from '@/components/ProductCard';
 
@@ -11,19 +10,11 @@ export const metadata: Metadata = {
   description: 'ابحث وتصفح أحدث الهواتف المعروضة للبيع بأسعار ممتازة ومن بائعين موثوقين.',
 };
 
-export const revalidate = 60; // Revalidate every minute
+export const revalidate = 60;
 
 type Props = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
-
-const GOVERNORATES = [
-  'القاهرة', 'الجيزة', 'الإسكندرية', 'القليوبية', 'الشرقية', 'الدقهلية',
-  'الغربية', 'المنوفية', 'البحيرة', 'كفر الشيخ', 'دمياط', 'بورسعيد',
-  'الإسماعيلية', 'السويس', 'الفيوم', 'بني سويف', 'المنيا', 'أسيوط',
-  'سوهاج', 'قنا', 'الأقصر', 'أسوان', 'البحر الأحمر', 'الوادي الجديد',
-  'مطروح', 'شمال سيناء', 'جنوب سيناء'
-];
 
 export default async function MobilesPage(props: Props) {
   const searchParams = await props.searchParams;
@@ -33,7 +24,6 @@ export default async function MobilesPage(props: Props) {
   const location = typeof searchParams.location === 'string' ? searchParams.location : '';
   const category = typeof searchParams.category === 'string' ? searchParams.category : '';
 
-  // Fetch active categories for dropdown filter
   const { data: categories } = await supabase
     .from('categories')
     .select('*')
@@ -43,7 +33,6 @@ export default async function MobilesPage(props: Props) {
   let products: any[] = [];
 
   if (q) {
-    // 1. Try RPC Smart Search first (trigram fuzzy matching via pg_trgm)
     const { data: searchData, error: searchError } = await supabase.rpc('search_products_smart', {
       p_query: q,
       p_category: category || null,
@@ -52,98 +41,68 @@ export default async function MobilesPage(props: Props) {
     });
 
     if (!searchError && searchData && searchData.length > 0) {
-      // RPC succeeded — fetch full product data for matched IDs
       const productIds = searchData.map((item: any) => item.id);
-
       let dbQuery = supabase
         .from('products')
-        .select('id, name, price, location, condition, slug, product_images(image_url), specifications')
+        .select('id, name, price, location, condition, slug, views_count, is_negotiable, product_images(image_url), specifications')
         .in('id', productIds);
-
-      if (location) {
-        dbQuery = dbQuery.ilike('location', `%${location}%`);
-      }
-
+      if (location) dbQuery = dbQuery.ilike('location', `%${location}%`);
       const { data: fullProducts } = await dbQuery;
-
       if (fullProducts) {
-        // Keep results in relevance order returned by RPC
         products = searchData
           .map((item: any) => fullProducts.find((p: any) => p.id === item.id))
           .filter((p: any) => p !== undefined);
-
-        if (sort === 'price_asc') {
-          products.sort((a: any, b: any) => a.price - b.price);
-        } else if (sort === 'price_desc') {
-          products.sort((a: any, b: any) => b.price - a.price);
-        }
+        if (sort === 'price_asc') products.sort((a: any, b: any) => a.price - b.price);
+        else if (sort === 'price_desc') products.sort((a: any, b: any) => b.price - a.price);
       }
     } else {
-      // 2. Fallback: ilike search across name, description and JSONB specs (brand/model)
       const searchFields = `name.ilike.%${q}%,description.ilike.%${q}%,specifications->>brand.ilike.%${q}%,specifications->>model.ilike.%${q}%`;
       let fallbackQuery = supabase
         .from('products')
-        .select('id, name, price, location, condition, slug, product_images(image_url), specifications')
+        .select('id, name, price, location, condition, slug, views_count, is_negotiable, product_images(image_url), specifications')
         .or(searchFields);
-
-      if (category) {
-        fallbackQuery = fallbackQuery.ilike('category', `%${category}%`);
-      }
-      if (condition) {
-        fallbackQuery = fallbackQuery.eq('condition', condition);
-      }
-      if (location) {
-        fallbackQuery = fallbackQuery.ilike('location', `%${location}%`);
-      }
-
-      if (sort === 'price_asc') {
-        fallbackQuery = fallbackQuery.order('price', { ascending: true });
-      } else if (sort === 'price_desc') {
-        fallbackQuery = fallbackQuery.order('price', { ascending: false });
-      } else {
-        fallbackQuery = fallbackQuery.order('created_at', { ascending: false });
-      }
-
+      if (category) fallbackQuery = fallbackQuery.ilike('category', `%${category}%`);
+      if (condition) fallbackQuery = fallbackQuery.eq('condition', condition);
+      if (location) fallbackQuery = fallbackQuery.ilike('location', `%${location}%`);
+      if (sort === 'price_asc') fallbackQuery = fallbackQuery.order('price', { ascending: true });
+      else if (sort === 'price_desc') fallbackQuery = fallbackQuery.order('price', { ascending: false });
+      else fallbackQuery = fallbackQuery.order('created_at', { ascending: false });
       const { data: fallbackData } = await fallbackQuery.limit(50);
       products = fallbackData || [];
     }
   } else {
-    // No search query — fetch products with active filters
     let query = supabase
       .from('products')
-      .select('id, name, price, location, condition, slug, product_images(image_url), specifications');
-
-    if (category) {
-      query = query.ilike('category', `%${category}%`);
-    }
-    if (condition) {
-      query = query.eq('condition', condition);
-    }
-    if (location) {
-      query = query.ilike('location', `%${location}%`);
-    }
-
-    if (sort === 'price_asc') {
-      query = query.order('price', { ascending: true });
-    } else if (sort === 'price_desc') {
-      query = query.order('price', { ascending: false });
-    } else {
-      query = query.order('created_at', { ascending: false });
-    }
-
+      .select('id, name, price, location, condition, slug, views_count, is_negotiable, product_images(image_url), specifications');
+    if (category) query = query.ilike('category', `%${category}%`);
+    if (condition) query = query.eq('condition', condition);
+    if (location) query = query.ilike('location', `%${location}%`);
+    if (sort === 'price_asc') query = query.order('price', { ascending: true });
+    else if (sort === 'price_desc') query = query.order('price', { ascending: false });
+    else query = query.order('created_at', { ascending: false });
     const { data } = await query;
     products = data || [];
   }
 
+  const hasFilters = q || condition || location || sort || category;
+
   return (
-    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-200 py-8 md:py-12">
-      {/* Header & Advanced Search Filters Panel */}
-      <div className="container mx-auto px-4 max-w-7xl mb-10">
+    <main className="min-h-screen bg-slate-50 dark:bg-[#0a0e17] transition-colors">
+      <div className="container mx-auto px-4 max-w-7xl py-6 md:py-8">
         
-        <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 mb-8 transition-colors">
-          <div className="mb-6">
-            <h1 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-white">تصفح الهواتف والمعروضات</h1>
-            <p className="text-slate-400 dark:text-slate-400 text-xs mt-1">البحث الذكي يقرب لك النتائج حتى في حالة الأخطاء الإملائية</p>
+        {/* Search & Filters Card */}
+        <div className="bg-white dark:bg-slate-900 p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xs mb-5 transition-colors">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-lg md:text-xl font-black text-slate-800 dark:text-white">تصفح الهواتف</h1>
+              <p className="text-[11px] text-slate-400 mt-0.5">البحث الذكي يقرب لك النتائج حتى في حالة الأخطاء الإملائية</p>
+            </div>
+            {hasFilters && (
+              <Link href="/mobiles" className="text-xs font-bold text-rose-500 hover:text-rose-600 flex items-center gap-1 bg-rose-50 dark:bg-rose-950/30 px-3 py-1.5 rounded-lg transition-colors">
+                <X className="w-3 h-3" />
+                مسح الفلاتر
+              </Link>
+            )}
           </div>
           
           <MobilesFiltersWrapper 
@@ -156,33 +115,45 @@ export default async function MobilesPage(props: Props) {
           />
         </div>
 
-        {/* Results Info */}
-        {(q || condition || location || sort || category) && (
-          <div className="mb-6 flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400 font-semibold items-center bg-white dark:bg-slate-900 px-5 py-3 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
-            <span>تصفية نشطة:</span>
-            {q && <span className="bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 px-3 py-1 rounded-lg border border-teal-100 dark:border-teal-900/40">كلمة: "{q}"</span>}
-            {category && <span className="bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 px-3 py-1 rounded-lg border border-teal-100 dark:border-teal-900/40">قسم: {category}</span>}
-            {location && <span className="bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 px-3 py-1 rounded-lg border border-teal-100 dark:border-teal-900/40">محافظة: {location}</span>}
-            {condition && <span className="bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 px-3 py-1 rounded-lg border border-teal-100 dark:border-teal-900/40">حالة: {condition}</span>}
-            {sort && <span className="bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 px-3 py-1 rounded-lg border border-teal-100 dark:border-teal-900/40">
-              ترتيب: {sort === 'price_asc' ? 'السعر تصاعدياً' : 'السعر تنازلياً'}
-            </span>}
-            <Link href="/mobiles" className="text-rose-500 dark:text-rose-400 hover:underline mr-auto text-[10px] font-bold">إعادة تعيين الكل</Link>
+        {/* Active Filters */}
+        {hasFilters && (
+          <div className="mb-4 flex flex-wrap gap-1.5 text-[11px]">
+            {q && (
+              <span className="bg-ocean-50 dark:bg-ocean-950/40 text-ocean-700 dark:text-ocean-400 px-2.5 py-1 rounded-lg font-bold border border-ocean-100 dark:border-ocean-900/40">
+                🔍 &ldquo;{q}&rdquo;
+              </span>
+            )}
+            {category && (
+              <span className="bg-ocean-50 dark:bg-ocean-950/40 text-ocean-700 dark:text-ocean-400 px-2.5 py-1 rounded-lg font-bold border border-ocean-100 dark:border-ocean-900/40">
+                📂 {category}
+              </span>
+            )}
+            {location && (
+              <span className="bg-ocean-50 dark:bg-ocean-950/40 text-ocean-700 dark:text-ocean-400 px-2.5 py-1 rounded-lg font-bold border border-ocean-100 dark:border-ocean-900/40">
+                📍 {location}
+              </span>
+            )}
+            {condition && (
+              <span className="bg-ocean-50 dark:bg-ocean-950/40 text-ocean-700 dark:text-ocean-400 px-2.5 py-1 rounded-lg font-bold border border-ocean-100 dark:border-ocean-900/40">
+                ✨ {condition}
+              </span>
+            )}
+            <span className="text-slate-400 font-medium self-center mr-1">{products.length} نتيجة</span>
           </div>
         )}
 
         {/* Products Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
           {products.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>
 
         {(!products || products.length === 0) && (
-          <div className="text-center text-slate-400 dark:text-slate-500 py-20 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm mt-6">
+          <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 mt-4">
             <span className="text-5xl mb-4 block">🔍</span>
-            <p className="text-xl font-bold text-slate-700 dark:text-slate-300 mb-1">لم نجد أي نتائج</p>
-            <p className="text-sm text-slate-400 dark:text-slate-500">حاول استخدام كلمات بحث أخرى، أو إعادة تعيين الفلاتر الفعالة</p>
+            <p className="text-base font-bold text-slate-600 dark:text-slate-300 mb-1">لم نجد أي نتائج</p>
+            <p className="text-xs text-slate-400">حاول استخدام كلمات بحث أخرى أو إعادة تعيين الفلاتر</p>
           </div>
         )}
       </div>

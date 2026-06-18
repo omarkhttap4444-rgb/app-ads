@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MapPin, Eye, ChevronLeft } from 'lucide-react';
 import FavoriteButton from './FavoriteButton';
 
 export type ProductCardProps = {
@@ -13,6 +13,8 @@ export type ProductCardProps = {
     location: string;
     condition: string;
     slug: string;
+    views_count?: number;
+    is_negotiable?: boolean;
     specifications?: {
       brand?: string;
       model?: string;
@@ -28,15 +30,14 @@ export type ProductCardProps = {
 
 export default function ProductCard({ product, onFavoriteToggle }: ProductCardProps) {
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
+  const [imgLoaded, setImgLoaded] = useState(false);
 
   const brand = product.specifications?.brand || '';
   const model = product.specifications?.model || '';
   const storage = product.specifications?.storage || '';
   const ram = product.specifications?.ram || '';
   const battery = product.specifications?.battery_health || '';
-  const color = product.specifications?.color || '';
 
-  // Format title: e.g. "iPhone 13 Pro" or fallback to product.name
   const displayTitle = brand || model 
     ? `${brand} ${model}`.trim() 
     : product.name;
@@ -45,164 +46,166 @@ export default function ProductCard({ product, onFavoriteToggle }: ProductCardPr
     ? product.product_images.map((i: any) => i.image_url) 
     : [];
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const container = e.currentTarget;
-    const width = container.clientWidth;
-    const scrollLeft = Math.abs(container.scrollLeft);
-    const index = Math.round(scrollLeft / width);
-    if (index !== currentImgIndex && index >= 0 && index < images.length) {
-      setCurrentImgIndex(index);
-    }
-  };
-
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (images.length <= 1) return;
     const { left, width } = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - left;
-    // For RTL, 0 is right side, but x is calculated from left side.
-    // If it's LTR, x=0 is left. We want to divide the width by number of images
-    // Assuming LTR coordinates from getBoundingClientRect (which it is):
     const sectionWidth = width / images.length;
     let index = Math.floor(x / sectionWidth);
     if (index < 0) index = 0;
     if (index >= images.length) index = images.length - 1;
-    
-    // In RTL, we might want to invert it, but usually standard left-to-right hovering feels fine.
-    // Let's invert it so moving mouse right-to-left goes to next images (since it's RTL)
+    // Reverse index for RTL layouts
     index = (images.length - 1) - index;
-
-    if (index !== currentImgIndex) {
-      setCurrentImgIndex(index);
-    }
+    if (index !== currentImgIndex) setCurrentImgIndex(index);
   };
 
-  const handleMouseLeave = () => {
-    setCurrentImgIndex(0);
-  };
+  const handleMouseLeave = () => setCurrentImgIndex(0);
 
-  // Native App styling for product condition badges
-  let conditionClass = '';
-  switch (product.condition) {
-    case 'جديد':
-      conditionClass = 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/40';
-      break;
-    case 'كسر زيرو':
-      conditionClass = 'bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border border-sky-100 dark:border-sky-900/40';
-      break;
-    case 'مستعمل':
-    default:
-      conditionClass = 'bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-405 border border-amber-100 dark:border-amber-900/40';
-      break;
-  }
+  // Premium condition badge styling
+  const conditionStyles: Record<string, string> = {
+    'جديد': 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30',
+    'كسر زيرو': 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30',
+    'مستعمل': 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30',
+  };
+  const conditionClass = conditionStyles[product.condition] || 'bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-350 border border-slate-100 dark:border-slate-700/50';
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/80 overflow-hidden shadow-sm hover:shadow-md active:scale-[0.99] transition-all duration-200 flex flex-col relative group">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/80 overflow-hidden card-hover flex flex-col relative group h-full shadow-xs">
       
-      {/* Heart / Favorite Button */}
-      <div className="absolute top-2 left-2 z-20">
+      {/* Favorite Button */}
+      <div className="absolute top-2.5 left-2.5 z-20 transition-transform duration-200 hover:scale-110 active:scale-95">
         <FavoriteButton 
           productId={product.id} 
           onToggle={onFavoriteToggle}
         />
       </div>
 
-      <Link href={`/mobiles/${product.slug}`} className="flex flex-col flex-1">
+      {/* Condition Badge */}
+      <div className="absolute top-2.5 right-2.5 z-20">
+        <span className={`noon-badge ${conditionClass}`}>
+          {product.condition}
+        </span>
+      </div>
+
+      <Link href={`/mobiles/${product.slug}`} className="flex flex-col flex-1 h-full">
         
-        {/* Product Image Area / Scrollable Gallery */}
+        {/* Product Image */}
         <div 
-          className="relative aspect-square w-full bg-slate-50 dark:bg-slate-950/40 border-b border-slate-50 dark:border-slate-800/50 overflow-hidden"
+          className="product-image-container aspect-square w-full relative overflow-hidden bg-slate-50/60 dark:bg-slate-900/40"
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
         >
-          
-          {/* Main Image Display (Hover-based switching) */}
-          <div className="w-full h-full flex items-center justify-center p-3.5 md:p-4">
+          <div className="w-full h-full flex items-center justify-center p-4 md:p-5">
             {images.length > 0 ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img 
-                src={images[currentImgIndex] || images[0]} 
-                alt={`${product.name} - ${currentImgIndex + 1}`} 
-                className="object-contain h-full w-auto max-w-full drop-shadow-md transition-opacity duration-300"
-                loading="lazy"
-              />
+              <>
+                {!imgLoaded && <div className="absolute inset-0 shimmer" />}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img 
+                  src={images[currentImgIndex] || images[0]} 
+                  alt={`${product.name}`} 
+                  className={`object-contain h-full w-auto max-w-full transition-all duration-550 ease-out group-hover:scale-105 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+                  loading="lazy"
+                  onLoad={() => setImgLoaded(true)}
+                />
+              </>
             ) : (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img 
-                src="/placeholder-mobile.png" 
-                alt={product.name} 
-                className="object-contain h-full w-auto max-w-full drop-shadow-md"
-                loading="lazy"
-              />
+              <div className="text-4xl opacity-30 animate-pulse">📱</div>
             )}
           </div>
 
-          {/* Carousel Pagination Dots */}
+          {/* Image Pagination Dots */}
           {images.length > 1 && (
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10 pointer-events-none">
+            <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex gap-1 z-10 bg-white/70 dark:bg-slate-950/65 px-2 py-1 rounded-full backdrop-blur-xs">
               {images.map((_, idx) => (
                 <span 
                   key={idx}
-                  className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                  className={`h-1 rounded-full transition-all duration-300 ${
                     idx === currentImgIndex 
-                      ? 'bg-teal-500 w-3' 
-                      : 'bg-slate-300 dark:bg-slate-700'
+                      ? 'bg-ocean-500 w-3' 
+                      : 'bg-slate-300 dark:bg-slate-605 w-1'
                   }`}
                 />
               ))}
             </div>
           )}
-
-          {/* Condition Badge (Floating Bottom Right) */}
-          <span className={`absolute bottom-2 right-2 text-[9px] md:text-[10px] font-black px-2 py-0.5 rounded-md shadow-sm ${conditionClass} z-10 pointer-events-none`}>
-            {product.condition}
-          </span>
         </div>
 
-        {/* Product Card Details */}
-        <div className="p-3 md:p-4 flex flex-col flex-1 bg-gradient-to-b from-white dark:from-slate-900 to-slate-50/10 dark:to-slate-900/10">
+        {/* Card Body */}
+        <div className="p-3 md:p-4 flex flex-col flex-1 gap-2">
           
-          {/* Product Title */}
-          <h3 className="font-extrabold text-slate-850 dark:text-slate-100 text-[11px] md:text-sm line-clamp-1 leading-tight mb-2 group-hover:text-teal-500 dark:group-hover:text-teal-400 transition-colors">
-            {displayTitle}
-          </h3>
-
-          {/* Specifications Chips (Like App Specs badges) */}
-          <div className="flex flex-wrap gap-1 mb-3">
-            {storage && (
-              <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[9px] font-bold px-1.5 py-0.5 rounded-md">
-                {storage}
+          {/* Brand Prefix & Title */}
+          <div>
+            {brand && (
+              <span className="text-[10px] font-extrabold text-ocean-600 dark:text-ocean-400 tracking-wide uppercase mb-0.5 block">
+                {brand}
               </span>
             )}
-            {ram && (
-              <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[9px] font-bold px-1.5 py-0.5 rounded-md">
-                رام {ram}
-              </span>
-            )}
-            {battery && (
-              <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[9px] font-bold px-1.5 py-0.5 rounded-md">
-                بطارية {battery}%
-              </span>
-            )}
-            {color && (
-              <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[9px] font-bold px-1.5 py-0.5 rounded-md truncate max-w-[60px]">
-                {color}
-              </span>
-            )}
+            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-xs md:text-sm line-clamp-2 leading-relaxed min-h-[2.5rem] group-hover:text-ocean-600 dark:group-hover:text-ocean-400 transition-colors">
+              {displayTitle}
+            </h3>
           </div>
 
-          <div className="mt-auto pt-2.5 border-t border-slate-100/60 dark:border-slate-800/60 flex flex-col">
-            
-            {/* Price section */}
-            <div className="text-teal-500 dark:text-teal-400 font-black text-sm md:text-lg flex items-baseline gap-0.5">
-              {product.price.toLocaleString('ar-EG')}
-              <span className="text-[9px] md:text-[11px] font-semibold text-slate-400 dark:text-slate-500">جنيه</span>
+          {/* Spec Tags */}
+          {(storage || ram || battery) && (
+            <div className="flex flex-wrap gap-1.5 mt-0.5">
+              {storage && (
+                <span className="text-[9px] font-bold bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md">
+                  {storage}
+                </span>
+              )}
+              {ram && (
+                <span className="text-[9px] font-bold bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md">
+                  {ram} رام
+                </span>
+              )}
+              {battery && (
+                <span className="text-[9px] font-bold bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md">
+                  🔋 {battery}%
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Price & Negotiability */}
+          <div className="mt-auto pt-2">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-baseline">
+                <span className="text-ocean-600 dark:text-ocean-400 font-black text-base md:text-lg leading-none">
+                  {product.price.toLocaleString('ar-EG')}
+                </span>
+                <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 mr-1">جنيه</span>
+              </div>
+              
+              {product.is_negotiable && (
+                <span className="text-[9px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 px-2 py-0.5 rounded-md border border-amber-100 dark:border-amber-900/30">
+                  قابل للبدل/تفاوض
+                </span>
+              )}
             </div>
             
-            {/* Location row */}
-            <div className="mt-1.5 flex items-center gap-1 text-[9px] md:text-[11px] text-slate-400 dark:text-slate-500">
-              <MapPin className="w-3 h-3 text-slate-450 dark:text-slate-500 shrink-0" />
-              <span className="truncate">{product.location}</span>
+            {/* Location & Views */}
+            <div className="mt-2.5 pt-2 border-t border-slate-50 dark:border-slate-800/50 flex items-center justify-between text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+              <div className="flex items-center gap-1 truncate max-w-[70%]">
+                <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span className="truncate">{product.location}</span>
+              </div>
+              
+              {product.views_count !== undefined && product.views_count > 0 && (
+                <div className="flex items-center gap-1 shrink-0 bg-slate-50 dark:bg-slate-850 px-1.5 py-0.5 rounded">
+                  <Eye className="w-3 h-3 text-slate-400" />
+                  <span>{product.views_count}</span>
+                </div>
+              )}
             </div>
+
+            {/* Desktop Slide-up Button */}
+            <div className="hidden md:block overflow-hidden transition-all duration-300 max-h-0 group-hover:max-h-12 group-hover:mt-2">
+              <div className="w-full bg-ocean-600 hover:bg-ocean-500 text-white font-extrabold text-xs py-2.5 rounded-xl text-center flex items-center justify-center gap-1 transition-all shadow-xs">
+                <span>عرض التفاصيل</span>
+                <ChevronLeft className="w-3.5 h-3.5 transition-transform duration-200 group-hover:-translate-x-0.5" />
+              </div>
+            </div>
+
           </div>
         </div>
       </Link>
