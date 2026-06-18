@@ -23,6 +23,7 @@ export default async function MobilesPage(props: Props) {
   const condition = typeof searchParams.condition === 'string' ? searchParams.condition : '';
   const location = typeof searchParams.location === 'string' ? searchParams.location : '';
   const category = typeof searchParams.category === 'string' ? searchParams.category : '';
+  const brand = typeof searchParams.brand === 'string' ? searchParams.brand : '';
 
   const { data: categories } = await supabase
     .from('categories')
@@ -47,6 +48,7 @@ export default async function MobilesPage(props: Props) {
         .select('id, name, price, location, condition, slug, views_count, is_negotiable, product_images(image_url), specifications')
         .in('id', productIds);
       if (location) dbQuery = dbQuery.ilike('location', `%${location}%`);
+      if (brand) dbQuery = dbQuery.eq('specifications->>brand', brand);
       const { data: fullProducts } = await dbQuery;
       if (fullProducts) {
         products = searchData
@@ -64,6 +66,7 @@ export default async function MobilesPage(props: Props) {
       if (category) fallbackQuery = fallbackQuery.ilike('category', `%${category}%`);
       if (condition) fallbackQuery = fallbackQuery.eq('condition', condition);
       if (location) fallbackQuery = fallbackQuery.ilike('location', `%${location}%`);
+      if (brand) fallbackQuery = fallbackQuery.eq('specifications->>brand', brand);
       if (sort === 'price_asc') fallbackQuery = fallbackQuery.order('price', { ascending: true });
       else if (sort === 'price_desc') fallbackQuery = fallbackQuery.order('price', { ascending: false });
       else fallbackQuery = fallbackQuery.order('created_at', { ascending: false });
@@ -77,6 +80,7 @@ export default async function MobilesPage(props: Props) {
     if (category) query = query.ilike('category', `%${category}%`);
     if (condition) query = query.eq('condition', condition);
     if (location) query = query.ilike('location', `%${location}%`);
+    if (brand) query = query.eq('specifications->>brand', brand);
     if (sort === 'price_asc') query = query.order('price', { ascending: true });
     else if (sort === 'price_desc') query = query.order('price', { ascending: false });
     else query = query.order('created_at', { ascending: false });
@@ -84,7 +88,7 @@ export default async function MobilesPage(props: Props) {
     products = data || [];
   }
 
-  const hasFilters = q || condition || location || sort || category;
+  const hasFilters = q || condition || location || sort || category || brand;
 
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-[#0a0e17] transition-colors">
@@ -136,6 +140,11 @@ export default async function MobilesPage(props: Props) {
             {condition && (
               <span className="bg-ocean-50 dark:bg-ocean-950/40 text-ocean-700 dark:text-ocean-400 px-2.5 py-1 rounded-lg font-bold border border-ocean-100 dark:border-ocean-900/40">
                 ✨ {condition}
+              </span>
+            )}
+            {brand && (
+              <span className="bg-ocean-50 dark:bg-ocean-950/40 text-ocean-700 dark:text-ocean-400 px-2.5 py-1 rounded-lg font-bold border border-ocean-100 dark:border-ocean-900/40">
+                🏷️ {brand}
               </span>
             )}
             <span className="text-slate-400 font-medium self-center mr-1">{products.length} نتيجة</span>

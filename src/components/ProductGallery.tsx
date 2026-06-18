@@ -41,7 +41,7 @@ export default function ProductGallery({ images, productName }: ProductGalleryPr
 
         {/* Image Counter Badge */}
         {images.length > 1 && (
-          <span className="absolute top-4 left-4 bg-black/80 text-white text-[11px] font-bold px-3 py-1 rounded-full dir-ltr">
+          <span className="absolute top-4 right-4 bg-black/80 text-white text-[11px] font-bold px-3 py-1 rounded-full dir-ltr z-20">
             {activeIndex + 1} / {images.length}
           </span>
         )}

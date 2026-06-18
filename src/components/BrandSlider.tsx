@@ -70,7 +70,7 @@ export default function BrandSlider() {
         {[...BRANDS, ...BRANDS].map((brand, idx) => (
           <Link
             key={`${brand.query}-${idx}`}
-            href={`/mobiles?q=${brand.query}`}
+            href={`/mobiles?brand=${brand.name}`}
             className={`inline-flex flex-col items-center justify-center min-w-[100px] p-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 hover:shadow-md ${brand.color}`}
           >
             <span className="text-3xl mb-2 filter drop-shadow-sm">{brand.logo}</span>

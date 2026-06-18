@@ -22,6 +22,7 @@ export type ProductCardProps = {
       ram?: string;
       battery_health?: string;
       color?: string;
+      accepts_exchange?: string;
     };
     product_images?: Array<{ image_url: string }> | { image_url: string }[];
   };
@@ -37,6 +38,7 @@ export default function ProductCard({ product, onFavoriteToggle }: ProductCardPr
   const storage = product.specifications?.storage || '';
   const ram = product.specifications?.ram || '';
   const battery = product.specifications?.battery_health || '';
+  const acceptsExchange = product.specifications?.accepts_exchange || '';
 
   const displayTitle = brand || model 
     ? `${brand} ${model}`.trim() 
@@ -176,11 +178,18 @@ export default function ProductCard({ product, onFavoriteToggle }: ProductCardPr
                 <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 mr-1">جنيه</span>
               </div>
               
-              {product.is_negotiable && (
-                <span className="text-[9px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 px-2 py-0.5 rounded-md border border-amber-100 dark:border-amber-900/30">
-                  قابل للبدل/تفاوض
-                </span>
-              )}
+              <div className="flex flex-wrap gap-1">
+                {product.is_negotiable && (
+                  <span className="text-[9px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-450 px-1.5 py-0.5 rounded-md border border-amber-100 dark:border-amber-900/20">
+                    قابل للتفاوض
+                  </span>
+                )}
+                {acceptsExchange === 'نعم' && (
+                  <span className="text-[9px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-450 px-1.5 py-0.5 rounded-md border border-emerald-100 dark:border-emerald-900/20">
+                    يقبل البدل
+                  </span>
+                )}
+              </div>
             </div>
             
             {/* Location & Views */}

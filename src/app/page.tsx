@@ -58,14 +58,14 @@ export default async function Home() {
     .limit(10);
 
   const quickBrands = [
-    { name: 'آيفون', query: 'iphone', emoji: '🍏' },
-    { name: 'سامسونج', query: 'samsung', emoji: '📱' },
-    { name: 'شاومي', query: 'xiaomi', emoji: '⚡' },
-    { name: 'ريلمي', query: 'realme', emoji: '🔋' },
-    { name: 'أوبو', query: 'oppo', emoji: '📸' },
-    { name: 'إنفينيكس', query: 'infinix', emoji: '🚀' },
-    { name: 'هونر', query: 'honor', emoji: '👑' },
-    { name: 'فيفو', query: 'vivo', emoji: '💎' },
+    { name: 'آيفون', brand: 'آبل', emoji: '🍏' },
+    { name: 'سامسونج', brand: 'سامسونج', emoji: '📱' },
+    { name: 'شاومي', brand: 'شاومي', emoji: '⚡' },
+    { name: 'ريلمي', brand: 'ريلمي', emoji: '🔋' },
+    { name: 'أوبو', brand: 'أوبو', emoji: '📸' },
+    { name: 'إنفينيكس', brand: 'إنفينيكس', emoji: '🚀' },
+    { name: 'هونر', brand: 'هونر', emoji: '👑' },
+    { name: 'فيفو', brand: 'فيفو', emoji: '💎' },
   ];
 
   return (
@@ -117,7 +117,7 @@ export default async function Home() {
             {quickBrands.map((brand) => (
               <Link
                 key={brand.name}
-                href={`/mobiles?q=${brand.query}`}
+                href={`/mobiles?brand=${brand.brand}`}
                 className="shrink-0 flex items-center gap-1.5 bg-white dark:bg-slate-800/60 border border-slate-150 dark:border-slate-700 hover:border-ocean-300 dark:hover:border-ocean-700 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-ocean-600 dark:hover:text-ocean-400 transition-all"
               >
                 <span>{brand.emoji}</span>

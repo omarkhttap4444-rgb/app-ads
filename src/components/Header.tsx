@@ -13,6 +13,7 @@ import ThemeToggle from './ThemeToggle';
 export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
+  const isProductPage = pathname.startsWith('/mobiles/') && pathname !== '/mobiles/add' && pathname !== '/mobiles';
   
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
@@ -251,46 +252,48 @@ export default function Header() {
       </header>
 
       {/* ══════ MOBILE BOTTOM NAV ══════ */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-100 dark:border-slate-800 px-2 py-1.5 flex justify-around items-center transition-colors">
-        {[
-          { href: '/', icon: Home, label: 'الرئيسية', active: isActive('/') },
-          { href: user ? '/favorites' : '/login', icon: Heart, label: 'المفضلة', active: isActive('/favorites'), badge: favoritesCount },
-          { href: '/mobiles/add', icon: Plus, label: 'بيع الآن', active: false, isCenter: true },
-          { href: user ? '/chat' : '/login', icon: MessageSquare, label: 'المحادثات', active: isActive('/chat'), badge: unreadMessages },
-          { href: user ? (profile ? `/store/${profile.id}` : `/store/${user.id}`) : '/login', icon: User, label: 'حسابي', active: pathname.startsWith('/store/') },
-        ].map((item) => (
-          <Link
-            key={item.label}
-            href={item.href}
-            className={`flex flex-col items-center py-1 transition-all relative ${
-              item.isCenter ? '' : item.active 
-                ? 'text-ocean-600 dark:text-ocean-400' 
-                : 'text-slate-400 dark:text-slate-500 hover:text-slate-600'
-            }`}
-          >
-            {item.isCenter ? (
-              <>
-                <div className="w-11 h-11 bg-gradient-to-tr from-ocean-600 to-ocean-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-ocean-500/20 -mt-5 border-2 border-white dark:border-slate-900">
-                  <Plus className="w-5 h-5 stroke-[2.5px]" />
-                </div>
-                <span className="text-[9px] font-bold text-ocean-600 dark:text-ocean-400 mt-0.5">{item.label}</span>
-              </>
-            ) : (
-              <>
-                <div className="relative">
-                  <item.icon className={`w-5 h-5 ${item.active ? 'stroke-[2.5px]' : 'stroke-[1.8px]'}`} />
-                  {item.badge && item.badge > 0 && (
-                    <span className="absolute -top-1 -right-1.5 bg-rose-500 text-white text-[7px] font-bold min-w-[14px] h-3.5 flex items-center justify-center rounded-full px-0.5">
-                      {item.badge}
-                    </span>
-                  )}
-                </div>
-                <span className="text-[9px] font-medium mt-0.5">{item.label}</span>
-              </>
-            )}
-          </Link>
-        ))}
-      </nav>
+      {!isProductPage && (
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-100 dark:border-slate-800 px-2 py-1.5 flex justify-around items-center transition-colors">
+          {[
+            { href: '/', icon: Home, label: 'الرئيسية', active: isActive('/') },
+            { href: user ? '/favorites' : '/login', icon: Heart, label: 'المفضلة', active: isActive('/favorites'), badge: favoritesCount },
+            { href: '/mobiles/add', icon: Plus, label: 'بيع الآن', active: false, isCenter: true },
+            { href: user ? '/chat' : '/login', icon: MessageSquare, label: 'المحادثات', active: isActive('/chat'), badge: unreadMessages },
+            { href: user ? (profile ? `/store/${profile.id}` : `/store/${user.id}`) : '/login', icon: User, label: 'حسابي', active: pathname.startsWith('/store/') },
+          ].map((item) => (
+            <Link
+              key={item.label}
+              href={item.href}
+              className={`flex flex-col items-center py-1 transition-all relative ${
+                item.isCenter ? '' : item.active 
+                  ? 'text-ocean-600 dark:text-ocean-400' 
+                  : 'text-slate-400 dark:text-slate-500 hover:text-slate-600'
+              }`}
+            >
+              {item.isCenter ? (
+                <>
+                  <div className="w-11 h-11 bg-gradient-to-tr from-ocean-600 to-ocean-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-ocean-500/20 -mt-5 border-2 border-white dark:border-slate-900">
+                    <Plus className="w-5 h-5 stroke-[2.5px]" />
+                  </div>
+                  <span className="text-[9px] font-bold text-ocean-600 dark:text-ocean-400 mt-0.5">{item.label}</span>
+                </>
+              ) : (
+                <>
+                  <div className="relative">
+                    <item.icon className={`w-5 h-5 ${item.active ? 'stroke-[2.5px]' : 'stroke-[1.8px]'}`} />
+                    {item.badge && item.badge > 0 && (
+                      <span className="absolute -top-1 -right-1.5 bg-rose-500 text-white text-[7px] font-bold min-w-[14px] h-3.5 flex items-center justify-center rounded-full px-0.5">
+                        {item.badge}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[9px] font-medium mt-0.5">{item.label}</span>
+                </>
+              )}
+            </Link>
+          ))}
+        </nav>
+      )}
 
       {/* ══════ MOBILE DRAWER ══════ */}
       {mobileMenuOpen && (
