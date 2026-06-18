@@ -40,7 +40,7 @@ export default function Footer() {
             <div className="flex items-center gap-2 mb-4">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo.png" alt="سوق فون" className="w-8 h-8 rounded-lg" />
-              <span className="text-lg font-black text-ocean-600 dark:text-ocean-400">سوق<span className="text-slate-800 dark:text-white">فون</span></span>
+              <span className="text-lg font-black text-ocean-600 dark:text-ocean-400">سوق{' '}<span className="text-slate-800 dark:text-white">فون</span></span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
               المنصة الأولى في مصر لبيع وشراء الهواتف المستعملة والجديدة. تواصل مباشر مع البائعين بدون عمولات.

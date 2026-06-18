@@ -326,7 +326,7 @@ export default function SignupPage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo.png" alt="سوق فون" className="w-10 h-10 rounded-xl object-contain shadow-md" />
               <span className="text-2xl font-black text-teal-600 group-hover:text-teal-700 transition-colors">
-                سوق<span className="text-slate-800 dark:text-white">فون</span>
+                سوق{' '}<span className="text-slate-800 dark:text-white">فون</span>
               </span>
             </Link>
             

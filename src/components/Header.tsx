@@ -109,7 +109,7 @@ export default function Header() {
             <Link href="/" className="flex items-center gap-2 shrink-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo.png" alt="سوق فون" className="w-8 h-8 rounded-lg object-contain" />
-              <span className="text-xl font-black text-ocean-600 dark:text-ocean-400 hidden sm:inline">سوق<span className="text-slate-800 dark:text-white">فون</span></span>
+              <span className="text-xl font-black text-ocean-600 dark:text-ocean-400 hidden sm:inline">سوق{' '}<span className="text-slate-800 dark:text-white">فون</span></span>
             </Link>
 
             {/* Desktop Nav */}
