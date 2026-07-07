@@ -20,8 +20,16 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://souqphone.com"),
-  title: "سوق فون | المنصة الأولى لبيع وشراء الهواتف في مصر",
+  title: "سوق فون | بيع وشراء الهواتف المستعملة والجديدة في مصر",
   description: "سوق فون - سوق الموبايلات الأول في مصر لبيع وشراء الهواتف المستعملة والجديدة وتواصل مباشر مع البائعين بدون عمولات",
+  keywords: ["سوق فون", "بيع هواتف مستعملة", "شراء هواتف مستعملة", "سوق موبايلات مصر", "هواتف مستعملة", "بيع وشراء الهواتف"],
+  alternates: {
+    canonical: "https://souqphone.com/",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
   icons: {
     icon: "/logo.png",
     shortcut: "/logo.png",

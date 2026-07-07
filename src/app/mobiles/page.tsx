@@ -5,18 +5,47 @@ import { Search, SlidersHorizontal, X } from 'lucide-react';
 import MobilesFiltersWrapper from '@/components/MobilesFiltersWrapper';
 import ProductCard from '@/components/ProductCard';
 
-export const metadata: Metadata = {
-  title: 'تصفح كل الهواتف | سوق فون',
-  description: 'ابحث وتصفح أحدث الهواتف المعروضة للبيع بأسعار ممتازة ومن بائعين موثوقين.',
+import { cookies } from 'next/headers';
+
+const filterByCountry = (query: any, country: string) => {
+  if (country === 'SA') {
+    const saudiRegions = ['الرياض', 'مكة المكرمة', 'المدينة المنورة', 'المنطقة الشرقية', 'القصيم', 'عسير', 'تبوك', 'حائل', 'الحدود الشمالية', 'جازان', 'نجران', 'الباحة', 'الجوف'];
+    const orConditions = saudiRegions.map(region => `location.ilike.${region}%`).join(',');
+    return query.or(orConditions);
+  } else {
+    const egyptGovernorates = [
+      'القاهرة', 'الجيزة', 'الإسكندرية', 'القليوبية', 'الشرقية', 'الدقهلية',
+      'الغربية', 'المنوفية', 'البحيرة', 'كفر الشيخ', 'دمياط', 'بورسعيد',
+      'الإسماعيلية', 'السويس', 'الفيوم', 'بني سويف', 'المنيا', 'أسيوط',
+      'سوهاج', 'قنا', 'الأقصر', 'أسوان', 'البحر الأحمر', 'الوادي الجديد',
+      'مطروح', 'شمال سيناء', 'جنوب سيناء'
+    ];
+    const orConditions = egyptGovernorates.map(gov => `location.ilike.${gov}%`).join(',');
+    return query.or(orConditions);
+  }
 };
 
-export const revalidate = 60;
+export async function generateMetadata(): Promise<Metadata> {
+  const cookieStore = await cookies();
+  const country = cookieStore.get('selected_country')?.value || 'SA';
+  const countrySuffix = country === 'SA' ? 'في السعودية' : 'في مصر';
+  
+  return {
+    title: `تصفح كل الهواتف | سوق فون ${countrySuffix}`,
+    description: `ابحث وتصفح أحدث الهواتف المعروضة للبيع بأسعار ممتازة ومن بائعين موثوقين ${countrySuffix}.`,
+  };
+}
+
+export const dynamic = 'force-dynamic';
 
 type Props = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
 export default async function MobilesPage(props: Props) {
+  const cookieStore = await cookies();
+  const selectedCountry = cookieStore.get('selected_country')?.value || 'SA';
+
   const searchParams = await props.searchParams;
   const q = typeof searchParams.q === 'string' ? searchParams.q : '';
   const sort = typeof searchParams.sort === 'string' ? searchParams.sort : '';
@@ -47,6 +76,7 @@ export default async function MobilesPage(props: Props) {
         .from('products')
         .select('id, name, price, location, condition, slug, views_count, is_negotiable, product_images(image_url), specifications')
         .in('id', productIds);
+      dbQuery = filterByCountry(dbQuery, selectedCountry);
       if (location) dbQuery = dbQuery.ilike('location', `%${location}%`);
       if (brand) dbQuery = dbQuery.eq('specifications->>brand', brand);
       const { data: fullProducts } = await dbQuery;
@@ -63,6 +93,7 @@ export default async function MobilesPage(props: Props) {
         .from('products')
         .select('id, name, price, location, condition, slug, views_count, is_negotiable, product_images(image_url), specifications')
         .or(searchFields);
+      fallbackQuery = filterByCountry(fallbackQuery, selectedCountry);
       if (category) fallbackQuery = fallbackQuery.ilike('category', `%${category}%`);
       if (condition) fallbackQuery = fallbackQuery.eq('condition', condition);
       if (location) fallbackQuery = fallbackQuery.ilike('location', `%${location}%`);
@@ -77,6 +108,7 @@ export default async function MobilesPage(props: Props) {
     let query = supabase
       .from('products')
       .select('id, name, price, location, condition, slug, views_count, is_negotiable, product_images(image_url), specifications');
+    query = filterByCountry(query, selectedCountry);
     if (category) query = query.ilike('category', `%${category}%`);
     if (condition) query = query.eq('condition', condition);
     if (location) query = query.ilike('location', `%${location}%`);
@@ -116,6 +148,7 @@ export default async function MobilesPage(props: Props) {
             initialLocation={location}
             initialCondition={condition}
             initialSort={sort}
+            selectedCountry={selectedCountry}
           />
         </div>
 

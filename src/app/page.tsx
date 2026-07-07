@@ -8,13 +8,63 @@ import ProductCard from '@/components/ProductCard';
 import CountdownBanner from '@/components/CountdownBanner';
 import BrandSlider from '@/components/BrandSlider';
 import TrustBadges from '@/components/TrustBadges';
+import { cookies } from 'next/headers';
 
-export const metadata: Metadata = {
-  title: 'سوق فون | المنصة الأولى لبيع وشراء الهواتف في مصر',
-  description: 'سوق فون هو وجهتك الأولى لبيع وشراء الهواتف الذكية في مصر. تواصل مع البائع مباشرة، بدون عمولات.',
+const filterByCountry = (query: any, country: string) => {
+  if (country === 'SA') {
+    const saudiRegions = ['الرياض', 'مكة المكرمة', 'المدينة المنورة', 'المنطقة الشرقية', 'القصيم', 'عسير', 'تبوك', 'حائل', 'الحدود الشمالية', 'جازان', 'نجران', 'الباحة', 'الجوف'];
+    const orConditions = saudiRegions.map(region => `location.ilike.${region}%`).join(',');
+    return query.or(orConditions);
+  } else {
+    const egyptGovernorates = [
+      'القاهرة', 'الجيزة', 'الإسكندرية', 'القليوبية', 'الشرقية', 'الدقهلية',
+      'الغربية', 'المنوفية', 'البحيرة', 'كفر الشيخ', 'دمياط', 'بورسعيد',
+      'الإسماعيلية', 'السويس', 'الفيوم', 'بني سويف', 'المنيا', 'أسيوط',
+      'سوهاج', 'قنا', 'الأقصر', 'أسوان', 'البحر الأحمر', 'الوادي الجديد',
+      'مطروح', 'شمال سيناء', 'جنوب سيناء'
+    ];
+    const orConditions = egyptGovernorates.map(gov => `location.ilike.${gov}%`).join(',');
+    return query.or(orConditions);
+  }
 };
 
-export const revalidate = 60;
+export async function generateMetadata(): Promise<Metadata> {
+  const cookieStore = await cookies();
+  const country = cookieStore.get('selected_country')?.value || 'SA';
+  const isSA = country === 'SA';
+  const countrySuffix = isSA ? 'في السعودية' : 'في مصر';
+  const countryLabel = isSA ? 'سوق موبايلات السعودية' : 'سوق موبايلات مصر';
+  
+  return {
+    title: `سوق فون | بيع وشراء الهواتف المستعملة والجديدة ${countrySuffix}`,
+    description: `سوق فون هو منصة عربية موثوقة لبيع وشراء الهواتف المستعملة والجديدة ${countrySuffix}. ابحث عن الهواتف، تواصل مع البائعين مباشرة، وابدأ بيع أو شراء هاتفك بسهولة.`,
+    keywords: ['سوق فون', 'بيع هواتف مستعملة', 'شراء هواتف مستعملة', countryLabel, 'هواتف مستعملة', 'بيع وشراء الهواتف'],
+    alternates: {
+      canonical: 'https://souqphone.com/',
+    },
+    robots: {
+      index: true,
+      follow: true,
+    },
+    openGraph: {
+      title: `سوق فون | بيع وشراء الهواتف المستعملة والجديدة ${countrySuffix}`,
+      description: `منصة سهلة وآمنة لبيع وشراء الهواتف المستعملة والجديدة ${countrySuffix} مع تواصل مباشر مع البائعين.`,
+      url: 'https://souqphone.com/',
+      siteName: 'سوق فون',
+      locale: isSA ? 'ar_SA' : 'ar_EG',
+      type: 'website',
+      images: [{ url: '/logo.png', width: 512, height: 512, alt: 'سوق فون' }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `سوق فون | بيع وشراء الهواتف المستعملة والجديدة ${countrySuffix}`,
+      description: `منصة عربية موثوقة لبيع وشراء الهواتف المستعملة والجديدة ${countrySuffix}.`,
+      images: ['/logo.png'],
+    },
+  };
+}
+
+export const dynamic = 'force-dynamic';
 
 const getCategoryImageUrl = (name: string) => {
   switch (name.trim()) {
@@ -31,11 +81,14 @@ const getCategoryImageUrl = (name: string) => {
 };
 
 export default async function Home() {
-  const { data: latestProducts } = await supabase
+  const cookieStore = await cookies();
+  const country = cookieStore.get('selected_country')?.value || 'SA';
+
+  let latestQuery = supabase
     .from('products')
-    .select('id, name, price, location, condition, slug, views_count, is_negotiable, product_images(image_url), specifications')
-    .order('created_at', { ascending: false })
-    .limit(20);
+    .select('id, name, price, location, condition, slug, views_count, is_negotiable, product_images(image_url), specifications');
+  latestQuery = filterByCountry(latestQuery, country);
+  const { data: latestProducts } = await latestQuery.order('created_at', { ascending: false }).limit(20);
 
   const { data: dbCategories } = await supabase
     .from('categories')
@@ -51,11 +104,11 @@ export default async function Home() {
     .order('sort_order', { ascending: true });
 
   // Get most viewed products
-  const { data: trendingProducts } = await supabase
+  let trendingQuery = supabase
     .from('products')
-    .select('id, name, price, location, condition, slug, views_count, is_negotiable, product_images(image_url), specifications')
-    .order('views_count', { ascending: false })
-    .limit(10);
+    .select('id, name, price, location, condition, slug, views_count, is_negotiable, product_images(image_url), specifications');
+  trendingQuery = filterByCountry(trendingQuery, country);
+  const { data: trendingProducts } = await trendingQuery.order('views_count', { ascending: false }).limit(10);
 
   const quickBrands = [
     { name: 'آيفون', brand: 'آبل', emoji: '🍏' },
@@ -70,6 +123,24 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-[#0a0e17] transition-colors">
+      <section className="bg-gradient-to-r from-ocean-700 via-ocean-600 to-slate-900 text-white">
+        <div className="container mx-auto px-4 max-w-7xl py-8 md:py-12">
+          <div className="max-w-4xl">
+            <p className="text-[11px] md:text-xs font-black uppercase tracking-[0.35em] text-ocean-100">سوق موبايلات موثوق</p>
+            <h1 className="mt-3 text-2xl md:text-4xl font-black leading-tight">
+              بيع وشراء الهواتف المستعملة والجديدة {country === 'SA' ? 'في السعودية' : 'في مصر'} بسهولة وأمان
+            </h1>
+            <p className="mt-4 text-sm md:text-base leading-8 text-ocean-50 max-w-3xl">
+              سوق فون يساعدك على اكتشاف أحدث عروض الهواتف، التواصل مباشرة مع البائعين، وبيع هاتفك القديم أو الجديد في دقائق. سواء كنت تبحث عن آيفون أو سامسونج أو أي علامة أخرى، فهنا تجد ما يناسبك بأسعار مناسبة {country === 'SA' ? 'في المملكة العربية السعودية' : 'في جمهورية مصر العربية'}.
+            </p>
+            <ul className="mt-5 flex flex-wrap gap-3 text-sm text-ocean-50">
+              <li className="rounded-full bg-white/10 px-3 py-1">أحدث الإعلانات</li>
+              <li className="rounded-full bg-white/10 px-3 py-1">تواصل مباشر مع البائعين</li>
+              <li className="rounded-full bg-white/10 px-3 py-1">أسعار تنافسية</li>
+            </ul>
+          </div>
+        </div>
+      </section>
 
       {/* ══════ PROMO TOP BAR ══════ */}
       <div className="bg-ocean-600 dark:bg-ocean-800 text-white text-center py-2 px-4">

@@ -13,6 +13,11 @@ const GOVERNORATES = [
   'مطروح', 'شمال سيناء', 'جنوب سيناء'
 ];
 
+const SAUDI_REGIONS = [
+  'الرياض', 'مكة المكرمة', 'المدينة المنورة', 'المنطقة الشرقية', 'القصيم',
+  'عسير', 'تبوك', 'حائل', 'الحدود الشمالية', 'جازان', 'نجران', 'الباحة', 'الجوف'
+];
+
 interface Category { id: string; name: string; }
 
 interface MobilesFiltersWrapperProps {
@@ -22,10 +27,11 @@ interface MobilesFiltersWrapperProps {
   initialLocation: string;
   initialCondition: string;
   initialSort: string;
+  selectedCountry?: string; // 👈 New prop!
 }
 
 export default function MobilesFiltersWrapper({
-  categories, initialQ, initialCategory, initialLocation, initialCondition, initialSort
+  categories, initialQ, initialCategory, initialLocation, initialCondition, initialSort, selectedCountry = 'SA'
 }: MobilesFiltersWrapperProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -108,11 +114,11 @@ export default function MobilesFiltersWrapper({
 
         <div className="space-y-1.5">
           <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
-            <MapPin className="w-3 h-3" /> المحافظة
+            <MapPin className="w-3 h-3" /> {selectedCountry === 'SA' ? 'المنطقة' : 'المحافظة'}
           </span>
           <select value={initialLocation} onChange={(e) => handleUpdateFilter('location', e.target.value)} className={selectClass}>
-            <option value="">كل المحافظات</option>
-            {GOVERNORATES.map(gov => <option key={gov} value={gov}>{gov}</option>)}
+            <option value="">{selectedCountry === 'SA' ? 'كل المناطق' : 'كل المحافظات'}</option>
+            {(selectedCountry === 'SA' ? SAUDI_REGIONS : GOVERNORATES).map(loc => <option key={loc} value={loc}>{loc}</option>)}
           </select>
         </div>
 

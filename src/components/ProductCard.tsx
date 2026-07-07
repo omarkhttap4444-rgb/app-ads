@@ -33,6 +33,22 @@ export default function ProductCard({ product, onFavoriteToggle }: ProductCardPr
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const [imgLoaded, setImgLoaded] = useState(false);
 
+  const isSaudi = (() => {
+    if (!product.location) return false;
+    const firstPart = product.location.split(' - ')[0].trim();
+    const saudiRegions = [
+      'الرياض', 'مكة المكرمة', 'المدينة المنورة', 'المنطقة الشرقية', 'القصيم',
+      'عسير', 'تبوك', 'حائل', 'الحدود الشمالية', 'جازان', 'نجران', 'الباحة', 'الجوف'
+    ];
+    const loc = product.location.toLowerCase();
+    return saudiRegions.includes(firstPart) ||
+      loc.includes('riyadh') ||
+      loc.includes('dammam') ||
+      loc.includes('saudi') ||
+      loc.includes('khobar') ||
+      loc.includes('jeddah');
+  })();
+
   const brand = product.specifications?.brand || '';
   const model = product.specifications?.model || '';
   const storage = product.specifications?.storage || '';
@@ -173,9 +189,11 @@ export default function ProductCard({ product, onFavoriteToggle }: ProductCardPr
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-baseline">
                 <span className="text-ocean-600 dark:text-ocean-400 font-black text-base md:text-lg leading-none">
-                  {product.price.toLocaleString('ar-EG')}
+                  {product.price.toLocaleString(isSaudi ? 'ar-SA' : 'ar-EG')}
                 </span>
-                <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 mr-1">جنيه</span>
+                <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 mr-1">
+                  {isSaudi ? 'ريال' : 'جنيه'}
+                </span>
               </div>
               
               <div className="flex flex-wrap gap-1">

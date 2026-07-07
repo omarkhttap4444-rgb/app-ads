@@ -1,10 +1,17 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Smartphone, Shield, Headphones, CreditCard, MapPin, Mail, Phone, ChevronLeft } from 'lucide-react';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const [selectedCountry, setSelectedCountry] = useState('SA');
+
+  useEffect(() => {
+    const country = document.cookie.match(/(^|;)\s*selected_country\s*=\s*([^;]+)/)?.[2] || localStorage.getItem('selected_country') || 'SA';
+    setSelectedCountry(country);
+  }, []);
 
   return (
     <footer className="bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 transition-colors">
@@ -43,7 +50,9 @@ export default function Footer() {
               <span className="text-lg font-black text-ocean-600 dark:text-ocean-400">سوق{' '}<span className="text-slate-800 dark:text-white">فون</span></span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
-              المنصة الأولى في مصر لبيع وشراء الهواتف المستعملة والجديدة. تواصل مباشر مع البائعين بدون عمولات.
+              {selectedCountry === 'SA'
+                ? 'المنصة الأولى في السعودية لبيع وشراء الهواتف المستعملة والجديدة. تواصل مباشر مع البائعين بدون عمولات.'
+                : 'المنصة الأولى في مصر لبيع وشراء الهواتف المستعملة والجديدة. تواصل مباشر مع البائعين بدون عمولات.'}
             </p>
             {/* Social Icons */}
             <div className="flex items-center gap-2">
@@ -126,8 +135,10 @@ export default function Footer() {
           <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">
             © {currentYear} سوق فون. جميع الحقوق محفوظة.
           </p>
-          <p className="text-[10px] text-slate-400 dark:text-slate-500">
-            بيع وشراء الهواتف بأمان وبدون عمولات في مصر 🇪🇬
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+            {selectedCountry === 'SA'
+              ? 'بيع وشراء الهواتف بأمان وبدون عمولات في السعودية 🇸🇦'
+              : 'بيع وشراء الهواتف بأمان وبدون عمولات في مصر 🇪🇬'}
           </p>
         </div>
       </div>

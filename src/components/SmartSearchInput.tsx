@@ -54,11 +54,36 @@ export default function SmartSearchInput({
     const delayDebounce = setTimeout(async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase
+        const getCountryFromCookie = () => {
+          if (typeof window === 'undefined') return 'SA';
+          const match = document.cookie.match(/(^|;)\s*selected_country\s*=\s*([^;]+)/);
+          return match ? match[2] : 'SA';
+        };
+
+        const country = getCountryFromCookie();
+        let dbQuery = supabase
           .from('products')
-          .select('name, category, specifications')
-          .or(`name.ilike.%${query}%,category.ilike.%${query}%,specifications->>brand.ilike.%${query}%`)
-          .limit(15);
+          .select('name, category, specifications');
+
+        if (country === 'SA') {
+          const saudiRegions = ['الرياض', 'مكة المكرمة', 'المدينة المنورة', 'المنطقة الشرقية', 'القصيم', 'عسير', 'تبوك', 'حائل', 'الحدود الشمالية', 'جازان', 'نجران', 'الباحة', 'الجوف'];
+          const orConditions = saudiRegions.map(region => `location.ilike.${region}%`).join(',');
+          dbQuery = dbQuery.or(orConditions);
+        } else {
+          const egyptGovernorates = [
+            'القاهرة', 'الجيزة', 'الإسكندرية', 'القليوبية', 'الشرقية', 'الدقهلية',
+            'الغربية', 'المنوفية', 'البحيرة', 'كفر الشيخ', 'دمياط', 'بورسعيد',
+            'الإسماعيلية', 'السويس', 'الفيوم', 'بني سويف', 'المنيا', 'أسيوط',
+            'سوهاج', 'قنا', 'الأقصر', 'أسوان', 'البحر الأحمر', 'الوادي الجديد',
+            'مطروح', 'شمال سيناء', 'جنوب سيناء'
+          ];
+          const orConditions = egyptGovernorates.map(gov => `location.ilike.${gov}%`).join(',');
+          dbQuery = dbQuery.or(orConditions);
+        }
+
+        dbQuery = dbQuery.or(`name.ilike.%${query}%,category.ilike.%${query}%,specifications->>brand.ilike.%${query}%`);
+
+        const { data, error } = await dbQuery.limit(15);
 
         if (!error && data) {
           const uniqueSuggestions: Suggestion[] = [];

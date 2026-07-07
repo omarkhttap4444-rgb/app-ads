@@ -14,6 +14,11 @@ const GOVERNORATES = [
   'مطروح', 'شمال سيناء', 'جنوب سيناء'
 ];
 
+const REGIONS_SA = [
+  'الرياض', 'مكة المكرمة', 'المدينة المنورة', 'المنطقة الشرقية', 'القصيم',
+  'عسير', 'تبوك', 'حائل', 'الحدود الشمالية', 'جازان', 'نجران', 'الباحة', 'الجوف'
+];
+
 const BRANDS = ['آبل', 'سامسونج', 'شاومي', 'ريلمي', 'أوبو', 'فيفو', 'هونر', 'إنفينيكس', 'نوكيا', 'وان بلس', 'أخرى'];
 
 const POPULAR_MODELS: Record<string, string[]> = {
@@ -53,6 +58,17 @@ export default function AddProductPage() {
   const [center, setCenter] = useState('');
   const [isNegotiable, setIsNegotiable] = useState(false);
   const [hasDelivery, setHasDelivery] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState('SA'); // Default to SA
+
+  useEffect(() => {
+    const country = document.cookie.match(/(^|;)\s*selected_country\s*=\s*([^;]+)/)?.[2] || localStorage.getItem('selected_country') || 'SA';
+    setSelectedCountry(country);
+  }, []);
+
+  useEffect(() => {
+    const list = selectedCountry === 'SA' ? REGIONS_SA : GOVERNORATES;
+    setLocation(list[0]);
+  }, [selectedCountry]);
   
   // Mobiles Specifications
   const [brand, setBrand] = useState(BRANDS[0]);
@@ -255,7 +271,9 @@ export default function AddProductPage() {
         specifications.color = color.trim() || 'غير محدد';
         specifications.accessories = selectedAccessories.join('، ') || 'بدون ملحقات';
         specifications.is_opened = isDeviceOpened;
-        specifications.ntra_tax = ntraTax;
+        if (selectedCountry === 'EG') {
+          specifications.ntra_tax = ntraTax;
+        }
         
         if (brand === 'آبل') {
           specifications.battery_health = batteryHealth;
@@ -635,17 +653,19 @@ export default function AddProductPage() {
                 </div>
 
                 {/* NTRA Customs Tax Paid? */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">هل الهاتف مسجل / مدفوع ضريبة الجمارك NTRA؟</label>
-                  <select
-                    value={ntraTax}
-                    onChange={(e) => setNtraTax(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
-                  >
-                    <option value="لا">لا (غير مسجل بالشبكة المصرية / دولي)</option>
-                    <option value="نعم">نعم (مسجل / محلي مدفوع الضريبة)</option>
-                  </select>
-                </div>
+                {selectedCountry === 'EG' && (
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">هل الهاتف مسجل / مدفوع ضريبة الجمارك NTRA؟</label>
+                    <select
+                      value={ntraTax}
+                      onChange={(e) => setNtraTax(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
+                    >
+                      <option value="لا">لا (غير مسجل بالشبكة المصرية / دولي)</option>
+                      <option value="نعم">نعم (مسجل / محلي مدفوع الضريبة)</option>
+                    </select>
+                  </div>
+                )}
 
                 {/* Accessories Checklist */}
                 <div className="sm:col-span-2 space-y-2 pt-2">
@@ -749,7 +769,7 @@ export default function AddProductPage() {
               
               {/* Price */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">السعر المطلوب (جنيه)</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">السعر المطلوب ({selectedCountry === 'SA' ? 'ريال' : 'جنيه'})</label>
                 <input
                   type="number"
                   value={price}
@@ -763,14 +783,14 @@ export default function AddProductPage() {
 
               {/* Location Governorate */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">المحافظة</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">{selectedCountry === 'SA' ? 'المنطقة' : 'المحافظة'}</label>
                 <select
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   required
                   className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
                 >
-                  {GOVERNORATES.map((gov) => (
+                  {(selectedCountry === 'SA' ? REGIONS_SA : GOVERNORATES).map((gov) => (
                     <option key={gov} value={gov}>
                       {gov}
                     </option>
@@ -780,12 +800,12 @@ export default function AddProductPage() {
 
               {/* Location Center/District */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">المركز / الحي (المدينة)</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">{selectedCountry === 'SA' ? 'المدينة / الحي' : 'المركز / الحي (المدينة)'}</label>
                 <input
                   type="text"
                   value={center}
                   onChange={(e) => setCenter(e.target.value)}
-                  placeholder="مثال: الدقي / مصر الجديدة / محرم بك"
+                  placeholder={selectedCountry === 'SA' ? 'مثال: العليا / الياسمين / الملقا' : 'مثال: الدقي / مصر الجديدة / محرم بك'}
                   required
                   className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-655"
                 />

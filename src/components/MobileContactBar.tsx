@@ -9,27 +9,58 @@ type Props = {
   sellerId: string;
   sellerName: string;
   sellerPhone: string | null;
+  sellerWhatsapp?: string | null;
   productId: string;
   productSlug: string;
   productName: string;
+  location?: string;
 };
 
 export default function MobileContactBar({
   sellerId,
   sellerName,
   sellerPhone,
+  sellerWhatsapp,
   productId,
   productSlug,
-  productName
+  productName,
+  location = ''
 }: Props) {
   const router = useRouter();
   const [loadingChat, setLoadingChat] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const cleanPhone = sellerPhone ? sellerPhone.replace(/\D/g, '') : '';
-  // Ensure Egyptian phone numbers are formatted correctly for wa.me
-  // Egyptian numbers usually start with 01 (e.g., 0123456789), wa.me needs country code (e.g. 20123456789)
-  const whatsappPhone = cleanPhone.startsWith('0') ? `2${cleanPhone}` : cleanPhone.startsWith('1') ? `20${cleanPhone}` : cleanPhone;
+  
+  const formatWhatsapp = (phone: string | null) => {
+    if (!phone) return '';
+    let clean = phone.replace(/\D/g, '');
+    
+    // Remove leading zeros
+    while (clean.startsWith('0')) {
+      clean = clean.substring(1);
+    }
+    
+    // If it already has country code, return it
+    if (clean.startsWith('20') && clean.length > 10) return clean;
+    if (clean.startsWith('966') && clean.length > 8) return clean;
+    
+    // Check standard prefixes
+    if (clean.startsWith('1') && clean.length === 10) return `20${clean}`;
+    if (clean.startsWith('5') && clean.length === 9) return `966${clean}`;
+    
+    // Fallback based on product location
+    const saudiRegions = ['الرياض', 'مكة المكرمة', 'المدينة المنورة', 'المنطقة الشرقية', 'القصيم', 'عسير', 'تبوك', 'حائل', 'الحدود الشمالية', 'جازان', 'نجران', 'الباحة', 'الجوف'];
+    const isSaudi = saudiRegions.some(r => location.includes(r)) || 
+                    location.toLowerCase().includes('riyadh') || 
+                    location.toLowerCase().includes('saudi') ||
+                    location.toLowerCase().includes('jeddah') ||
+                    location.toLowerCase().includes('dammam');
+                    
+    return isSaudi ? `966${clean}` : `20${clean}`;
+  };
+
+  const whatsappPhone = formatWhatsapp(sellerWhatsapp || sellerPhone);
 
   const handleChat = async () => {
     setLoadingChat(true);
@@ -81,7 +112,7 @@ export default function MobileContactBar({
 
       <div className="flex gap-2.5 w-full">
         {/* WhatsApp Button */}
-        {cleanPhone && (
+        {whatsappPhone && (
           <a
             href={`https://wa.me/${whatsappPhone}?text=${encodeURIComponent(`مرحباً ${sellerName}، أنا مهتم بشراء جهازك المعروض في سوق فون: ${productName}`)}`}
             target="_blank"
