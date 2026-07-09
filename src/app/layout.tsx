@@ -30,11 +30,6 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
-  icons: {
-    icon: "/logo.png",
-    shortcut: "/logo.png",
-    apple: "/logo.png",
-  },
   openGraph: {
     title: "سوق فون | المنصة الأولى لبيع وشراء الهواتف في مصر",
     description: "سوق فون - سوق الموبايلات الأول في مصر",
