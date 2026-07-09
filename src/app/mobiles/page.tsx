@@ -27,7 +27,7 @@ const filterByCountry = (query: any, country: string) => {
 
 export async function generateMetadata(): Promise<Metadata> {
   const cookieStore = await cookies();
-  const country = cookieStore.get('selected_country')?.value || 'SA';
+  const country = cookieStore.get('selected_country')?.value || 'EG';
   const countrySuffix = country === 'SA' ? 'في السعودية' : 'في مصر';
   
   return {
@@ -44,7 +44,7 @@ type Props = {
 
 export default async function MobilesPage(props: Props) {
   const cookieStore = await cookies();
-  const selectedCountry = cookieStore.get('selected_country')?.value || 'SA';
+  const selectedCountry = cookieStore.get('selected_country')?.value || 'EG';
 
   const searchParams = await props.searchParams;
   const q = typeof searchParams.q === 'string' ? searchParams.q : '';

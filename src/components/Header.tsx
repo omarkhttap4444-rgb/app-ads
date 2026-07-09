@@ -22,7 +22,7 @@ export default function Header() {
   const [favoritesCount, setFavoritesCount] = useState<number>(0);
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
-  const [country, setCountry] = useState<string>('SA'); // Default to SA
+  const [country, setCountry] = useState<string>('EG'); // Default to EG
 
   useEffect(() => {
     // Check cookie or localStorage for country preference
@@ -36,41 +36,14 @@ export default function Header() {
       activeCountry = localStorage.getItem('selected_country');
     }
     
-    if (activeCountry) {
-      setCountry(activeCountry);
+    // Always force EG
+    if (activeCountry !== 'EG') {
+      setCountry('EG');
+      document.cookie = `selected_country=EG; path=/; max-age=${60 * 60 * 24 * 365}`;
+      localStorage.setItem('selected_country', 'EG');
+      router.refresh();
     } else {
-      // Auto detect country by IP Geolocation
-      const detectCountry = async () => {
-        try {
-          const res = await fetch('https://freeipapi.com/api/json');
-          if (res.ok) {
-            const data = await res.json();
-            const code = data.countryCode?.toUpperCase();
-            if (code === 'EG') {
-              setCountry('EG');
-              document.cookie = `selected_country=EG; path=/; max-age=${60 * 60 * 24 * 365}`;
-              localStorage.setItem('selected_country', 'EG');
-              router.refresh();
-            } else {
-              setCountry('SA');
-              document.cookie = `selected_country=SA; path=/; max-age=${60 * 60 * 24 * 365}`;
-              localStorage.setItem('selected_country', 'SA');
-              router.refresh();
-            }
-          } else {
-            // Fallback to SA
-            setCountry('SA');
-            document.cookie = `selected_country=SA; path=/; max-age=${60 * 60 * 24 * 365}`;
-            localStorage.setItem('selected_country', 'SA');
-          }
-        } catch (e) {
-          // Fallback to SA
-          setCountry('SA');
-          document.cookie = `selected_country=SA; path=/; max-age=${60 * 60 * 24 * 365}`;
-          localStorage.setItem('selected_country', 'SA');
-        }
-      };
-      detectCountry();
+      setCountry('EG');
     }
   }, [router]);
 
@@ -219,31 +192,7 @@ export default function Header() {
 
             {/* Desktop Right Actions */}
             <div className="hidden md:flex items-center gap-2.5">
-              {/* Country Selector Dropdown */}
-              <div className="relative group">
-                <button className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-100 dark:border-slate-700/60 py-1.5 px-2.5 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 transition-all cursor-pointer">
-                  <span>{country === 'SA' ? '🇸🇦 السعودية' : '🇪🇬 مصر'}</span>
-                  <ChevronDown className="w-3 h-3 text-slate-400 group-hover:rotate-180 transition-transform duration-200" />
-                </button>
-                <div className="absolute left-0 mt-1 w-32 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl shadow-xl py-1.5 hidden group-hover:block animate-fadeInDown z-50">
-                  <button
-                    onClick={() => handleCountryChange('SA')}
-                    className={`w-full text-right px-3.5 py-2 text-xs font-bold transition-colors cursor-pointer ${
-                      country === 'SA' ? 'text-ocean-600 bg-ocean-50/50 dark:bg-ocean-950/20' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
-                    }`}
-                  >
-                    🇸🇦 السعودية
-                  </button>
-                  <button
-                    onClick={() => handleCountryChange('EG')}
-                    className={`w-full text-right px-3.5 py-2 text-xs font-bold transition-colors cursor-pointer ${
-                      country === 'EG' ? 'text-ocean-600 bg-ocean-50/50 dark:bg-ocean-950/20' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
-                    }`}
-                  >
-                    🇪🇬 مصر
-                  </button>
-                </div>
-              </div>
+              {/* Country Selector Disabled */}
 
               <ThemeToggle />
               
@@ -417,32 +366,7 @@ export default function Header() {
               </div>
             )}
 
-            {/* Country Selector in Mobile Drawer */}
-            <div className="bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-xl mb-4 flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-450">تغيير الدولة</span>
-              <div className="flex gap-1.5">
-                <button
-                  onClick={() => { handleCountryChange('SA'); setMobileMenuOpen(false); }}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                    country === 'SA' 
-                      ? 'bg-ocean-600 text-white' 
-                      : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-350 border border-slate-100 dark:border-slate-800'
-                  }`}
-                >
-                  🇸🇦 السعودية
-                </button>
-                <button
-                  onClick={() => { handleCountryChange('EG'); setMobileMenuOpen(false); }}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                    country === 'EG' 
-                      ? 'bg-ocean-600 text-white' 
-                      : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-350 border border-slate-100 dark:border-slate-800'
-                  }`}
-                >
-                  🇪🇬 مصر
-                </button>
-              </div>
-            </div>
+            {/* Country Selector in Mobile Drawer Hidden */}
 
             <div className="flex-1 space-y-1 overflow-y-auto">
               {[

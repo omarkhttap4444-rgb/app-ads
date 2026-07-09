@@ -30,7 +30,7 @@ const filterByCountry = (query: any, country: string) => {
 
 export async function generateMetadata(): Promise<Metadata> {
   const cookieStore = await cookies();
-  const country = cookieStore.get('selected_country')?.value || 'SA';
+  const country = cookieStore.get('selected_country')?.value || 'EG';
   const isSA = country === 'SA';
   const countrySuffix = isSA ? 'في السعودية' : 'في مصر';
   const countryLabel = isSA ? 'سوق موبايلات السعودية' : 'سوق موبايلات مصر';
@@ -82,7 +82,7 @@ const getCategoryImageUrl = (name: string) => {
 
 export default async function Home() {
   const cookieStore = await cookies();
-  const country = cookieStore.get('selected_country')?.value || 'SA';
+  const country = cookieStore.get('selected_country')?.value || 'EG';
 
   let latestQuery = supabase
     .from('products')

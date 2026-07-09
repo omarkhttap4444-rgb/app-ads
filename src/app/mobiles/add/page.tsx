@@ -58,10 +58,10 @@ export default function AddProductPage() {
   const [center, setCenter] = useState('');
   const [isNegotiable, setIsNegotiable] = useState(false);
   const [hasDelivery, setHasDelivery] = useState(false);
-  const [selectedCountry, setSelectedCountry] = useState('SA'); // Default to SA
+  const [selectedCountry, setSelectedCountry] = useState('EG'); // Default to EG
 
   useEffect(() => {
-    const country = document.cookie.match(/(^|;)\s*selected_country\s*=\s*([^;]+)/)?.[2] || localStorage.getItem('selected_country') || 'SA';
+    const country = document.cookie.match(/(^|;)\s*selected_country\s*=\s*([^;]+)/)?.[2] || localStorage.getItem('selected_country') || 'EG';
     setSelectedCountry(country);
   }, []);
 

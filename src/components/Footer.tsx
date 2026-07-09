@@ -6,10 +6,10 @@ import { Smartphone, Shield, Headphones, CreditCard, MapPin, Mail, Phone, Chevro
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
-  const [selectedCountry, setSelectedCountry] = useState('SA');
+  const [selectedCountry, setSelectedCountry] = useState('EG');
 
   useEffect(() => {
-    const country = document.cookie.match(/(^|;)\s*selected_country\s*=\s*([^;]+)/)?.[2] || localStorage.getItem('selected_country') || 'SA';
+    const country = document.cookie.match(/(^|;)\s*selected_country\s*=\s*([^;]+)/)?.[2] || localStorage.getItem('selected_country') || 'EG';
     setSelectedCountry(country);
   }, []);
 
