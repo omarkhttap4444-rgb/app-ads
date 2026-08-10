@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Heart } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 type Props = {
   productId: string;
@@ -14,7 +15,7 @@ type Props = {
 export default function FavoriteButton({ productId, className = '', onToggle }: Props) {
   const router = useRouter();
   
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const [isFavorited, setIsFavorited] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [animating, setAnimating] = useState(false);
@@ -79,14 +80,14 @@ export default function FavoriteButton({ productId, className = '', onToggle }: 
   return (
     <button 
       onClick={handleToggle}
-      className={`w-8 h-8 rounded-full bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm flex items-center justify-center shadow-sm hover:shadow-md border border-slate-100/50 dark:border-slate-700/50 active:scale-90 transition-all cursor-pointer ${className}`}
+      className={`flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-white/45 bg-white/18 text-[#ff1744] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)] backdrop-blur-sm transition-all hover:scale-105 hover:bg-white/28 active:scale-90 ${className}`}
       title={isFavorited ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة'}
     >
       <Heart 
-        className={`w-4 h-4 transition-all ${animating ? 'animate-heartBeat' : ''} ${
+        className={`h-6 w-6 stroke-[2.6px] transition-all ${animating ? 'animate-heartBeat' : ''} ${
           isFavorited 
-            ? 'fill-rose-500 text-rose-500' 
-            : 'text-slate-400 dark:text-slate-500 hover:text-rose-400'
+            ? 'fill-[#ff1744] text-[#ff1744]'
+            : 'text-[#ff1744] hover:fill-[#ff1744]/10'
         }`} 
       />
     </button>

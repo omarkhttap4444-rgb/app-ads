@@ -53,7 +53,7 @@ export default function BannerCarousel({ banners }: Props) {
 
   return (
     <div 
-      className="relative w-full h-[180px] sm:h-[240px] md:h-[320px] lg:h-[380px] bg-slate-100 dark:bg-slate-800 overflow-hidden rounded-2xl group shadow-sm"
+      className="group relative h-[150px] w-full overflow-hidden rounded-[26px] bg-[#e8eee9] shadow-[0_16px_34px_-26px_rgba(16,24,40,0.45)] sm:h-[190px] md:h-[250px] lg:h-[290px] dark:bg-[#1f1f1f]"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -74,9 +74,9 @@ export default function BannerCarousel({ banners }: Props) {
                 className="w-full h-full object-cover" 
                 loading="lazy"
               />
-              <div className="absolute inset-0 bg-gradient-to-l from-black/70 via-black/30 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-l from-black/68 via-black/22 to-transparent" />
               
-              <div className="absolute inset-0 flex flex-col justify-center items-start px-6 md:px-12 text-right max-w-xl text-white">
+              <div className="absolute inset-0 flex max-w-xl flex-col items-start justify-center px-5 text-right text-white md:px-12">
                 {banner.title && (
                   <h3 className="text-base md:text-2xl lg:text-3xl font-black leading-tight drop-shadow-md">
                     {banner.title}
@@ -90,7 +90,7 @@ export default function BannerCarousel({ banners }: Props) {
                 {banner.link_url && (
                   <div className="mt-3 md:mt-5">
                     {isInternalLink ? (
-                      <Link href={banner.link_url} className="inline-flex items-center gap-1.5 bg-ocean-600 hover:bg-ocean-500 text-white text-[10px] md:text-xs font-bold px-4 py-2 rounded-lg transition-all cursor-pointer">
+                      <Link href={banner.link_url} className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-[#079447] px-4 py-2 text-[10px] font-black text-white shadow-lg transition-all hover:bg-[#067b3c] md:text-xs">
                         <PlusCircle className="w-3.5 h-3.5" />
                         اعرض جهازك الآن
                       </Link>
@@ -108,9 +108,7 @@ export default function BannerCarousel({ banners }: Props) {
 
           return (
             <div key={banner.id} className="w-full h-full flex-shrink-0">
-              {banner.link_url ? (
-                isInternalLink ? <Link href={banner.link_url}>{slideContent}</Link> : <a href={banner.link_url} target="_blank" rel="noopener noreferrer">{slideContent}</a>
-              ) : slideContent}
+              {slideContent}
             </div>
           );
         })}
@@ -133,7 +131,7 @@ export default function BannerCarousel({ banners }: Props) {
                 key={index}
                 onClick={() => setCurrentIndex(index)}
                 className={`h-1.5 rounded-full transition-all cursor-pointer ${
-                  currentIndex === index ? 'w-6 bg-ocean-400' : 'w-1.5 bg-white/40 hover:bg-white/60'
+              currentIndex === index ? 'w-6 bg-[#37d57c]' : 'w-1.5 bg-white/55 hover:bg-white/75'
                 }`}
               />
             ))}
@@ -142,7 +140,7 @@ export default function BannerCarousel({ banners }: Props) {
           {/* Progress Bar */}
           {!isHovered && (
             <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/10 z-30">
-              <div key={currentIndex} className="h-full bg-ocean-400 carousel-progress" />
+              <div key={currentIndex} className="carousel-progress h-full bg-[#37d57c]" />
             </div>
           )}
         </>

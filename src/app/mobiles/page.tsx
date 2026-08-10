@@ -1,13 +1,19 @@
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { Metadata } from 'next';
-import { Search, SlidersHorizontal, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import MobilesFiltersWrapper from '@/components/MobilesFiltersWrapper';
-import ProductCard from '@/components/ProductCard';
+import ProductCard, { type ProductCardProps } from '@/components/ProductCard';
 
 import { cookies } from 'next/headers';
 
-const filterByCountry = (query: any, country: string) => {
+const productSelection = 'id, name, price, location, condition, slug, created_at, views_count, likes_count, comments_count, is_negotiable, is_sold, product_images(image_url), specifications';
+
+type Product = ProductCardProps['product'];
+type SmartSearchRow = { id: string };
+type CountryFilterable<T> = { or: (filters: string) => T };
+
+const filterByCountry = <T,>(query: CountryFilterable<T>, country: string): T => {
   if (country === 'SA') {
     const saudiRegions = ['الرياض', 'مكة المكرمة', 'المدينة المنورة', 'المنطقة الشرقية', 'القصيم', 'عسير', 'تبوك', 'حائل', 'الحدود الشمالية', 'جازان', 'نجران', 'الباحة', 'الجوف'];
     const orConditions = saudiRegions.map(region => `location.ilike.${region}%`).join(',');
@@ -60,7 +66,7 @@ export default async function MobilesPage(props: Props) {
     .eq('is_active', true)
     .order('display_order', { ascending: true });
 
-  let products: any[] = [];
+  let products: Product[] = [];
 
   if (q) {
     const { data: searchData, error: searchError } = await supabase.rpc('search_products_smart', {
@@ -71,27 +77,29 @@ export default async function MobilesPage(props: Props) {
     });
 
     if (!searchError && searchData && searchData.length > 0) {
-      const productIds = searchData.map((item: any) => item.id);
+      const rankedResults = searchData as SmartSearchRow[];
+      const productIds = rankedResults.map((item) => item.id);
       let dbQuery = supabase
         .from('products')
-        .select('id, name, price, location, condition, slug, views_count, is_negotiable, product_images(image_url), specifications')
+        .select(productSelection)
         .in('id', productIds);
       dbQuery = filterByCountry(dbQuery, selectedCountry);
       if (location) dbQuery = dbQuery.ilike('location', `%${location}%`);
       if (brand) dbQuery = dbQuery.eq('specifications->>brand', brand);
       const { data: fullProducts } = await dbQuery;
       if (fullProducts) {
-        products = searchData
-          .map((item: any) => fullProducts.find((p: any) => p.id === item.id))
-          .filter((p: any) => p !== undefined);
-        if (sort === 'price_asc') products.sort((a: any, b: any) => a.price - b.price);
-        else if (sort === 'price_desc') products.sort((a: any, b: any) => b.price - a.price);
+        const hydratedProducts = fullProducts as Product[];
+        products = rankedResults
+          .map((item) => hydratedProducts.find((product) => product.id === item.id))
+          .filter((product): product is Product => product !== undefined);
+        if (sort === 'price_asc') products.sort((a, b) => a.price - b.price);
+        else if (sort === 'price_desc') products.sort((a, b) => b.price - a.price);
       }
     } else {
       const searchFields = `name.ilike.%${q}%,description.ilike.%${q}%,specifications->>brand.ilike.%${q}%,specifications->>model.ilike.%${q}%`;
       let fallbackQuery = supabase
         .from('products')
-        .select('id, name, price, location, condition, slug, views_count, is_negotiable, product_images(image_url), specifications')
+        .select(productSelection)
         .or(searchFields);
       fallbackQuery = filterByCountry(fallbackQuery, selectedCountry);
       if (category) fallbackQuery = fallbackQuery.ilike('category', `%${category}%`);
@@ -102,12 +110,12 @@ export default async function MobilesPage(props: Props) {
       else if (sort === 'price_desc') fallbackQuery = fallbackQuery.order('price', { ascending: false });
       else fallbackQuery = fallbackQuery.order('created_at', { ascending: false });
       const { data: fallbackData } = await fallbackQuery.limit(50);
-      products = fallbackData || [];
+      products = (fallbackData || []) as Product[];
     }
   } else {
     let query = supabase
       .from('products')
-      .select('id, name, price, location, condition, slug, views_count, is_negotiable, product_images(image_url), specifications');
+      .select(productSelection);
     query = filterByCountry(query, selectedCountry);
     if (category) query = query.ilike('category', `%${category}%`);
     if (condition) query = query.eq('condition', condition);
@@ -117,21 +125,21 @@ export default async function MobilesPage(props: Props) {
     else if (sort === 'price_desc') query = query.order('price', { ascending: false });
     else query = query.order('created_at', { ascending: false });
     const { data } = await query;
-    products = data || [];
+    products = (data || []) as Product[];
   }
 
   const hasFilters = q || condition || location || sort || category || brand;
 
   return (
-    <main className="min-h-screen bg-slate-50 dark:bg-[#0a0e17] transition-colors">
+    <main className="min-h-screen bg-[#f7f8f8] transition-colors dark:bg-[#0d0d0d]">
       <div className="container mx-auto px-4 max-w-7xl py-6 md:py-8">
         
         {/* Search & Filters Card */}
-        <div className="bg-white dark:bg-slate-900 p-5 md:p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xs mb-5 transition-colors">
+        <div className="mb-5 rounded-[26px] border border-[#e7e9ec] bg-white p-5 shadow-[0_14px_34px_-28px_rgba(16,24,40,0.4)] transition-colors dark:border-[#343434] dark:bg-[#1f1f1f] md:p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-lg md:text-xl font-black text-slate-800 dark:text-white">تصفح الهواتف</h1>
-              <p className="text-[11px] text-slate-400 mt-0.5">البحث الذكي يقرب لك النتائج حتى في حالة الأخطاء الإملائية</p>
+              <h1 className="text-lg font-black text-[#242628] dark:text-white md:text-xl">تصفح المنتجات</h1>
+              <p className="mt-0.5 text-[11px] font-bold text-[#92989c]">البحث الذكي يقرب لك النتائج حتى في حالة الأخطاء الإملائية</p>
             </div>
             {hasFilters && (
               <Link href="/mobiles" className="text-xs font-bold text-rose-500 hover:text-rose-600 flex items-center gap-1 bg-rose-50 dark:bg-rose-950/30 px-3 py-1.5 rounded-lg transition-colors">
@@ -185,14 +193,14 @@ export default async function MobilesPage(props: Props) {
         )}
 
         {/* Products Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4 xl:grid-cols-5">
           {products.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>
 
         {(!products || products.length === 0) && (
-          <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 mt-4">
+          <div className="mt-4 rounded-[26px] border border-[#e7e9ec] bg-white py-20 text-center dark:border-[#343434] dark:bg-[#1f1f1f]">
             <span className="text-5xl mb-4 block">🔍</span>
             <p className="text-base font-bold text-slate-600 dark:text-slate-300 mb-1">لم نجد أي نتائج</p>
             <p className="text-xs text-slate-400">حاول استخدام كلمات بحث أخرى أو إعادة تعيين الفلاتر</p>

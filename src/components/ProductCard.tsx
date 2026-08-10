@@ -2,7 +2,13 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { MapPin, Eye, ChevronLeft } from 'lucide-react';
+import {
+  Eye,
+  MapPin,
+  MessageSquare,
+  ThumbsUp,
+} from 'lucide-react';
+
 import FavoriteButton from './FavoriteButton';
 
 export type ProductCardProps = {
@@ -13,8 +19,12 @@ export type ProductCardProps = {
     location: string;
     condition: string;
     slug: string;
+    created_at?: string;
     views_count?: number;
+    likes_count?: number;
+    comments_count?: number;
     is_negotiable?: boolean;
+    is_sold?: boolean;
     specifications?: {
       brand?: string;
       model?: string;
@@ -23,219 +33,218 @@ export type ProductCardProps = {
       battery_health?: string;
       color?: string;
       accepts_exchange?: string | boolean;
+      has_delivery?: string | boolean;
     };
-    product_images?: Array<{ image_url: string }> | { image_url: string }[];
+    product_images?: Array<{ image_url: string }>;
   };
   onFavoriteToggle?: (isFavorited: boolean) => void;
 };
 
-export default function ProductCard({ product, onFavoriteToggle }: ProductCardProps) {
-  const [currentImgIndex, setCurrentImgIndex] = useState(0);
-  const [imgLoaded, setImgLoaded] = useState(false);
+function getTimeAgo(dateValue?: string) {
+  if (!dateValue) return '';
 
-  const isSaudi = (() => {
-    if (!product.location) return false;
-    const firstPart = product.location.split(' - ')[0].trim();
-    const saudiRegions = [
-      'الرياض', 'مكة المكرمة', 'المدينة المنورة', 'المنطقة الشرقية', 'القصيم',
-      'عسير', 'تبوك', 'حائل', 'الحدود الشمالية', 'جازان', 'نجران', 'الباحة', 'الجوف'
-    ];
-    const loc = product.location.toLowerCase();
-    return saudiRegions.includes(firstPart) ||
-      loc.includes('riyadh') ||
-      loc.includes('dammam') ||
-      loc.includes('saudi') ||
-      loc.includes('khobar') ||
-      loc.includes('jeddah');
-  })();
+  const createdAt = new Date(dateValue);
+  if (Number.isNaN(createdAt.getTime())) return '';
 
-  const brand = product.specifications?.brand || '';
-  const model = product.specifications?.model || '';
-  const storage = product.specifications?.storage || '';
-  const ram = product.specifications?.ram || '';
-  const battery = product.specifications?.battery_health || '';
-  const acceptsExchange = product.specifications?.accepts_exchange === true || product.specifications?.accepts_exchange === 'true' || product.specifications?.accepts_exchange === 'نعم' || product.specifications?.accepts_exchange === '1';
+  const minutes = Math.max(
+    0,
+    Math.floor((Date.now() - createdAt.getTime()) / 60_000),
+  );
 
-  const displayTitle = brand || model 
-    ? `${brand} ${model}`.trim() 
-    : product.name;
+  if (minutes < 1) return 'الآن';
+  if (minutes < 60) return `منذ ${minutes} دقيقة`;
 
-  const images = Array.isArray(product.product_images) 
-    ? product.product_images.map((i: any) => i.image_url) 
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `منذ ${hours} ساعة`;
+
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `منذ ${days} يوم`;
+
+  const months = Math.floor(days / 30);
+  if (months < 12) return `منذ ${months} شهر`;
+
+  return `منذ ${Math.floor(months / 12)} سنة`;
+}
+
+function isTruthy(value: string | boolean | undefined) {
+  if (typeof value === 'boolean') return value;
+  if (!value) return false;
+  return ['true', '1', 'yes', 'نعم'].includes(value.toLowerCase());
+}
+
+export default function ProductCard({
+  product,
+  onFavoriteToggle,
+}: ProductCardProps) {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  const images = Array.isArray(product.product_images)
+    ? product.product_images
+        .map((image) => image.image_url)
+        .filter(Boolean)
     : [];
+  const href = `/mobiles/${product.slug}`;
+  const title = [
+    product.specifications?.brand,
+    product.specifications?.model,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .trim() || product.name;
+  const isSaudi = /الرياض|جدة|مكة|الدمام|السعودية|riyadh|jeddah|saudi/i.test(
+    product.location ?? '',
+  );
+  const timeAgo = getTimeAgo(product.created_at);
+  const condition = product.condition?.trim() || 'مستعمل';
+  const isNew = condition.includes('جديد') || /new/i.test(condition);
+  const isLikeNew = condition.includes('كسر') || /like new/i.test(condition);
+  const conditionClass = isNew
+    ? 'from-[#218c38] to-[#43b953]'
+    : isLikeNew
+      ? 'from-[#008f83] to-[#22a99d]'
+      : 'from-[#4f6971] to-[#6e858c]';
+  const acceptsExchange = isTruthy(product.specifications?.accepts_exchange);
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
     if (images.length <= 1) return;
-    const { left, width } = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - left;
-    const sectionWidth = width / images.length;
-    let index = Math.floor(x / sectionWidth);
-    if (index < 0) index = 0;
-    if (index >= images.length) index = images.length - 1;
-    // Reverse index for RTL layouts
-    index = (images.length - 1) - index;
-    if (index !== currentImgIndex) setCurrentImgIndex(index);
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const visualPosition = (event.clientX - bounds.left) / bounds.width;
+    const nextIndex = Math.min(
+      images.length - 1,
+      Math.max(0, Math.floor((1 - visualPosition) * images.length)),
+    );
+    if (nextIndex !== currentImageIndex) {
+      setCurrentImageIndex(nextIndex);
+    }
   };
-
-  const handleMouseLeave = () => setCurrentImgIndex(0);
-
-  // Premium condition badge styling
-  const conditionStyles: Record<string, string> = {
-    'جديد': 'bg-gradient-to-r from-emerald-500 to-teal-400 text-white shadow-[0_4px_10px_rgba(16,185,129,0.2)] border-none',
-    'كسر زيرو': 'bg-gradient-to-r from-blue-500 to-indigo-400 text-white shadow-[0_4px_10px_rgba(59,130,246,0.2)] border-none',
-    'مستعمل': 'bg-gradient-to-r from-amber-500 to-orange-400 text-white shadow-[0_4px_10px_rgba(245,158,11,0.2)] border-none',
-  };
-  const conditionClass = conditionStyles[product.condition] || 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-none';
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/60 overflow-hidden flex flex-col relative group h-full shadow-sm hover:shadow-2xl hover:shadow-ocean-500/10 transition-all duration-300 hover:-translate-y-1.5">
-      
-      {/* Favorite Button */}
-      <div className="absolute top-2.5 left-2.5 z-20 transition-transform duration-200 hover:scale-110 active:scale-95">
-        <FavoriteButton 
-          productId={product.id} 
+    <article className="app-product-card group relative flex h-full min-w-0 flex-col overflow-hidden rounded-[22px] border border-[#e7e9ec] bg-white transition duration-300 hover:-translate-y-1 hover:border-[#cfe9da] dark:border-[#343434] dark:bg-[#1f1f1f] dark:hover:border-[#315d43]">
+      <div className="absolute right-3 top-3 z-30">
+        <FavoriteButton
+          productId={product.id}
           onToggle={onFavoriteToggle}
+          className="!h-11 !w-11 !border-white/25 !bg-black/10 !shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18),0_5px_14px_rgba(0,0,0,0.08)]"
         />
       </div>
 
-      {/* Condition Badge */}
-      <div className="absolute top-2.5 right-2.5 z-20">
-        <span className={`noon-badge ${conditionClass}`}>
-          {product.condition}
+      <div className="absolute left-3 top-3 z-30">
+        <span className={`inline-flex items-center gap-1 rounded-lg bg-gradient-to-r ${conditionClass} px-2.5 py-1 text-[9px] font-black text-white shadow-md`}>
+          {isLikeNew ? '✦' : isNew ? '★' : '◷'}
+          {condition}
         </span>
       </div>
 
-      <Link href={`/mobiles/${product.slug}`} className="flex flex-col flex-1 h-full">
-        
-        {/* Product Image */}
-        <div 
-          className="product-image-container aspect-square w-full relative overflow-hidden bg-gradient-to-b from-slate-50/80 to-slate-100/50 dark:from-slate-800/40 dark:to-slate-900/40"
+      <Link href={href} className="block">
+        <div
+          className="relative aspect-[1/1.08] w-full overflow-hidden bg-[#f2f3f2] dark:bg-[#121212]"
           onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
+          onMouseLeave={() => setCurrentImageIndex(0)}
         >
-          <div className="w-full h-full flex items-center justify-center p-4 md:p-5">
-            {images.length > 0 ? (
-              <>
-                {!imgLoaded && <div className="absolute inset-0 shimmer" />}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img 
-                  src={images[currentImgIndex] || images[0]} 
-                  alt={`${product.name}`} 
-                  className={`object-contain h-full w-auto max-w-full transition-all duration-550 ease-out group-hover:scale-105 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
-                  loading="lazy"
-                  onLoad={() => setImgLoaded(true)}
-                />
-              </>
-            ) : (
-              <div className="text-4xl opacity-30 animate-pulse">📱</div>
-            )}
-          </div>
+          {images.length > 0 ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={images[currentImageIndex] ?? images[0]}
+                alt={title}
+                loading="lazy"
+                className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.025]"
+              />
+              <span className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/5 via-transparent to-black/8" />
+            </>
+          ) : (
+            <div className="flex h-full items-center justify-center text-5xl text-[#aab0b4]">📱</div>
+          )}
 
-          {/* Image Pagination Dots */}
+          {product.is_sold && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/55">
+              <span className="-rotate-6 rounded-xl border-[3px] border-[#ff1744] px-5 py-2 text-xl font-black text-[#ff1744]">
+                تم البيع
+              </span>
+            </div>
+          )}
+
+          {timeAgo && (
+            <span suppressHydrationWarning className="absolute bottom-0 right-0 z-20 rounded-tl-lg bg-black/62 px-2.5 py-1.5 text-[9px] font-black text-white backdrop-blur-sm">
+              {timeAgo}
+            </span>
+          )}
+
           {images.length > 1 && (
-            <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex gap-1 z-10 bg-white/70 dark:bg-slate-950/65 px-2 py-1 rounded-full backdrop-blur-xs">
-              {images.map((_, idx) => (
-                <span 
-                  key={idx}
-                  className={`h-1 rounded-full transition-all duration-300 ${
-                    idx === currentImgIndex 
-                      ? 'bg-ocean-500 w-3' 
-                      : 'bg-slate-300 dark:bg-slate-605 w-1'
-                  }`}
+            <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5">
+              {images.slice(0, 6).map((_, index) => (
+                <span
+                  key={index}
+                  className={`rounded-full border border-white/40 transition-all ${index === currentImageIndex ? 'h-2.5 w-2.5 bg-white' : 'h-2 w-2 bg-white/65'}`}
                 />
               ))}
             </div>
           )}
         </div>
+      </Link>
 
-        {/* Card Body */}
-        <div className="p-3 md:p-4 flex flex-col flex-1 gap-2">
-          
-          {/* Brand Prefix & Title */}
-          <div>
-            {brand && (
-              <span className="text-[10px] font-extrabold text-ocean-600 dark:text-ocean-400 tracking-wide uppercase mb-0.5 block">
-                {brand}
+      <div className="flex flex-1 flex-col px-3.5 pb-3 pt-3.5 md:px-4">
+        <Link href={href} className="block">
+          <h3 className="truncate text-[13px] font-black leading-6 text-[#242628] transition group-hover:text-[#078d45] dark:text-[#f1f1f1] md:text-[15px]">
+            {title}
+          </h3>
+
+          <div className="mt-1.5 flex min-w-0 items-center justify-between gap-2">
+            <p className="min-w-0 truncate text-[16px] font-black leading-none text-[#079447] dark:text-[#53d889] md:text-[18px]">
+              {product.price > 0
+                ? `${product.price.toLocaleString(isSaudi ? 'ar-SA' : 'ar-EG')} ${isSaudi ? 'ر.س' : 'ج.م'}`
+                : 'السعر عند التواصل'}
+            </p>
+            {product.is_negotiable && product.price > 0 && (
+              <span className="shrink-0 rounded-full bg-[#ffe68a] px-2 py-1 text-[8px] font-black text-[#5a4300]">
+                قابل للتفاوض
               </span>
             )}
-            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-xs md:text-sm line-clamp-2 leading-relaxed min-h-[2.5rem] group-hover:text-ocean-600 dark:group-hover:text-ocean-400 transition-colors">
-              {displayTitle}
-            </h3>
           </div>
 
-          {/* Spec Tags */}
-          {(storage || ram || battery) && (
-            <div className="flex flex-wrap gap-1.5 mt-0.5">
-              {storage && (
-                <span className="text-[9px] font-bold bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-                  {storage}
-                </span>
-              )}
-              {ram && (
-                <span className="text-[9px] font-bold bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-                  {ram} رام
-                </span>
-              )}
-              {battery && (
-                <span className="text-[9px] font-bold bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-                  🔋 {battery}%
-                </span>
-              )}
-            </div>
+          {acceptsExchange && (
+            <span className="mt-1.5 inline-flex rounded-md bg-[#edf9f1] px-2 py-0.5 text-[8px] font-black text-[#087d3d] dark:bg-[#153221] dark:text-[#57d98c]">
+              يقبل البدل
+            </span>
           )}
 
-          {/* Price & Negotiability */}
-          <div className="mt-auto pt-2">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-baseline">
-                <span className="text-ocean-600 dark:text-ocean-400 font-black text-base md:text-lg leading-none">
-                  {product.price.toLocaleString(isSaudi ? 'ar-SA' : 'ar-EG')}
+          <div className="mt-2.5 flex min-w-0 items-center gap-1.5 text-[#5f6368] dark:text-[#c7c7c7]">
+            <MapPin className="h-4 w-4 shrink-0 fill-current" />
+            <span className="truncate text-[10px] font-bold md:text-[11px]">
+              {product.location}
+            </span>
+          </div>
+        </Link>
+
+        <div className="mt-auto flex items-center justify-between gap-2 pt-3">
+          <div className="flex items-center gap-3 text-[#5f6368] dark:text-[#c8c8c8]">
+            <span className="flex items-center gap-1 text-[10px] font-black">
+              <Eye className="h-4 w-4" />
+              {product.views_count ?? 0}
+            </span>
+            <span className="flex items-center gap-1 text-[10px] font-black">
+              <ThumbsUp className="h-4 w-4" />
+              {product.likes_count ?? 0}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Link href={`${href}#comments`} aria-label="التعليقات" className="app-action-shadow relative flex h-10 w-10 items-center justify-center rounded-[14px] bg-white text-[#35383b] transition hover:text-[#079447] dark:bg-[#282828] dark:text-white">
+              <MessageSquare className="h-5 w-5" />
+              {(product.comments_count ?? 0) > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#1877f2] px-1 text-[7px] font-black text-white">
+                  {(product.comments_count ?? 0) > 99
+                    ? '99+'
+                    : product.comments_count}
                 </span>
-                <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 mr-1">
-                  {isSaudi ? 'ريال' : 'جنيه'}
-                </span>
-              </div>
-              
-              <div className="flex flex-wrap gap-1">
-                {product.is_negotiable && (
-                  <span className="text-[9px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-450 px-1.5 py-0.5 rounded-md border border-amber-100 dark:border-amber-900/20">
-                    قابل للتفاوض
-                  </span>
-                )}
-                {acceptsExchange && (
-                  <span className="text-[9px] font-bold bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 text-emerald-700 dark:text-emerald-450 px-1.5 py-0.5 rounded-md border border-emerald-100 dark:border-emerald-900/20 shadow-sm">
-                    يقبل البدل
-                  </span>
-                )}
-              </div>
-            </div>
-            
-            {/* Location & Views */}
-            <div className="mt-2.5 pt-2 border-t border-slate-50 dark:border-slate-800/50 flex items-center justify-between text-[10px] text-slate-400 dark:text-slate-500 font-medium">
-              <div className="flex items-center gap-1 truncate max-w-[70%]">
-                <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <span className="truncate">{product.location}</span>
-              </div>
-              
-              {product.views_count !== undefined && product.views_count > 0 && (
-                <div className="flex items-center gap-1 shrink-0 bg-slate-50 dark:bg-slate-850 px-1.5 py-0.5 rounded">
-                  <Eye className="w-3 h-3 text-slate-400" />
-                  <span>{product.views_count}</span>
-                </div>
               )}
-            </div>
-
-            {/* Desktop Slide-up Button */}
-            <div className="hidden md:block overflow-hidden transition-all duration-300 max-h-0 group-hover:max-h-12 group-hover:mt-2 opacity-0 group-hover:opacity-100">
-              <div className="w-full bg-gradient-to-r from-ocean-600 to-ocean-500 hover:from-ocean-500 hover:to-ocean-400 text-white font-extrabold text-xs py-2.5 rounded-xl text-center flex items-center justify-center gap-1 transition-all shadow-[0_4px_10px_rgba(14,165,233,0.3)]">
-                <span>عرض التفاصيل</span>
-                <ChevronLeft className="w-3.5 h-3.5 transition-transform duration-300 group-hover:-translate-x-1" />
-              </div>
-            </div>
-
+            </Link>
+            <Link href={href} aria-label="عرض المنتج" className="app-action-shadow flex h-10 w-10 items-center justify-center rounded-[14px] bg-white text-[#35383b] transition hover:text-[#079447] dark:bg-[#282828] dark:text-white">
+              <ThumbsUp className="h-5 w-5" />
+            </Link>
           </div>
         </div>
-      </Link>
-    </div>
+      </div>
+    </article>
   );
 }

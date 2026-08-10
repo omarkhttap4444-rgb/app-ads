@@ -51,14 +51,14 @@ const themeScript = `
   (function() {
     try {
       const theme = localStorage.getItem('theme');
-      const activeTheme = theme || 'dark';
+      const activeTheme = theme || 'light';
       if (activeTheme === 'dark') {
         document.documentElement.classList.add('dark');
       } else {
         document.documentElement.classList.remove('dark');
       }
     } catch (e) {
-      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('dark');
     }
   })();
 `;
@@ -78,7 +78,7 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="min-h-full flex flex-col bg-slate-50 dark:bg-[#0a0e17] text-slate-800 dark:text-slate-100 pb-16 md:pb-0 transition-colors duration-200 font-[var(--font-cairo)]" style={{ fontFamily: "'Cairo', 'Inter', sans-serif" }}>
+      <body className="min-h-full flex flex-col bg-[#f7f8f8] dark:bg-[#0d0d0d] text-[#202124] dark:text-[#f1f1f1] pb-20 md:pb-0 transition-colors duration-200 font-[var(--font-cairo)]" style={{ fontFamily: "'Cairo', 'Inter', sans-serif" }}>
         <Header />
         <div className="flex-1">
           {children}

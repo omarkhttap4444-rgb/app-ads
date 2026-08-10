@@ -1,83 +1,53 @@
-'use client';
-
 import Link from 'next/link';
-import { useRef, useEffect } from 'react';
+import { ChevronLeft } from 'lucide-react';
 
-const BRANDS = [
-  { name: 'آبل', query: 'apple', logo: '🍏', color: 'hover:bg-slate-100 hover:text-black dark:hover:bg-slate-800' },
-  { name: 'سامسونج', query: 'samsung', logo: '📱', color: 'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/40' },
-  { name: 'شاومي', query: 'xiaomi', logo: '⚡', color: 'hover:bg-orange-50 hover:text-orange-600 dark:hover:bg-orange-950/40' },
-  { name: 'ريلمي', query: 'realme', logo: '🔋', color: 'hover:bg-yellow-50 hover:text-yellow-600 dark:hover:bg-yellow-950/40' },
-  { name: 'أوبو', query: 'oppo', logo: '📸', color: 'hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-950/40' },
-  { name: 'إنفينيكس', query: 'infinix', logo: '🚀', color: 'hover:bg-teal-50 hover:text-teal-600 dark:hover:bg-teal-950/40' },
-  { name: 'هونر', query: 'honor', logo: '👑', color: 'hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950/40' },
-  { name: 'فيفو', query: 'vivo', logo: '💎', color: 'hover:bg-sky-50 hover:text-sky-600 dark:hover:bg-sky-950/40' },
-  { name: 'هواوي', query: 'huawei', logo: '🌸', color: 'hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40' },
-  { name: 'وان بلس', query: 'oneplus', logo: '🔴', color: 'hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40' },
+const brands = [
+  { name: 'آبل', query: 'آبل', logo: 'apple.png' },
+  { name: 'سامسونج', query: 'سامسونج', logo: 'samsung.png' },
+  { name: 'شاومي', query: 'شاومي', logo: 'xiaomi.png' },
+  { name: 'ريلمي', query: 'ريلمي', logo: 'realme.png' },
+  { name: 'أوبو', query: 'أوبو', logo: 'oppo.png' },
+  { name: 'إنفينيكس', query: 'إنفينيكس', logo: 'infinix.png' },
+  { name: 'هونر', query: 'هونر', logo: 'honor.png' },
+  { name: 'فيفو', query: 'فيفو', logo: 'vivo.png' },
+  { name: 'هواوي', query: 'هواوي', logo: 'huawei.png' },
+  { name: 'نوكيا', query: 'نوكيا', logo: 'nokia.png' },
 ];
 
 export default function BrandSlider() {
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-
-    let animationId: number;
-    let scrollSpeed = 0.5; // slow scroll speed
-
-    const startAutoScroll = () => {
-      if (!el) return;
-      el.scrollLeft -= scrollSpeed; // scroll RTL
-      if (Math.abs(el.scrollLeft) >= (el.scrollWidth - el.clientWidth) - 1) {
-        el.scrollLeft = 0; // Reset
-      }
-      animationId = requestAnimationFrame(startAutoScroll);
-    };
-
-    animationId = requestAnimationFrame(startAutoScroll);
-
-    // Pause on hover
-    const onMouseEnter = () => cancelAnimationFrame(animationId);
-    const onMouseLeave = () => {
-      animationId = requestAnimationFrame(startAutoScroll);
-    };
-
-    el.addEventListener('mouseenter', onMouseEnter);
-    el.addEventListener('mouseleave', onMouseLeave);
-
-    return () => {
-      cancelAnimationFrame(animationId);
-      if (el) {
-        el.removeEventListener('mouseenter', onMouseEnter);
-        el.removeEventListener('mouseleave', onMouseLeave);
-      }
-    };
-  }, []);
-
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-xs my-8 transition-colors overflow-hidden">
-      <h3 className="text-sm font-black text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-        <span className="w-1 h-5 bg-ocean-500 rounded-full"></span>
-        تصفح الماركات الشهيرة
-      </h3>
-      <div 
-        ref={scrollRef}
-        className="flex items-center gap-4 overflow-x-auto whitespace-nowrap scroll-hide dir-rtl py-2"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-      >
-        {/* Render twice for continuous loop effect */}
-        {[...BRANDS, ...BRANDS].map((brand, idx) => (
-          <Link
-            key={`${brand.query}-${idx}`}
-            href={`/mobiles?q=${brand.name}`}
-            className={`inline-flex flex-col items-center justify-center min-w-[100px] p-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 hover:shadow-md ${brand.color}`}
-          >
-            <span className="text-3xl mb-2 filter drop-shadow-sm">{brand.logo}</span>
-            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{brand.name}</span>
+    <section className="mt-7 overflow-hidden rounded-[26px] border border-[#e7e9ec] bg-white px-3 py-5 shadow-[0_12px_34px_-28px_rgba(16,24,40,0.32)] dark:border-[#343434] dark:bg-[#1a1a1a] md:px-5">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="h-6 w-1.5 rounded-full bg-[#12b95f]" />
+            <h2 className="text-sm font-black text-[#242628] dark:text-white md:text-base">
+              أشهر الماركات
+            </h2>
+          </div>
+          <p className="mr-3 mt-1 text-[9px] font-bold text-[#92989c] md:text-[10px]">
+            اختار ماركتك المفضلة
+          </p>
+        </div>
+        <Link href="/mobiles" className="flex items-center gap-1 text-[10px] font-black text-[#079447] md:text-xs">
+          عرض الكل
+          <ChevronLeft className="h-4 w-4" />
+        </Link>
+      </div>
+
+      <div className="scroll-hide flex gap-3 overflow-x-auto pb-1">
+        {brands.map((brand) => (
+          <Link key={brand.name} href={`/mobiles?brand=${encodeURIComponent(brand.query)}`} className="group flex h-[86px] w-[94px] shrink-0 flex-col items-center justify-center gap-2 rounded-2xl border border-[#eceeed] bg-[#f8f9f8] p-3 transition hover:-translate-y-0.5 hover:border-[#9ce5ba] hover:bg-[#f2fff6] dark:border-[#343434] dark:bg-[#242424] dark:hover:border-[#315d43] dark:hover:bg-[#1d3024] md:h-[96px] md:w-[108px]">
+            <span className="flex h-9 w-14 items-center justify-center rounded-xl bg-white px-2 shadow-sm dark:bg-[#eeeeee]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={`/brands/${brand.logo}`} alt={brand.name} className="max-h-6 max-w-full object-contain" />
+            </span>
+            <span className="text-[10px] font-black text-[#4f555a] transition group-hover:text-[#078d45] dark:text-[#d3d3d3]">
+              {brand.name}
+            </span>
           </Link>
         ))}
       </div>
-    </div>
+    </section>
   );
 }
