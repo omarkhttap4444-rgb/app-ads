@@ -1,313 +1,359 @@
-import { Metadata } from 'next';
-import { notFound } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
-import ContactSellerButton from '@/components/ContactSellerButton';
-import MobileContactBar from '@/components/MobileContactBar';
-import { 
-  MapPin, Eye, Sparkles, Smartphone, ShieldCheck, ChevronLeft, 
-  Cpu, Palette, BatteryCharging, Wrench, Scale, RefreshCw, Package, Share2 
-} from 'lucide-react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
-import FavoriteButton from '@/components/FavoriteButton';
-import ProductGallery from '@/components/ProductGallery';
-import ProductCard from '@/components/ProductCard';
+import { notFound } from 'next/navigation';
+import {
+  BatteryCharging,
+  ChevronLeft,
+  CircleCheck,
+  Cpu,
+  MapPin,
+  MessageSquare,
+  Package,
+  Palette,
+  Phone,
+  RefreshCw,
+  Scale,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  Wrench,
+} from 'lucide-react';
 
-export const revalidate = 60;
+import ContactSellerButton from '@/components/ContactSellerButton';
+import FavoriteButton from '@/components/FavoriteButton';
+import JsonLd from '@/components/JsonLd';
+import MobileContactBar from '@/components/MobileContactBar';
+import ProductCard from '@/components/ProductCard';
+import ProductComments from '@/components/ProductComments';
+import ProductGallery from '@/components/ProductGallery';
+import ProductLikeButton from '@/components/ProductLikeButton';
+import ProductViewCounter from '@/components/ProductViewCounter';
+import ShareProductButton from '@/components/ShareProductButton';
+import { isRemoteMediaUrl } from '@/lib/media';
+import { absoluteUrl, productConditionUrl } from '@/lib/seo';
+import { supabase } from '@/lib/supabase';
+
+export const dynamic = 'force-dynamic';
 
 type Props = { params: Promise<{ slug: string }> };
 
-export async function generateMetadata(props: Props): Promise<Metadata> {
-  const params = await props.params;
-  const decodedSlug = decodeURIComponent(params.slug);
+const saudiPattern = /الرياض|جدة|مكة|الدمام|الخبر|السعودية|riyadh|jeddah|dammam|khobar|saudi/i;
+const isSaudiLocation = (location?: string | null) => saudiPattern.test(location ?? '');
+
+const getImages = (rows: Array<{ image_url?: string | null }> | null | undefined) =>
+  (rows ?? []).map((image) => image.image_url).filter(isRemoteMediaUrl);
+
+const textValue = (value: unknown, fallback = 'غير محدد') => {
+  if (value === null || value === undefined) return fallback;
+  const text = String(value).trim();
+  return text || fallback;
+};
+
+const truthy = (value: unknown) =>
+  value === true || ['true', '1', 'yes', 'نعم'].includes(String(value ?? '').toLowerCase());
+
+const formatWhatsAppNumber = (phone: string | null, isSaudi: boolean) => {
+  if (!phone) return '';
+  const clean = phone.replace(/\D/g, '').replace(/^0+/, '');
+  if (clean.startsWith('20') || clean.startsWith('966')) return clean;
+  if (clean.startsWith('1') && clean.length === 10) return `20${clean}`;
+  if (clean.startsWith('5') && clean.length === 9) return `966${clean}`;
+  return `${isSaudi ? '966' : '20'}${clean}`;
+};
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const decodedSlug = decodeURIComponent(slug);
   const { data: product } = await supabase
     .from('products')
-    .select('name, price, condition, location, description, specifications, product_images(image_url)')
+    .select('name,price,condition,location,description,specifications,product_images(image_url)')
     .eq('slug', decodedSlug)
     .single();
 
-  if (!product) return { title: 'المنتج غير موجود | سوق فون' };
+  if (!product) return { title: 'المنتج غير موجود', robots: { index: false, follow: false } };
 
-  const brand = product.specifications?.brand || '';
-  const model = product.specifications?.model || '';
-  let mainImage = '/placeholder-mobile.png';
-  if (product.product_images && product.product_images.length > 0) mainImage = product.product_images[0].image_url;
-
-  const isSaudi = (() => {
-    if (!product.location) return false;
-    const firstPart = product.location.split(' - ')[0].trim();
-    const saudiRegions = ['الرياض', 'مكة المكرمة', 'المدينة المنورة', 'المنطقة الشرقية', 'القصيم', 'عسير', 'تبوك', 'حائل', 'الحدود الشمالية', 'جازان', 'نجران', 'الباحة', 'الجوف'];
-    const loc = product.location.toLowerCase();
-    return saudiRegions.includes(firstPart) || loc.includes('riyadh') || loc.includes('dammam') || loc.includes('saudi') || loc.includes('khobar') || loc.includes('jeddah');
-  })();
-  const currency = isSaudi ? 'ريال' : 'جنيه';
-  const locale = isSaudi ? 'ar-SA' : 'ar-EG';
-
-  const title = `${brand} ${model} - ${product.price.toLocaleString(locale)} ${currency} | سوق فون`;
-  const description = `${product.condition} - ${product.location} - ${product.description}`;
+  const specs = (product.specifications ?? {}) as Record<string, unknown>;
+  const displayName = [specs.brand, specs.model].filter(Boolean).join(' ').trim() || product.name;
+  const locale = isSaudiLocation(product.location) ? 'ar-SA' : 'ar-EG';
+  const currency = isSaudiLocation(product.location) ? 'ريال' : 'جنيه';
+  const title = Number(product.price ?? 0) > 0
+    ? `${displayName} للبيع - ${Number(product.price).toLocaleString(locale)} ${currency}`
+    : `${displayName} للبيع - تواصل لمعرفة السعر`;
+  const description = [
+    `${displayName} ${product.condition || ''} للبيع`,
+    product.location,
+    product.description,
+  ].filter(Boolean).join(' - ').slice(0, 165);
+  const images = getImages(product.product_images);
+  const canonicalPath = `/mobiles/${encodeURIComponent(decodedSlug)}`;
 
   return {
-    title, description,
-    openGraph: { title, description, images: [mainImage], type: 'website', locale: isSaudi ? 'ar_SA' : 'ar_EG', siteName: 'سوق فون' },
-    twitter: { card: 'summary_large_image', title, description, images: [mainImage] },
+    title,
+    description,
+    keywords: [displayName, `${displayName} للبيع`, product.condition, product.location, 'سوق فون'].filter(Boolean) as string[],
+    alternates: { canonical: canonicalPath },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1 },
+    },
+    openGraph: {
+      title,
+      description,
+      images: images.length ? [images[0]] : ['/og.png'],
+      url: canonicalPath,
+      type: 'website',
+      locale: isSaudiLocation(product.location) ? 'ar_SA' : 'ar_EG',
+      siteName: 'سوق فون',
+    },
+    twitter: { card: 'summary_large_image', title, description, images: images.length ? [images[0]] : ['/og.png'] },
   };
 }
 
-export default async function ProductPage(props: Props) {
-  const params = await props.params;
-  const decodedSlug = decodeURIComponent(params.slug);
-  
-  const { data: product } = await supabase
+export default async function ProductPage({ params }: Props) {
+  const { slug } = await params;
+  const decodedSlug = decodeURIComponent(slug);
+
+  const { data: product, error: productError } = await supabase
     .from('products')
-    .select('*, product_images(image_url)')
+    .select('*,product_images(image_url)')
     .eq('slug', decodedSlug)
     .single();
 
-  if (!product) notFound();
+  if (productError || !product) notFound();
 
-  const { data: seller } = await supabase
-    .from('users')
-    .select('phone, contact_phone, is_contact_phone_visible, contact_whatsapp, is_contact_whatsapp_visible, name, profile_image_url, is_verified, seller_rating, followers_count')
-    .eq('id', product.seller_id)
-    .single();
+  const [{ data: seller }, { data: similarProducts }] = await Promise.all([
+    supabase
+      .from('users')
+      .select('phone,contact_phone,is_contact_phone_visible,contact_whatsapp,is_contact_whatsapp_visible,name,profile_image_url,is_verified,seller_rating,followers_count,created_at,bio')
+      .eq('id', product.seller_id)
+      .single(),
+    supabase
+      .from('products')
+      .select('id,name,price,location,condition,slug,created_at,views_count,likes_count,comments_count,is_negotiable,is_sold,product_images(image_url),specifications')
+      .neq('id', product.id)
+      .eq('category', product.category)
+      .order('created_at', { ascending: false })
+      .limit(5),
+  ]);
 
-  // Similar products
-  const { data: similarProducts } = await supabase
-    .from('products')
-    .select('id, name, price, location, condition, slug, views_count, product_images(image_url), specifications')
-    .neq('id', product.id)
-    .eq('category', product.category)
-    .order('created_at', { ascending: false })
-    .limit(5);
-
-  const sellerPhone = seller?.is_contact_phone_visible ? (seller.contact_phone || seller.phone || null) : (seller?.phone || null);
-  const sellerWhatsapp = seller?.is_contact_whatsapp_visible ? (seller.contact_whatsapp || null) : null;
-
-  const cleanPhoneForWhatsapp = sellerWhatsapp || sellerPhone || '';
-  const formatWhatsappForPage = (phone: string | null) => {
-    if (!phone) return '';
-    let clean = phone.replace(/\D/g, '');
-    while (clean.startsWith('0')) clean = clean.substring(1);
-    if (clean.startsWith('20') && clean.length > 10) return clean;
-    if (clean.startsWith('966') && clean.length > 8) return clean;
-    if (clean.startsWith('1') && clean.length === 10) return `20${clean}`;
-    if (clean.startsWith('5') && clean.length === 9) return `966${clean}`;
-    
-    const saudiRegions = ['الرياض', 'مكة المكرمة', 'المدينة المنورة', 'المنطقة الشرقية', 'القصيم', 'عسير', 'تبوك', 'حائل', 'الحدود الشمالية', 'جازان', 'نجران', 'الباحة', 'الجوف'];
-    const isSaudi = saudiRegions.some(r => product.location.includes(r)) || 
-                    product.location.toLowerCase().includes('riyadh') || 
-                    product.location.toLowerCase().includes('saudi') ||
-                    product.location.toLowerCase().includes('jeddah') ||
-                    product.location.toLowerCase().includes('dammam');
-    return isSaudi ? `966${clean}` : `20${clean}`;
-  };
-  const whatsappPhone = cleanPhoneForWhatsapp ? formatWhatsappForPage(cleanPhoneForWhatsapp) : '';
-  const specs = product.specifications || {};
-  const brand = specs.brand || 'غير محدد';
-  const model = specs.model || 'غير محدد';
-  const storage = specs.storage || 'غير محدد';
-  const ram = specs.ram || 'غير محدد';
-  const color = specs.color || 'غير محدد';
-  const isOpened = specs.is_opened || 'غير محدد';
-  const ntraTax = specs.ntra_tax || 'غير محدد';
-  const batteryHealth = specs.battery_health ? `${specs.battery_health}%` : null;
-  const warranty = specs.warranty || 'غير محدد';
-  const acceptsExchange = specs.accepts_exchange === true || specs.accepts_exchange === 'true' || specs.accepts_exchange === 'نعم' || specs.accepts_exchange === '1';
-  const accessories = specs.accessories || null;
-  const images: string[] = product.product_images?.map((img: any) => img.image_url) || [];
-
-  const isSaudi = (() => {
-    if (!product.location) return false;
-    const firstPart = product.location.split(' - ')[0].trim();
-    const saudiRegions = ['الرياض', 'مكة المكرمة', 'المدينة المنورة', 'المنطقة الشرقية', 'القصيم', 'عسير', 'تبوك', 'حائل', 'الحدود الشمالية', 'جازان', 'نجران', 'الباحة', 'الجوف'];
-    const loc = product.location.toLowerCase();
-    return saudiRegions.includes(firstPart) || loc.includes('riyadh') || loc.includes('dammam') || loc.includes('saudi') || loc.includes('khobar') || loc.includes('jeddah');
-  })();
-
-  const currency = isSaudi ? 'ريال' : 'جنيه';
+  const specs = (product.specifications ?? {}) as Record<string, unknown>;
+  const brand = textValue(specs.brand, '');
+  const model = textValue(specs.model, '');
+  const displayName = [brand, model].filter(Boolean).join(' ').trim() || product.name;
+  const images = getImages(product.product_images);
+  const isSaudi = isSaudiLocation(product.location);
+  const currency = isSaudi ? 'ر.س' : 'ج.م';
   const locale = isSaudi ? 'ar-SA' : 'ar-EG';
+  const sellerName = seller?.name || product.seller_name || 'بائع سوق فون';
+  const sellerPhone = seller?.is_contact_phone_visible
+    ? seller.contact_phone || seller.phone || null
+    : null;
+  const sellerWhatsapp = seller?.is_contact_whatsapp_visible
+    ? seller.contact_whatsapp || null
+    : null;
+  const acceptsExchange = truthy(specs.accepts_exchange);
+  const batteryHealth = specs.battery_health ? `${textValue(specs.battery_health)}%` : null;
+  const accessories = textValue(specs.accessories, '');
+  const whatsappNumber = formatWhatsAppNumber(sellerWhatsapp || sellerPhone, isSaudi);
+  const productPath = `/mobiles/${encodeURIComponent(product.slug)}`;
+  const productUrl = absoluteUrl(productPath);
+
+  const additionalProperty = [
+    ['المساحة', specs.storage],
+    ['الرام', specs.ram],
+    ['اللون', specs.color],
+    ['صحة البطارية', batteryHealth],
+    ['الضمان', specs.warranty],
+  ]
+    .filter(([, value]) => value !== null && value !== undefined && String(value).trim())
+    .map(([name, value]) => ({ '@type': 'PropertyValue', name, value: String(value) }));
+
+  const productJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    '@id': `${productUrl}#product`,
+    name: displayName,
+    description: product.description || `${displayName} ${product.condition || ''} للبيع في ${product.location}.`,
+    image: images,
+    url: productUrl,
+    sku: product.id,
+    category: product.category,
+    itemCondition: productConditionUrl(product.condition),
+    brand: brand ? { '@type': 'Brand', name: brand } : undefined,
+    color: textValue(specs.color, '') || undefined,
+    additionalProperty,
+    ...(Number(product.price) > 0
+      ? {
+          offers: {
+            '@type': 'Offer',
+            url: productUrl,
+            priceCurrency: isSaudi ? 'SAR' : 'EGP',
+            price: Number(product.price),
+            availability: product.is_sold
+              ? 'https://schema.org/SoldOut'
+              : 'https://schema.org/InStock',
+            itemCondition: productConditionUrl(product.condition),
+            seller: { '@type': 'Person', name: sellerName },
+          },
+        }
+      : {}),
+  };
+
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'الرئيسية', item: absoluteUrl('/') },
+      { '@type': 'ListItem', position: 2, name: 'المنتجات', item: absoluteUrl('/mobiles') },
+      { '@type': 'ListItem', position: 3, name: displayName, item: productUrl },
+    ],
+  };
 
   const specItems = [
-    { icon: Smartphone, label: 'المساحة', value: storage },
-    { icon: Cpu, label: 'الرام', value: ram },
-    { icon: Palette, label: 'اللون', value: color },
+    { icon: Sparkles, label: 'القسم', value: product.category || 'غير محدد' },
+    { icon: Package, label: 'الحالة', value: product.condition || 'غير محدد' },
+    { icon: Cpu, label: 'الرام', value: textValue(specs.ram) },
+    { icon: Package, label: 'المساحة', value: textValue(specs.storage) },
+    { icon: Palette, label: 'اللون', value: textValue(specs.color) },
     ...(batteryHealth ? [{ icon: BatteryCharging, label: 'صحة البطارية', value: batteryHealth }] : []),
-    { icon: Wrench, label: 'هل تم فتحه؟', value: isOpened },
-    ...(!isSaudi ? [{ icon: Scale, label: 'مسجل / جمارك', value: ntraTax }] : []),
-    { icon: ShieldCheck, label: 'الضمان', value: warranty },
+    { icon: Wrench, label: 'هل تم فتحه؟', value: textValue(specs.is_opened) },
+    ...(!isSaudi ? [{ icon: Scale, label: 'مسجل / جمارك', value: textValue(specs.ntra_tax) }] : []),
+    { icon: ShieldCheck, label: 'الضمان', value: textValue(specs.warranty) },
     ...(acceptsExchange ? [{ icon: RefreshCw, label: 'يقبل البدل', value: 'نعم' }] : []),
   ];
 
   return (
-    <main className="min-h-screen bg-slate-50 dark:bg-[#0a0e17] pt-4 pb-28 md:py-8">
-      <div className="container mx-auto px-4 max-w-6xl">
-        
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 font-medium mb-4">
-          <Link href="/" className="hover:text-ocean-600 transition-colors">الرئيسية</Link>
-          <ChevronLeft className="w-3 h-3" />
-          <Link href="/mobiles" className="hover:text-ocean-600 transition-colors">الهواتف</Link>
-          <ChevronLeft className="w-3 h-3" />
-          <span className="text-slate-600 dark:text-slate-300 truncate max-w-[200px]">{brand !== 'غير محدد' || model !== 'غير محدد' ? `${brand} ${model}`.trim() : product.name}</span>
-        </div>
+    <main className="min-h-screen bg-[#f7f8f8] pb-32 dark:bg-[#0d0d0d] md:pb-10">
+      <JsonLd data={productJsonLd} />
+      <JsonLd data={breadcrumbJsonLd} />
+      <div className="mx-auto max-w-6xl px-3 py-3 sm:px-5 md:py-6">
+        <nav className="mb-3 hidden items-center gap-1.5 text-[11px] font-bold text-[#8b9296] md:flex" aria-label="مسار الصفحة">
+          <Link href="/">الرئيسية</Link>
+          <ChevronLeft className="h-3.5 w-3.5" />
+          <Link href="/mobiles">المنتجات</Link>
+          <ChevronLeft className="h-3.5 w-3.5" />
+          <span className="max-w-64 truncate text-[#4f555a] dark:text-[#d0d0d0]">{displayName}</span>
+        </nav>
 
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 overflow-hidden shadow-xs">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 lg:gap-8 p-5 md:p-8">
-            
-            {/* Images */}
-            <div className="lg:col-span-5 relative">
-              <div className="absolute top-2 left-2 z-20 flex gap-2">
-                <FavoriteButton productId={product.id} />
+        <article className="overflow-hidden rounded-[24px] border border-[#e7e9ec] bg-white shadow-[0_18px_45px_-34px_rgba(16,24,40,0.5)] dark:border-[#343434] dark:bg-[#1f1f1f]">
+          <div className="grid grid-cols-1 lg:grid-cols-12 lg:gap-7 lg:p-7">
+            <div className="relative lg:col-span-5">
+              <div className="absolute right-3 top-3 z-30">
+                <FavoriteButton productId={product.id} className="!bg-white/85 !shadow-lg dark:!bg-black/55" />
               </div>
-              <ProductGallery images={images} productName={product.name} />
+              {product.is_sold && (
+                <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-black/45">
+                  <span className="-rotate-6 rounded-xl border-[3px] border-[#ff1744] px-6 py-2 text-2xl font-black text-[#ff1744]">تم البيع</span>
+                </div>
+              )}
+              <ProductGallery images={images} productName={displayName} />
             </div>
 
-            {/* Details */}
-            <div className="lg:col-span-7 flex flex-col space-y-5 mt-5 lg:mt-0">
-              
-              {/* Title & Price */}
-              <div>
-                <h1 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white leading-tight">
-                  {brand !== 'غير محدد' || model !== 'غير محدد' ? `${brand} ${model}`.trim() : product.name}
-                </h1>
-                
-                <div className="mt-3 inline-flex items-baseline gap-1.5 bg-ocean-50 dark:bg-ocean-950/40 text-ocean-700 dark:text-ocean-400 px-4 py-2.5 rounded-xl border border-ocean-100 dark:border-ocean-900/40">
-                  <span className="text-2xl font-black">{product.price.toLocaleString(locale)}</span>
-                  <span className="text-xs font-bold">{currency}</span>
+            <div className="flex flex-col p-4 sm:p-6 lg:col-span-7 lg:p-0">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-xl font-black leading-9 text-[#202326] dark:text-white sm:text-2xl">{displayName}</h1>
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold text-[#6b7175] dark:text-[#c7c7c7]">
+                    <span className="flex items-center gap-1"><Sparkles className="h-4 w-4" />{product.category}</span>
+                    <span className="flex items-center gap-1"><MapPin className="h-4 w-4 fill-current" />{product.location}</span>
+                  </div>
                 </div>
-              </div>
-
-              {/* Meta Tags */}
-              <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold border-b border-slate-100 dark:border-slate-800 pb-5">
-                <span className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300">
-                  <MapPin className="w-3 h-3 text-slate-400" />
-                  {product.location}
-                </span>
-                <span className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300">
-                  <Sparkles className="w-3 h-3 text-slate-400" />
-                  {product.condition}
-                </span>
-                <span className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300">
-                  <Eye className="w-3 h-3 text-slate-400" />
-                  {product.views_count || 0} مشاهدة
-                </span>
-              </div>
-
-              {/* Specifications Table */}
-              <div>
-                <h3 className="text-sm font-black text-slate-800 dark:text-white mb-3 flex items-center gap-2">
-                  <span className="w-1 h-4 bg-ocean-500 rounded-full"></span>
-                  المواصفات الفنية
-                </h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {specItems.map((spec) => (
-                    <div key={spec.label} className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl flex items-center gap-2.5 border border-slate-100/50 dark:border-slate-700/30">
-                      <div className="w-8 h-8 rounded-lg bg-ocean-50 dark:bg-ocean-950/40 text-ocean-600 dark:text-ocean-400 flex items-center justify-center shrink-0">
-                        <spec.icon className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[9px] text-slate-400 font-bold">{spec.label}</p>
-                        <p className="font-extrabold text-slate-700 dark:text-slate-200 text-[11px] truncate">{spec.value}</p>
-                      </div>
-                    </div>
-                  ))}
-                  {accessories && (
-                    <div className="col-span-2 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl flex items-center gap-2.5 border border-slate-100/50 dark:border-slate-700/30">
-                      <div className="w-8 h-8 rounded-lg bg-ocean-50 dark:bg-ocean-950/40 text-ocean-600 dark:text-ocean-400 flex items-center justify-center shrink-0">
-                        <Package className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[9px] text-slate-400 font-bold">الملحقات</p>
-                        <p className="font-extrabold text-slate-700 dark:text-slate-200 text-[11px]">{accessories}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Description */}
-              <div>
-                <h3 className="text-sm font-black text-slate-800 dark:text-white mb-3 flex items-center gap-2">
-                  <span className="w-1 h-4 bg-ocean-500 rounded-full"></span>
-                  وصف الإعلان
-                </h3>
-                <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-xs whitespace-pre-wrap bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-100/50 dark:border-slate-700/30">
-                  {product.description || 'لا يوجد وصف.'}
+                <p className="shrink-0 text-2xl font-black text-[#079447] dark:text-[#53d889]">
+                  {Number(product.price) > 0 ? `${Number(product.price).toLocaleString(locale)} ${currency}` : 'قابل للتفاوض'}
                 </p>
               </div>
 
-              {/* Seller Card */}
-              <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-                <h3 className="text-[11px] font-bold text-slate-400 mb-3">معلومات البائع</h3>
-                <div className="flex flex-col sm:flex-row items-center gap-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/30 p-4 rounded-xl">
-                  <div className="w-11 h-11 bg-ocean-100 dark:bg-ocean-950 rounded-xl flex items-center justify-center text-ocean-700 dark:text-ocean-400 font-extrabold text-base overflow-hidden shrink-0">
-                    {seller?.profile_image_url ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img src={seller.profile_image_url} alt={seller.name || 'البائع'} className="object-cover w-full h-full" />
-                    ) : (
-                      seller?.name?.charAt(0) || 'م'
-                    )}
-                  </div>
-                  <div className="text-center sm:text-right flex-1">
-                    <Link href={`/store/${product.seller_id}`} className="font-extrabold text-slate-800 dark:text-white hover:text-ocean-600 text-sm transition-colors flex items-center gap-1 justify-center sm:justify-start">
-                      {seller?.name || 'بائع سوق فون'}
-                      {seller?.is_verified && <ShieldCheck className="w-4 h-4 text-ocean-500" />}
-                    </Link>
-                    <p className="text-[10px] text-slate-400 mt-0.5">عضو في سوق فون</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {whatsappPhone && (
-                      <a
-                        href={`https://wa.me/${whatsappPhone}?text=${encodeURIComponent(`مرحباً ${seller?.name || 'بائع سوق فون'}، أنا مهتم بشراء جهازك المعروض في سوق فون: ${product.name}`)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white p-3 rounded-xl font-bold shadow-md shadow-emerald-250/20 hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-all border border-emerald-500/10"
-                        title="تواصل عبر الواتساب"
-                      >
-                        <svg viewBox="0 0 448 512" className="w-4.5 h-4.5 fill-white" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/>
-                        </svg>
-                      </a>
-                    )}
-                    <ContactSellerButton 
-                      sellerId={product.seller_id}
-                      sellerName={seller?.name || 'بائع سوق فون'}
-                      sellerAvatar={seller?.profile_image_url || undefined}
-                      productId={product.id}
-                      productSlug={product.slug}
-                    />
-                  </div>
-                </div>
+              <div className="mt-4 flex flex-wrap items-center gap-3 border-y border-[#edf0ee] py-3 dark:border-[#363636]">
+                <ProductViewCounter productId={product.id} initialCount={product.views_count ?? 0} />
+                <span className="h-5 w-px bg-[#dde2df] dark:bg-[#424242]" />
+                <span className="rounded-full bg-[#eef5f1] px-3 py-1 text-[10px] font-black text-[#4f6971] dark:bg-[#29302c] dark:text-[#d3d3d3]">{product.condition || 'مستعمل'}</span>
+                {product.is_negotiable && <span className="rounded-full bg-[#ffe68a] px-3 py-1 text-[10px] font-black text-[#5a4300]">قابل للتفاوض</span>}
+              </div>
+
+              <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl bg-gradient-to-l from-[#fafcfb] to-[#f4f7f5] p-2 dark:from-[#272727] dark:to-[#242424]">
+                <ProductLikeButton productId={product.id} initialCount={product.likes_count ?? 0} />
+                <Link href="#comments" className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#e3e7e5] px-3 py-2.5 text-xs font-black text-[#4f555a] transition hover:text-[#078b43] dark:border-[#3a3a3a] dark:text-[#d0d0d0]">
+                  <MessageSquare className="h-5 w-5" />
+                  <span className="hidden min-[390px]:inline">تعليقات</span>
+                  <span>{product.comments_count ?? 0}</span>
+                </Link>
+                <ShareProductButton title={displayName} />
+              </div>
+
+              <section className="mt-5">
+                <h2 className="flex items-center gap-2 text-sm font-black text-[#282c2f] dark:text-white"><span className="h-5 w-1.5 rounded-full bg-[#12b95f]" />الوصف</h2>
+                <p className="mt-3 whitespace-pre-wrap rounded-2xl bg-[#f7f9f8] p-4 text-xs leading-7 text-[#565c60] dark:bg-[#272727] dark:text-[#d3d3d3]">{product.description || 'لم يضف البائع وصفًا لهذا الإعلان.'}</p>
+              </section>
+
+              <div className="mt-5 hidden grid-cols-3 gap-2 md:grid">
+                {whatsappNumber && (
+                  <a href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`مرحبًا ${sellerName}، أنا مهتم بمنتج ${displayName} على سوق فون`)}`} target="_blank" rel="noopener noreferrer" className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#18a957] px-3 text-xs font-black text-white"><MessageSquare className="h-5 w-5" />واتساب</a>
+                )}
+                <ContactSellerButton sellerId={product.seller_id} sellerName={sellerName} sellerAvatar={seller?.profile_image_url || undefined} productId={product.id} productSlug={product.slug} />
+                {sellerPhone && <a href={`tel:${sellerPhone.replace(/[^\d+]/g, '')}`} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#eef1ef] px-3 text-xs font-black text-[#4f555a] dark:bg-[#303030] dark:text-white"><Phone className="h-5 w-5" />اتصال</a>}
               </div>
             </div>
           </div>
+        </article>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-12">
+          <div className="space-y-4 lg:col-span-8">
+            <section className="rounded-[22px] border border-[#e7e9ec] bg-white p-4 shadow-sm dark:border-[#343434] dark:bg-[#1f1f1f] sm:p-6">
+              <h2 className="flex items-center gap-2 text-base font-black text-[#242628] dark:text-white"><span className="h-5 w-1.5 rounded-full bg-[#12b95f]" />مواصفات المنتج</h2>
+              <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                {specItems.map((spec) => (
+                  <div key={spec.label} className="flex min-w-0 items-center gap-2.5 rounded-2xl border border-[#edf0ee] bg-[#f8faf9] p-3 dark:border-[#383838] dark:bg-[#272727]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#e9f9ef] text-[#078b43] dark:bg-[#173323] dark:text-[#54db8d]"><spec.icon className="h-4 w-4" /></span>
+                    <div className="min-w-0"><p className="text-[9px] font-bold text-[#92989c]">{spec.label}</p><p className="truncate text-[11px] font-black text-[#3d4245] dark:text-[#eeeeee]">{spec.value}</p></div>
+                  </div>
+                ))}
+              </div>
+              {accessories && <div className="mt-3 rounded-2xl bg-[#f8faf9] p-4 text-xs font-bold text-[#565c60] dark:bg-[#272727] dark:text-[#d3d3d3]"><strong className="text-[#242628] dark:text-white">الملحقات: </strong>{accessories}</div>}
+            </section>
+
+            <section className="rounded-[22px] border border-[#f0dfaa] bg-[#fffbef] p-4 dark:border-[#56491f] dark:bg-[#2b281d] sm:p-6">
+              <h2 className="flex items-center gap-2 text-base font-black text-[#6b5310] dark:text-[#ffe08a]"><ShieldCheck className="h-5 w-5" />نصائح للتعامل الآمن</h2>
+              <div className="mt-3 grid gap-2 text-[11px] font-bold leading-6 text-[#75632d] dark:text-[#e6d696] sm:grid-cols-2">
+                {['قابل البائع في مكان عام وآمن.', 'افحص المنتج وجميع وظائفه قبل الدفع.', 'لا تحول أي مبلغ مقدمًا قبل المعاينة.', 'تأكد من بيانات الجهاز والضمان إن وجد.'].map((tip) => <p key={tip} className="flex gap-2"><CircleCheck className="mt-1 h-4 w-4 shrink-0 text-[#d39b00]" />{tip}</p>)}
+              </div>
+            </section>
+
+            <ProductComments productId={product.id} initialCount={product.comments_count ?? 0} />
+          </div>
+
+          <aside className="space-y-4 lg:col-span-4">
+            <section className="rounded-[22px] border border-[#e7e9ec] bg-white p-5 shadow-sm dark:border-[#343434] dark:bg-[#1f1f1f]">
+              <p className="text-[10px] font-bold text-[#959b9f]">معلومات البائع</p>
+              <Link href={`/store/${product.seller_id}`} className="mt-3 flex items-center gap-3">
+                <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#d9f7e5] text-lg font-black text-[#078b43] dark:bg-[#173323] dark:text-[#54db8d]">
+                  {seller?.profile_image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={seller.profile_image_url} alt={sellerName} className="h-full w-full object-cover" />
+                  ) : sellerName.charAt(0)}
+                </span>
+                <span className="min-w-0"><span className="flex items-center gap-1 text-sm font-black text-[#292d30] dark:text-white">{sellerName}{seller?.is_verified && <ShieldCheck className="h-4 w-4 text-[#079447]" />}</span><span className="mt-1 block text-[10px] font-bold text-[#91979b]">{seller?.followers_count ?? 0} متابع</span></span>
+              </Link>
+              {seller?.bio && <p className="mt-3 text-[11px] leading-6 text-[#676d71] dark:text-[#cccccc]">{seller.bio}</p>}
+              <div className="mt-4 flex items-center justify-between rounded-2xl bg-[#fff8e8] p-3 dark:bg-[#30291b]"><span className="text-xs font-black text-[#5d4a19] dark:text-[#ffe08a]">تقييم البائع</span><span className="flex items-center gap-1 text-sm font-black text-[#e99b00]"><Star className="h-5 w-5 fill-current" />{Number(seller?.seller_rating ?? 0).toFixed(1)}</span></div>
+            </section>
+
+            <section className="rounded-[22px] border border-[#e7e9ec] bg-white p-5 shadow-sm dark:border-[#343434] dark:bg-[#1f1f1f]">
+              <h2 className="text-sm font-black text-[#292d30] dark:text-white">موقع المنتج</h2>
+              <div className="mt-3 flex min-h-28 flex-col items-center justify-center rounded-2xl bg-gradient-to-br from-[#eaf8ef] to-[#f6faf7] p-4 text-center dark:from-[#173323] dark:to-[#252925]"><MapPin className="h-8 w-8 fill-[#079447]/15 text-[#079447]" /><p className="mt-2 text-xs font-black text-[#4f555a] dark:text-[#d3d3d3]">{product.location}</p></div>
+            </section>
+          </aside>
         </div>
 
-        {/* Similar Products */}
         {similarProducts && similarProducts.length > 0 && (
-          <section className="mt-8">
-            <h2 className="text-base font-black text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-              <span className="w-1 h-4 bg-ocean-500 rounded-full"></span>
-              منتجات مشابهة
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-              {similarProducts.map((p) => (
-                <ProductCard key={p.id} product={p} />
-              ))}
-            </div>
+          <section className="mt-7">
+            <h2 className="mb-4 flex items-center gap-2 text-base font-black text-[#242628] dark:text-white"><span className="h-5 w-1.5 rounded-full bg-[#12b95f]" />منتجات مشابهة</h2>
+            <div className="product-card-grid">{similarProducts.map((item) => <ProductCard key={item.id} product={item} />)}</div>
           </section>
         )}
       </div>
-      
-      <MobileContactBar 
-        sellerId={product.seller_id}
-        sellerName={product.seller_name}
-        sellerPhone={sellerPhone}
-        sellerWhatsapp={sellerWhatsapp}
-        productId={product.id}
-        productSlug={product.slug}
-        productName={product.name}
-        location={product.location}
-      />
+
+      <MobileContactBar sellerId={product.seller_id} sellerName={sellerName} sellerPhone={sellerPhone} sellerWhatsapp={sellerWhatsapp} productId={product.id} productSlug={product.slug} productName={displayName} location={product.location} />
     </main>
   );
 }

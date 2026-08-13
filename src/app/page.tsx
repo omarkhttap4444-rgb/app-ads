@@ -15,6 +15,7 @@ import BannerCarousel from '@/components/BannerCarousel';
 import BrandSlider from '@/components/BrandSlider';
 import HomeAccountPrompt from '@/components/HomeAccountPrompt';
 import ProductCard from '@/components/ProductCard';
+import { getCategoryImageUrl } from '@/lib/category-images';
 import { supabase } from '@/lib/supabase';
 
 const productSelection = `
@@ -100,43 +101,29 @@ const filterByCountry = <T,>(
   );
 };
 
-const getCategoryImageUrl = (name: string) => {
-  const normalizedName = name.trim();
-  if (normalizedName.includes('هاتف')) return '/categories/phone.jpg';
-  if (normalizedName.includes('إكسسوار') || normalizedName.includes('اكسسوار')) {
-    return '/categories/x.jpg';
-  }
-  if (normalizedName.includes('لوحي') || normalizedName.includes('تابلت')) {
-    return '/categories/t.jpg';
-  }
-  if (normalizedName.includes('ساعة')) return '/categories/s.jpg';
-  if (normalizedName.includes('سماعة')) return '/categories/sm.jpg';
-  if (normalizedName.includes('لابتوب')) return '/categories/L.jpg';
-  if (normalizedName.includes('محل')) return '/categories/mt.jpg';
-  if (normalizedName.includes('الكل')) return '/categories/kl.jpg';
-  return '/categories/tf.jpg';
-};
-
 export async function generateMetadata(): Promise<Metadata> {
-  const cookieStore = await cookies();
-  const country = cookieStore.get('selected_country')?.value || 'EG';
-  const countryLabel = country === 'SA' ? 'السعودية' : 'مصر';
-
   return {
-    title: `سوق فون | بيع وشراء المنتجات التقنية في ${countryLabel}`,
-    description: `اكتشف أحدث إعلانات الهواتف والإكسسوارات والأجهزة التقنية في ${countryLabel} وتواصل مباشرة مع البائعين بدون عمولة.`,
+    title: { absolute: 'سوق فون مصر | بيع وشراء الموبايلات والإلكترونيات' },
+    description: 'بيع واشتري الموبايلات والإلكترونيات الجديدة والمستعملة في مصر. إعلانات حقيقية، بحث ذكي وتواصل مباشر مع البائع بدون عمولة.',
     alternates: { canonical: 'https://souqphone.com/' },
     robots: { index: true, follow: true },
     openGraph: {
       title: `سوق فون | كل السوق في إيدك`,
-      description: `بيع واشتري الأجهزة التقنية مباشرة وبدون عمولة في ${countryLabel}.`,
+      description: 'بيع واشتري الموبايلات والإلكترونيات مباشرة وبدون عمولة في مصر.',
       url: 'https://souqphone.com/',
       siteName: 'سوق فون',
-      locale: country === 'SA' ? 'ar_SA' : 'ar_EG',
+      locale: 'ar_EG',
+      alternateLocale: ['ar_SA'],
       type: 'website',
       images: [
-        { url: '/logo.png', width: 512, height: 512, alt: 'سوق فون' },
+        { url: '/og.png', width: 1733, height: 909, alt: 'سوق فون - كل السوق في إيدك' },
       ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: 'سوق فون | كل السوق في إيدك',
+      description: 'بيع واشتري الموبايلات والإلكترونيات في مصر.',
+      images: ['/og.png'],
     },
   };
 }
@@ -146,6 +133,13 @@ export const dynamic = 'force-dynamic';
 export default async function Home() {
   const cookieStore = await cookies();
   const country = cookieStore.get('selected_country')?.value || 'EG';
+  const mobilesHref = (filters: Record<string, string> = {}) => {
+    const params = new URLSearchParams();
+    if (country === 'SA') params.set('country', 'SA');
+    for (const [key, value] of Object.entries(filters)) params.set(key, value);
+    const query = params.toString();
+    return `/mobiles${query ? `?${query}` : ''}`;
+  };
 
   let latestQuery = supabase.from('products').select(productSelection);
   latestQuery = filterByCountry(latestQuery, country);
@@ -163,7 +157,7 @@ export default async function Home() {
     trendingQuery.order('views_count', { ascending: false }).limit(10),
     supabase
       .from('categories')
-      .select('id, name, display_order')
+      .select('id, name, icon_url, display_order')
       .eq('is_active', true)
       .order('display_order', { ascending: true }),
     supabase
@@ -193,11 +187,11 @@ export default async function Home() {
     categoriesResult.data && categoriesResult.data.length > 0
       ? categoriesResult.data
       : [
-          { id: 'all', name: 'الكل', display_order: 0 },
-          { id: 'phones', name: 'هواتف', display_order: 1 },
-          { id: 'accessories', name: 'إكسسوارات', display_order: 2 },
-          { id: 'tablets', name: 'أجهزة لوحية', display_order: 3 },
-          { id: 'watches', name: 'ساعات ذكية', display_order: 4 },
+          { id: 'all', name: 'الكل', icon_url: null, display_order: 0 },
+          { id: 'phones', name: 'هواتف', icon_url: null, display_order: 1 },
+          { id: 'accessories', name: 'إكسسوارات', icon_url: null, display_order: 2 },
+          { id: 'tablets', name: 'أجهزة لوحية', icon_url: null, display_order: 3 },
+          { id: 'watches', name: 'ساعات ذكية', icon_url: null, display_order: 4 },
         ];
 
   return (
@@ -214,15 +208,15 @@ export default async function Home() {
         <HomeAccountPrompt />
 
         <nav className="mt-4 grid grid-cols-[1fr_1fr_1.55fr] gap-2.5 md:mx-auto md:max-w-3xl md:gap-4" aria-label="تصفية سريعة">
-          <Link href="/mobiles?condition=مستعمل" className="flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#eef0ef] px-3 text-xs font-black text-[#5f6368] transition hover:bg-[#e6e9e7] dark:bg-[#252525] dark:text-[#d3d3d3] dark:hover:bg-[#2d2d2d] md:text-sm">
+          <Link href={mobilesHref({ condition: 'مستعمل' })} className="flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#eef0ef] px-3 text-xs font-black text-[#5f6368] transition hover:bg-[#e6e9e7] dark:bg-[#252525] dark:text-[#d3d3d3] dark:hover:bg-[#2d2d2d] md:text-sm">
             <History className="h-5 w-5" />
             مستعمل
           </Link>
-          <Link href="/mobiles?condition=جديد" className="flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#eef0ef] px-3 text-xs font-black text-[#5f6368] transition hover:bg-[#e6e9e7] dark:bg-[#252525] dark:text-[#d3d3d3] dark:hover:bg-[#2d2d2d] md:text-sm">
+          <Link href={mobilesHref({ condition: 'جديد' })} className="flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#eef0ef] px-3 text-xs font-black text-[#5f6368] transition hover:bg-[#e6e9e7] dark:bg-[#252525] dark:text-[#d3d3d3] dark:hover:bg-[#2d2d2d] md:text-sm">
             <BadgeCheck className="h-5 w-5 fill-current" />
             جديد
           </Link>
-          <Link href="/mobiles" className="flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-[#ff8a22] to-[#ff6d34] px-3 text-xs font-black text-white shadow-[0_12px_24px_-14px_rgba(255,109,52,0.8)] transition hover:brightness-105 md:text-sm">
+          <Link href={mobilesHref()} className="flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-[#ff8a22] to-[#ff6d34] px-3 text-xs font-black text-white shadow-[0_12px_24px_-14px_rgba(255,109,52,0.8)] transition hover:brightness-105 md:text-sm">
             <Sparkles className="h-5 w-5" />
             تصفح سريع
             <Grid2X2 className="h-5 w-5 fill-white" />
@@ -239,17 +233,17 @@ export default async function Home() {
                 اختار القسم ووصل لإعلانك بسرعة
               </p>
             </div>
-            <Link href="/mobiles" className="flex items-center gap-1 text-[10px] font-black text-[#079447] md:text-xs">
+            <Link href={mobilesHref()} className="flex items-center gap-1 text-[10px] font-black text-[#079447] md:text-xs">
               عرض الكل
               <ChevronLeft className="h-4 w-4" />
             </Link>
           </div>
           <div className="scroll-hide flex gap-3 overflow-x-auto pb-1">
             {categories.map((category) => (
-              <Link key={category.id} href={`/mobiles?category=${encodeURIComponent(category.name)}`} className="group flex w-[76px] shrink-0 flex-col items-center gap-2 md:w-[92px]">
+              <Link key={category.id} href={mobilesHref({ category: category.name })} className="group flex w-[76px] shrink-0 flex-col items-center gap-2 md:w-[92px]">
                 <span className="h-[66px] w-[66px] overflow-hidden rounded-full border-2 border-[#e7e9ec] bg-[#f3f5f4] p-1 transition group-hover:border-[#61cf8f] dark:border-[#343434] dark:bg-[#242424] md:h-[76px] md:w-[76px]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={getCategoryImageUrl(category.name)} alt={category.name} className="h-full w-full rounded-full object-cover" />
+                  <img src={getCategoryImageUrl(category.name, category.icon_url)} alt={category.name} className="h-full w-full rounded-full object-cover" />
                 </span>
                 <span className="line-clamp-1 text-center text-[9px] font-black text-[#50555a] dark:text-[#d3d3d3] md:text-[10px]">
                   {category.name}
@@ -272,13 +266,13 @@ export default async function Home() {
                 إعلانات جديدة من مستخدمين حقيقيين
               </p>
             </div>
-            <Link href="/mobiles" className="flex items-center gap-1 text-[10px] font-black text-[#079447] md:text-xs">
+            <Link href={mobilesHref()} className="flex items-center gap-1 text-[10px] font-black text-[#079447] md:text-xs">
               عرض المزيد
               <ChevronLeft className="h-4 w-4" />
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="product-card-grid">
             {latestProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
@@ -312,12 +306,12 @@ export default async function Home() {
                   </p>
                 </div>
               </div>
-              <Link href="/mobiles?sort=popular" className="flex items-center gap-1 text-[10px] font-black text-[#079447] md:text-xs">
+              <Link href={mobilesHref({ sort: 'popular' })} className="flex items-center gap-1 text-[10px] font-black text-[#079447] md:text-xs">
                 عرض الكل
                 <ChevronLeft className="h-4 w-4" />
               </Link>
             </div>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-5">
+            <div className="product-card-grid">
               {trendingProducts.slice(0, 10).map((product) => (
                 <ProductCard key={`trending-${product.id}`} product={product} />
               ))}

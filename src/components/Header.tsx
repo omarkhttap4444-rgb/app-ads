@@ -276,7 +276,7 @@ export default function Header() {
           </div>
         </div>
 
-        <div className="flex h-[104px] items-center gap-2.5 px-4 md:hidden" dir="ltr">
+        <div className="flex h-[104px] items-center gap-2.5 px-4 max-[340px]:gap-1.5 max-[340px]:px-2 md:hidden" dir="ltr">
           <button onClick={() => setDrawerOpen(true)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/10 backdrop-blur-sm" aria-label="فتح القائمة">
             <Menu className="h-7 w-7" strokeWidth={2.8} />
           </button>
@@ -285,7 +285,7 @@ export default function Header() {
             <Search className="h-6 w-6 shrink-0 text-[#48b765]" strokeWidth={2.8} />
             <input name="q" dir="rtl" aria-label="ابحث عن منتج" placeholder={searchPlaceholder} className="h-full min-w-0 flex-1 bg-transparent px-2 text-xs font-bold outline-none placeholder:text-[#8b95a1]" />
           </form>
-          <Link href="/mobiles" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/10 backdrop-blur-sm" aria-label="المتجر">
+          <Link href="/mobiles" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/10 backdrop-blur-sm max-[340px]:hidden" aria-label="المتجر">
             <Store className="h-7 w-7 fill-white/20" strokeWidth={2.4} />
           </Link>
           <Link href={user ? '/notifications' : '/login'} className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/10 backdrop-blur-sm" aria-label="الإشعارات">

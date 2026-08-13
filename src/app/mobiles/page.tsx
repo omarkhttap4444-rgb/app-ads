@@ -4,14 +4,25 @@ import { Metadata } from 'next';
 import { X } from 'lucide-react';
 import MobilesFiltersWrapper from '@/components/MobilesFiltersWrapper';
 import ProductCard, { type ProductCardProps } from '@/components/ProductCard';
-
-import { cookies } from 'next/headers';
+import JsonLd from '@/components/JsonLd';
+import { absoluteUrl } from '@/lib/seo';
 
 const productSelection = 'id, name, price, location, condition, slug, created_at, views_count, likes_count, comments_count, is_negotiable, is_sold, product_images(image_url), specifications';
 
 type Product = ProductCardProps['product'];
 type SmartSearchRow = { id: string };
 type CountryFilterable<T> = { or: (filters: string) => T };
+type Props = {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+};
+
+const getCollectionPath = (category: string, country: string) => {
+  const params = new URLSearchParams();
+  if (country === 'SA') params.set('country', 'SA');
+  if (category) params.set('category', category);
+  const query = params.toString();
+  return `/mobiles${query ? `?${query}` : ''}`;
+};
 
 const filterByCountry = <T,>(query: CountryFilterable<T>, country: string): T => {
   if (country === 'SA') {
@@ -31,28 +42,59 @@ const filterByCountry = <T,>(query: CountryFilterable<T>, country: string): T =>
   }
 };
 
-export async function generateMetadata(): Promise<Metadata> {
-  const cookieStore = await cookies();
-  const country = cookieStore.get('selected_country')?.value || 'EG';
-  const countrySuffix = country === 'SA' ? 'في السعودية' : 'في مصر';
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const params = await searchParams;
+  const requestedCountry = typeof params.country === 'string' ? params.country.toUpperCase() : '';
+  const country = requestedCountry === 'SA' ? 'SA' : 'EG';
+  const category = typeof params.category === 'string' ? params.category.trim() : '';
+  const q = typeof params.q === 'string' ? params.q.trim() : '';
+  const hasFacets = ['sort', 'condition', 'location', 'brand'].some(
+    (key) => typeof params[key] === 'string' && params[key],
+  );
+  const countryName = country === 'SA' ? 'السعودية' : 'مصر';
+  const title = category
+    ? `${category} للبيع في ${countryName} - جديد ومستعمل`
+    : `موبايلات وإلكترونيات للبيع في ${countryName}`;
+  const description = category
+    ? `تصفح أحدث إعلانات ${category} الجديدة والمستعملة في ${countryName}، قارن الأسعار وتواصل مباشرة مع البائع على سوق فون.`
+    : `تصفح الموبايلات والإلكترونيات الجديدة والمستعملة للبيع في ${countryName}. بحث ذكي، أسعار متنوعة وتواصل مباشر مع البائعين.`;
+  const canonicalPath = getCollectionPath(category, country);
+  const indexable = !q && !hasFacets;
+  const egyptPath = getCollectionPath(category, 'EG');
+  const saudiPath = getCollectionPath(category, 'SA');
   
   return {
-    title: `تصفح كل الهواتف | سوق فون ${countrySuffix}`,
-    description: `ابحث وتصفح أحدث الهواتف المعروضة للبيع بأسعار ممتازة ومن بائعين موثوقين ${countrySuffix}.`,
+    title,
+    description,
+    alternates: {
+      canonical: canonicalPath,
+      languages: {
+        'ar-EG': egyptPath,
+        'ar-SA': saudiPath,
+        'x-default': egyptPath,
+      },
+    },
+    robots: { index: indexable, follow: true },
+    openGraph: {
+      title,
+      description,
+      url: canonicalPath,
+      type: 'website',
+      images: ['/og.png'],
+      locale: country === 'SA' ? 'ar_SA' : 'ar_EG',
+    },
+    twitter: { card: 'summary_large_image', title, description, images: ['/og.png'] },
   };
 }
 
 export const dynamic = 'force-dynamic';
 
-type Props = {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-};
-
 export default async function MobilesPage(props: Props) {
-  const cookieStore = await cookies();
-  const selectedCountry = cookieStore.get('selected_country')?.value || 'EG';
-
   const searchParams = await props.searchParams;
+  const requestedCountry = typeof searchParams.country === 'string'
+    ? searchParams.country.toUpperCase()
+    : '';
+  const selectedCountry = requestedCountry === 'SA' ? 'SA' : 'EG';
   const q = typeof searchParams.q === 'string' ? searchParams.q : '';
   const sort = typeof searchParams.sort === 'string' ? searchParams.sort : '';
   const condition = typeof searchParams.condition === 'string' ? searchParams.condition : '';
@@ -129,20 +171,60 @@ export default async function MobilesPage(props: Props) {
   }
 
   const hasFilters = q || condition || location || sort || category || brand;
+  const collectionPath = getCollectionPath(category, selectedCountry);
+  const collectionName = category ? `${category} للبيع` : 'الموبايلات والإلكترونيات المعروضة للبيع';
+  const collectionJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    '@id': `${absoluteUrl(collectionPath)}#collection`,
+    url: absoluteUrl(collectionPath),
+    name: collectionName,
+    inLanguage: 'ar',
+    mainEntity: {
+      '@type': 'ItemList',
+      numberOfItems: products.length,
+      itemListElement: products.slice(0, 50).map((product, index) => ({
+        '@type': 'ListItem',
+        position: index + 1,
+        name: [product.specifications?.brand, product.specifications?.model]
+          .filter(Boolean)
+          .join(' ')
+          .trim() || product.name,
+        url: absoluteUrl(`/mobiles/${encodeURIComponent(product.slug)}`),
+      })),
+    },
+  };
 
   return (
     <main className="min-h-screen bg-[#f7f8f8] transition-colors dark:bg-[#0d0d0d]">
-      <div className="container mx-auto px-4 max-w-7xl py-6 md:py-8">
+      <JsonLd data={collectionJsonLd} />
+      <div className="container mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 md:py-8">
         
         {/* Search & Filters Card */}
-        <div className="mb-5 rounded-[26px] border border-[#e7e9ec] bg-white p-5 shadow-[0_14px_34px_-28px_rgba(16,24,40,0.4)] transition-colors dark:border-[#343434] dark:bg-[#1f1f1f] md:p-6">
+        <div className="mb-5 rounded-[22px] border border-[#e7e9ec] bg-white p-3.5 shadow-[0_14px_34px_-28px_rgba(16,24,40,0.4)] transition-colors dark:border-[#343434] dark:bg-[#1f1f1f] sm:rounded-[26px] sm:p-5 md:p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h1 className="text-lg font-black text-[#242628] dark:text-white md:text-xl">تصفح المنتجات</h1>
               <p className="mt-0.5 text-[11px] font-bold text-[#92989c]">البحث الذكي يقرب لك النتائج حتى في حالة الأخطاء الإملائية</p>
+              <nav className="mt-2 flex items-center gap-1 rounded-full bg-[#f1f4f2] p-1 dark:bg-[#292929]" aria-label="اختيار البلد">
+                <Link
+                  href={getCollectionPath(category, 'EG')}
+                  aria-current={selectedCountry === 'EG' ? 'page' : undefined}
+                  className={`rounded-full px-3 py-1 text-[10px] font-black transition ${selectedCountry === 'EG' ? 'bg-[#078b43] text-white shadow-sm' : 'text-[#697075] hover:text-[#078b43] dark:text-[#c7c7c7]'}`}
+                >
+                  🇪🇬 مصر <span className="opacity-75">الأساسية</span>
+                </Link>
+                <Link
+                  href={getCollectionPath(category, 'SA')}
+                  aria-current={selectedCountry === 'SA' ? 'page' : undefined}
+                  className={`rounded-full px-3 py-1 text-[10px] font-black transition ${selectedCountry === 'SA' ? 'bg-[#078b43] text-white shadow-sm' : 'text-[#697075] hover:text-[#078b43] dark:text-[#c7c7c7]'}`}
+                >
+                  🇸🇦 السعودية
+                </Link>
+              </nav>
             </div>
             {hasFilters && (
-              <Link href="/mobiles" className="text-xs font-bold text-rose-500 hover:text-rose-600 flex items-center gap-1 bg-rose-50 dark:bg-rose-950/30 px-3 py-1.5 rounded-lg transition-colors">
+              <Link href={selectedCountry === 'SA' ? '/mobiles?country=SA' : '/mobiles'} className="text-xs font-bold text-rose-500 hover:text-rose-600 flex items-center gap-1 bg-rose-50 dark:bg-rose-950/30 px-3 py-1.5 rounded-lg transition-colors">
                 <X className="w-3 h-3" />
                 مسح الفلاتر
               </Link>
@@ -193,7 +275,7 @@ export default async function MobilesPage(props: Props) {
         )}
 
         {/* Products Grid */}
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4 xl:grid-cols-5">
+        <div className="product-card-grid">
           {products.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}

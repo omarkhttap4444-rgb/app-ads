@@ -70,7 +70,8 @@ export default function Footer() {
             <ul className="space-y-2.5">
               {[
                 { label: 'الصفحة الرئيسية', href: '/' },
-                { label: 'تصفح الهواتف', href: '/mobiles' },
+                { label: 'منتجات مصر', href: '/mobiles' },
+                { label: 'منتجات السعودية', href: '/mobiles?country=SA' },
                 { label: 'أضف إعلانك', href: '/mobiles/add' },
                 { label: 'المفضلة', href: '/favorites' },
               ].map((link) => (

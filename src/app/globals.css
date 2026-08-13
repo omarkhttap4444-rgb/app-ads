@@ -161,6 +161,37 @@ body {
   box-shadow: 0 8px 20px -12px rgba(15, 23, 42, 0.36);
 }
 
+.product-card-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+@media (min-width: 360px) {
+  .product-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 768px) {
+  .product-card-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .product-card-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1280px) {
+  .product-card-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+
+@media (max-width: 390px) and (min-width: 360px) {
+  .product-card-footer { gap: 0.25rem; }
+  .product-card-stats { gap: 0.25rem; }
+  .product-card-actions { gap: 0.25rem; }
+}
+
 .app-bottom-nav {
   box-shadow: 0 -10px 28px rgba(15, 23, 42, 0.08);
 }

@@ -1,8 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Cairo, Inter } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import JsonLd from "@/components/JsonLd";
+import { SITE_NAME, SITE_URL } from "@/lib/seo";
 
 const cairo = Cairo({
   subsets: ["arabic", "latin"],
@@ -19,32 +21,93 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://souqphone.com"),
-  title: "سوق فون | بيع وشراء الهواتف المستعملة والجديدة في مصر",
-  description: "سوق فون - سوق الموبايلات الأول في مصر لبيع وشراء الهواتف المستعملة والجديدة وتواصل مباشر مع البائعين بدون عمولات",
-  keywords: ["سوق فون", "بيع هواتف مستعملة", "شراء هواتف مستعملة", "سوق موبايلات مصر", "هواتف مستعملة", "بيع وشراء الهواتف"],
+  metadataBase: new URL(SITE_URL),
+  applicationName: SITE_NAME,
+  title: {
+    default: "سوق فون مصر | بيع وشراء الموبايلات والإلكترونيات",
+    template: "%s | سوق فون",
+  },
+  description: "سوق فون مصر لبيع وشراء الموبايلات الجديدة والمستعملة والإلكترونيات. إعلانات حقيقية وتواصل مباشر وآمن بدون عمولة، مع قسم مستقل للسعودية.",
+  keywords: ["سوق فون", "موبايلات للبيع", "هواتف مستعملة", "موبايلات مستعملة", "بيع موبايل", "شراء موبايل", "سوق موبايلات مصر", "جوالات السعودية", "إلكترونيات مستعملة"],
+  category: "marketplace",
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
+  referrer: "origin-when-cross-origin",
+  formatDetection: { email: false, address: false, telephone: false },
   alternates: {
-    canonical: "https://souqphone.com/",
+    canonical: "/",
   },
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
   },
   openGraph: {
-    title: "سوق فون | المنصة الأولى لبيع وشراء الهواتف في مصر",
-    description: "سوق فون - سوق الموبايلات الأول في مصر",
-    url: "https://souqphone.com",
-    siteName: "سوق فون",
-    images: [{ url: "/logo.png", width: 512, height: 512, alt: "سوق فون" }],
+    title: "سوق فون | كل السوق في إيدك",
+    description: "سوق الموبايلات والإلكترونيات الجديدة والمستعملة في مصر، مع قسم مستقل للسعودية.",
+    url: SITE_URL,
+    siteName: SITE_NAME,
+    images: [{ url: "/og.png", width: 1733, height: 909, alt: "سوق فون - كل السوق في إيدك" }],
     locale: "ar_EG",
+    alternateLocale: ["ar_SA"],
     type: "website",
   },
   twitter: {
-    card: "summary",
-    title: "سوق فون | المنصة الأولى لبيع وشراء الهواتف في مصر",
-    description: "سوق فون - سوق الموبايلات الأول في مصر",
-    images: ["/logo.png"],
+    card: "summary_large_image",
+    title: "سوق فون | كل السوق في إيدك",
+    description: "بيع واشتري الموبايلات والإلكترونيات وتواصل مباشرة مع البائع.",
+    images: ["/og.png"],
   },
+  verification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+    ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }
+    : undefined,
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#078b43" },
+    { media: "(prefers-color-scheme: dark)", color: "#0d0d0d" },
+  ],
+  colorScheme: "light dark",
+};
+
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`,
+      name: SITE_NAME,
+      alternateName: "Souq Phone",
+      url: SITE_URL,
+      logo: { "@type": "ImageObject", url: `${SITE_URL}/logo.png`, width: 512, height: 512 },
+      image: `${SITE_URL}/og.png`,
+      description: "منصة عربية لبيع وشراء الموبايلات والإلكترونيات الجديدة والمستعملة.",
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: SITE_NAME,
+      alternateName: "Souq Phone",
+      inLanguage: "ar",
+      publisher: { "@id": `${SITE_URL}/#organization` },
+      potentialAction: {
+        "@type": "SearchAction",
+        target: { "@type": "EntryPoint", urlTemplate: `${SITE_URL}/mobiles?q={search_term_string}` },
+        "query-input": "required name=search_term_string",
+      },
+    },
+  ],
 };
 
 const themeScript = `
@@ -79,6 +142,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="min-h-full flex flex-col bg-[#f7f8f8] dark:bg-[#0d0d0d] text-[#202124] dark:text-[#f1f1f1] pb-20 md:pb-0 transition-colors duration-200 font-[var(--font-cairo)]" style={{ fontFamily: "'Cairo', 'Inter', sans-serif" }}>
+        <JsonLd data={websiteJsonLd} />
         <Header />
         <div className="flex-1">
           {children}

@@ -55,9 +55,9 @@ export default function SmartSearchInput({
       setLoading(true);
       try {
         const getCountryFromCookie = () => {
-          if (typeof window === 'undefined') return 'SA';
+          if (typeof window === 'undefined') return 'EG';
           const match = document.cookie.match(/(^|;)\s*selected_country\s*=\s*([^;]+)/);
-          return match ? match[2] : 'SA';
+          return match ? match[2] : 'EG';
         };
 
         const country = getCountryFromCookie();

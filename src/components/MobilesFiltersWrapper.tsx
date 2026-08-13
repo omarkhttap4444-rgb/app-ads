@@ -31,7 +31,7 @@ interface MobilesFiltersWrapperProps {
 }
 
 export default function MobilesFiltersWrapper({
-  categories, initialQ, initialCategory, initialLocation, initialCondition, initialSort, selectedCountry = 'SA'
+  categories, initialQ, initialCategory, initialLocation, initialCondition, initialSort, selectedCountry = 'EG'
 }: MobilesFiltersWrapperProps) {
   const router = useRouter();
   const searchParams = useSearchParams();

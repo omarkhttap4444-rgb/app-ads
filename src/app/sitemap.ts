@@ -1,50 +1,104 @@
-import { MetadataRoute } from 'next';
+import type { MetadataRoute } from 'next';
+
+import { getCategoryImageUrl } from '@/lib/category-images';
+import { isRemoteMediaUrl } from '@/lib/media';
+import { SITE_URL } from '@/lib/seo';
 import { supabase } from '@/lib/supabase';
 
-// Revalidate the sitemap every hour to include new products
 export const revalidate = 3600;
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://souqphone.com';
+type ProductSitemapRow = {
+  slug: string;
+  seller_id: string;
+  last_updated: string | null;
+  product_images: Array<{ image_url: string | null }> | null;
+};
 
-  // Base pages
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const routes: MetadataRoute.Sitemap = [
-    {
-      url: `${baseUrl}`,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 1.0,
-    },
-    {
-      url: `${baseUrl}/mobiles`,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.9,
-    },
+    { url: SITE_URL, changeFrequency: 'daily', priority: 1 },
+    { url: `${SITE_URL}/mobiles`, changeFrequency: 'hourly', priority: 0.95 },
+    { url: `${SITE_URL}/mobiles?country=SA`, changeFrequency: 'hourly', priority: 0.85 },
   ];
 
   try {
-    // Fetch all product slugs from Supabase
-    // Using a high limit to ensure we get products, in production you might paginate if > 10,000
-    const { data: products } = await supabase
-      .from('products')
-      .select('slug, last_updated')
-      .order('last_updated', { ascending: false })
-      .limit(5000);
+    const [{ data: categories }, products] = await Promise.all([
+      supabase
+        .from('categories')
+        .select('name,icon_url')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true }),
+      loadAllProducts(),
+    ]);
 
-    if (products) {
-      const productRoutes = products.map((product) => ({
-        url: `${baseUrl}/mobiles/${product.slug}`,
-        lastModified: new Date(product.last_updated),
-        changeFrequency: 'daily' as const,
+    for (const category of categories ?? []) {
+      const categoryImage = category.icon_url?.startsWith('http')
+        ? category.icon_url
+        : `${SITE_URL}${getCategoryImageUrl(category.name)}`;
+      const egyptCategoryQuery = new URLSearchParams({ category: category.name }).toString();
+      const saudiCategoryQuery = new URLSearchParams({ country: 'SA', category: category.name }).toString();
+      routes.push(
+        {
+          url: `${SITE_URL}/mobiles?${egyptCategoryQuery}`,
+          changeFrequency: 'daily',
+          priority: 0.88,
+          images: [categoryImage],
+        },
+        {
+          url: `${SITE_URL}/mobiles?${saudiCategoryQuery}`,
+          changeFrequency: 'daily',
+          priority: 0.78,
+          images: [categoryImage],
+        },
+      );
+    }
+
+    const sellerIds = new Set<string>();
+    for (const product of products) {
+      if (!product.slug) continue;
+      sellerIds.add(product.seller_id);
+      routes.push({
+        url: `${SITE_URL}/mobiles/${encodeURIComponent(product.slug)}`,
+        lastModified: product.last_updated ? new Date(product.last_updated) : undefined,
+        changeFrequency: 'daily',
         priority: 0.8,
-      }));
+        images: (product.product_images ?? [])
+          .map((image) => image.image_url)
+          .filter(isRemoteMediaUrl),
+      });
+    }
 
-      return [...routes, ...productRoutes];
+    for (const sellerId of sellerIds) {
+      routes.push({
+        url: `${SITE_URL}/store/${sellerId}`,
+        changeFrequency: 'daily',
+        priority: 0.7,
+      });
     }
   } catch (error) {
-    console.error('Error generating sitemap:', error);
+    console.error('[sitemap] Could not load all public URLs:', error);
   }
 
-  return routes;
+  return routes.slice(0, 50_000);
+}
+
+async function loadAllProducts() {
+  const pageSize = 1_000;
+  const maximumProducts = 45_000;
+  const products: ProductSitemapRow[] = [];
+
+  for (let from = 0; from < maximumProducts; from += pageSize) {
+    const { data, error } = await supabase
+      .from('products')
+      .select('slug,seller_id,last_updated,product_images(image_url)')
+      .order('last_updated', { ascending: false })
+      .range(from, from + pageSize - 1);
+
+    if (error) throw error;
+    const page = (data ?? []) as ProductSitemapRow[];
+    products.push(...page);
+    if (page.length < pageSize) break;
+  }
+
+  return products;
 }

@@ -6,10 +6,11 @@ import {
   Eye,
   MapPin,
   MessageSquare,
-  ThumbsUp,
 } from 'lucide-react';
 
 import FavoriteButton from './FavoriteButton';
+import ProductLikeButton from './ProductLikeButton';
+import { isRemoteMediaUrl } from '@/lib/media';
 
 export type ProductCardProps = {
   product: {
@@ -77,12 +78,13 @@ export default function ProductCard({
   onFavoriteToggle,
 }: ProductCardProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [failedImages, setFailedImages] = useState<string[]>([]);
 
-  const images = Array.isArray(product.product_images)
+  const images = (Array.isArray(product.product_images)
     ? product.product_images
         .map((image) => image.image_url)
-        .filter(Boolean)
-    : [];
+        .filter(isRemoteMediaUrl)
+    : []).filter((image) => !failedImages.includes(image));
   const href = `/mobiles/${product.slug}`;
   const title = [
     product.specifications?.brand,
@@ -120,15 +122,15 @@ export default function ProductCard({
 
   return (
     <article className="app-product-card group relative flex h-full min-w-0 flex-col overflow-hidden rounded-[22px] border border-[#e7e9ec] bg-white transition duration-300 hover:-translate-y-1 hover:border-[#cfe9da] dark:border-[#343434] dark:bg-[#1f1f1f] dark:hover:border-[#315d43]">
-      <div className="absolute right-3 top-3 z-30">
+      <div className="absolute right-2 top-2 z-30 sm:right-3 sm:top-3">
         <FavoriteButton
           productId={product.id}
           onToggle={onFavoriteToggle}
-          className="!h-11 !w-11 !border-white/25 !bg-black/10 !shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18),0_5px_14px_rgba(0,0,0,0.08)]"
+          className="!h-9 !w-9 !border-white/25 !bg-black/10 !shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18),0_5px_14px_rgba(0,0,0,0.08)] sm:!h-11 sm:!w-11"
         />
       </div>
 
-      <div className="absolute left-3 top-3 z-30">
+      <div className="absolute left-2 top-2 z-30 sm:left-3 sm:top-3">
         <span className={`inline-flex items-center gap-1 rounded-lg bg-gradient-to-r ${conditionClass} px-2.5 py-1 text-[9px] font-black text-white shadow-md`}>
           {isLikeNew ? '✦' : isNew ? '★' : '◷'}
           {condition}
@@ -148,6 +150,10 @@ export default function ProductCard({
                 src={images[currentImageIndex] ?? images[0]}
                 alt={title}
                 loading="lazy"
+                onError={() => {
+                  const failed = images[currentImageIndex] ?? images[0];
+                  if (failed) setFailedImages((current) => [...new Set([...current, failed])]);
+                }}
                 className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.025]"
               />
               <span className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/5 via-transparent to-black/8" />
@@ -183,7 +189,7 @@ export default function ProductCard({
         </div>
       </Link>
 
-      <div className="flex flex-1 flex-col px-3.5 pb-3 pt-3.5 md:px-4">
+      <div className="flex flex-1 flex-col px-2.5 pb-2.5 pt-3 sm:px-3.5 sm:pb-3 sm:pt-3.5 md:px-4">
         <Link href={href} className="block">
           <h3 className="truncate text-[13px] font-black leading-6 text-[#242628] transition group-hover:text-[#078d45] dark:text-[#f1f1f1] md:text-[15px]">
             {title}
@@ -216,20 +222,16 @@ export default function ProductCard({
           </div>
         </Link>
 
-        <div className="mt-auto flex items-center justify-between gap-2 pt-3">
-          <div className="flex items-center gap-3 text-[#5f6368] dark:text-[#c8c8c8]">
+        <div className="product-card-footer mt-auto flex items-center justify-between gap-1.5 pt-3 sm:gap-2">
+          <div className="product-card-stats flex items-center gap-1.5 text-[#5f6368] dark:text-[#c8c8c8] sm:gap-3">
             <span className="flex items-center gap-1 text-[10px] font-black">
               <Eye className="h-4 w-4" />
               {product.views_count ?? 0}
             </span>
-            <span className="flex items-center gap-1 text-[10px] font-black">
-              <ThumbsUp className="h-4 w-4" />
-              {product.likes_count ?? 0}
-            </span>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Link href={`${href}#comments`} aria-label="التعليقات" className="app-action-shadow relative flex h-10 w-10 items-center justify-center rounded-[14px] bg-white text-[#35383b] transition hover:text-[#079447] dark:bg-[#282828] dark:text-white">
+          <div className="product-card-actions flex items-center gap-1.5 sm:gap-2">
+            <Link href={`${href}#comments`} aria-label="التعليقات" className="app-action-shadow relative flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#35383b] transition hover:text-[#079447] dark:bg-[#282828] dark:text-white sm:h-10 sm:w-10 sm:rounded-[14px]">
               <MessageSquare className="h-5 w-5" />
               {(product.comments_count ?? 0) > 0 && (
                 <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#1877f2] px-1 text-[7px] font-black text-white">
@@ -239,9 +241,12 @@ export default function ProductCard({
                 </span>
               )}
             </Link>
-            <Link href={href} aria-label="عرض المنتج" className="app-action-shadow flex h-10 w-10 items-center justify-center rounded-[14px] bg-white text-[#35383b] transition hover:text-[#079447] dark:bg-[#282828] dark:text-white">
-              <ThumbsUp className="h-5 w-5" />
-            </Link>
+            <ProductLikeButton
+              productId={product.id}
+              initialCount={product.likes_count ?? 0}
+              compact
+              className="!h-9 !min-w-9 !rounded-xl !px-1.5 sm:!h-10 sm:!min-w-10 sm:!rounded-[14px] sm:!px-2"
+            />
           </div>
         </div>
       </div>

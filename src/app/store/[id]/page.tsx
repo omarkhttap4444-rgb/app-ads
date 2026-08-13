@@ -1,9 +1,10 @@
 import { supabase } from '@/lib/supabase';
 import { notFound } from 'next/navigation';
-import Link from 'next/link';
 import { Metadata } from 'next';
 import ProfileHeader from '@/components/ProfileHeader';
 import ProductCard from '@/components/ProductCard';
+import JsonLd from '@/components/JsonLd';
+import { absoluteUrl } from '@/lib/seo';
 
 export const revalidate = 60;
 
@@ -17,13 +18,24 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     .eq('id', params.id)
     .single();
 
-  if (!store) return { title: 'البائع غير موجود | سوق فون' };
+  if (!store) return { title: 'البائع غير موجود', robots: { index: false, follow: false } };
 
-  const title = `متجر ${store.name} | سوق فون`;
+  const title = `إعلانات ${store.name}`;
   const description = store.bio || `تصفح الهواتف المعروضة للبيع من ${store.name} في ${store.governorate || 'مصر'}.`;
+  const canonicalPath = `/store/${params.id}`;
   return {
-    title, description,
-    openGraph: { title, description, images: [store.profile_image_url || '/logo.png'] },
+    title,
+    description: description.slice(0, 165),
+    alternates: { canonical: canonicalPath },
+    robots: { index: true, follow: true },
+    openGraph: {
+      title,
+      description,
+      url: canonicalPath,
+      type: 'profile',
+      images: [store.profile_image_url || '/og.png'],
+    },
+    twitter: { card: 'summary_large_image', title, description, images: [store.profile_image_url || '/og.png'] },
   };
 }
 
@@ -40,12 +52,47 @@ export default async function StoreProfilePage(props: Props) {
 
   const { data: products } = await supabase
     .from('products')
-    .select('id, name, price, location, condition, slug, views_count, is_negotiable, product_images(image_url), specifications')
+    .select('id, name, price, location, condition, slug, created_at, views_count, likes_count, comments_count, is_negotiable, is_sold, product_images(image_url), specifications')
     .eq('seller_id', params.id)
     .order('created_at', { ascending: false });
 
+  const storeUrl = absoluteUrl(`/store/${params.id}`);
+  const profileJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'ProfilePage',
+    '@id': `${storeUrl}#profile`,
+    url: storeUrl,
+    name: `إعلانات ${store.name}`,
+    description: store.bio || `صفحة البائع ${store.name} على سوق فون.`,
+    inLanguage: 'ar',
+    mainEntity: {
+      '@type': 'Person',
+      '@id': `${storeUrl}#seller`,
+      name: store.name,
+      description: store.bio || undefined,
+      image: store.profile_image_url || undefined,
+      address: store.governorate
+        ? { '@type': 'PostalAddress', addressRegion: store.governorate }
+        : undefined,
+    },
+  };
+  const listingsJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: `إعلانات ${store.name}`,
+    numberOfItems: products?.length ?? 0,
+    itemListElement: (products ?? []).slice(0, 50).map((product, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: product.name,
+      url: absoluteUrl(`/mobiles/${encodeURIComponent(product.slug)}`),
+    })),
+  };
+
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-[#0a0e17] pb-20 transition-colors">
+      <JsonLd data={profileJsonLd} />
+      <JsonLd data={listingsJsonLd} />
       <ProfileHeader store={store} productsCount={products?.length || 0} />
 
       <div className="container mx-auto px-4 max-w-7xl relative z-10">
@@ -58,7 +105,7 @@ export default async function StoreProfilePage(props: Props) {
             )}
           </h2>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
+          <div className="product-card-grid">
             {products?.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { ChevronRight, ChevronLeft, Smartphone } from 'lucide-react';
 
 interface ProductGalleryProps {
@@ -10,49 +10,70 @@ interface ProductGalleryProps {
 
 export default function ProductGallery({ images, productName }: ProductGalleryProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [failedImages, setFailedImages] = useState<string[]>([]);
+  const touchStartX = useRef<number | null>(null);
+  const availableImages = useMemo(
+    () => images.filter((image) => !failedImages.includes(image)),
+    [failedImages, images],
+  );
+  const safeActiveIndex = Math.min(activeIndex, Math.max(0, availableImages.length - 1));
 
-  if (!images || images.length === 0) {
+  if (availableImages.length === 0) {
     return (
       <div className="aspect-[4/5] md:aspect-square bg-slate-50 dark:bg-slate-950 rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 text-sm gap-2">
         <Smartphone className="w-8 h-8 text-slate-350 dark:text-slate-700" />
-        <span>لا توجد صور متوفرة</span>
+        <span>لا توجد صورة متاحة</span>
       </div>
     );
   }
 
   const handleNext = () => {
-    setActiveIndex((prev) => (prev + 1) % images.length);
+    setActiveIndex((prev) => (prev + 1) % availableImages.length);
   };
 
   const handlePrev = () => {
-    setActiveIndex((prev) => (prev - 1 + images.length) % images.length);
+    setActiveIndex((prev) => (prev - 1 + availableImages.length) % availableImages.length);
+  };
+
+  const handleTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (touchStartX.current === null || availableImages.length <= 1) return;
+    const distance = event.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(distance) < 42) return;
+    if (distance > 0) handlePrev();
+    else handleNext();
   };
 
   return (
     <div className="space-y-4">
       {/* Main Image Viewport */}
-      <div className="aspect-[4/5] md:aspect-square bg-slate-50 dark:bg-slate-950 rounded-2xl overflow-hidden relative border border-slate-100 dark:border-slate-800 flex items-center justify-center group shadow-inner">
+      <div
+        className="aspect-[4/5] overflow-hidden relative border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-950 flex items-center justify-center group shadow-inner sm:rounded-2xl md:aspect-square"
+        onTouchStart={(event) => { touchStartX.current = event.touches[0].clientX; }}
+        onTouchEnd={handleTouchEnd}
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={images[activeIndex]}
-          alt={`${productName} - صورة ${activeIndex + 1}`}
-          className="object-contain w-full h-full p-4 select-none transition-all duration-300"
+          src={availableImages[safeActiveIndex]}
+          alt={`${productName} - صورة ${safeActiveIndex + 1}`}
+          onError={() => setFailedImages((current) => [...new Set([...current, availableImages[safeActiveIndex]])])}
+          className="object-contain w-full h-full p-2 sm:p-4 select-none transition-all duration-300"
         />
 
         {/* Image Counter Badge */}
-        {images.length > 1 && (
+        {availableImages.length > 1 && (
           <span className="absolute top-4 right-4 bg-black/80 text-white text-[11px] font-bold px-3 py-1 rounded-full dir-ltr z-20">
-            {activeIndex + 1} / {images.length}
+            {safeActiveIndex + 1} / {availableImages.length}
           </span>
         )}
 
         {/* Slide Controls */}
-        {images.length > 1 && (
+        {availableImages.length > 1 && (
           <>
             {/* Prev (Left in RTL, but we do next/prev absolute matching browser directions) */}
             <button
               onClick={handlePrev}
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 active:scale-95 transition-all cursor-pointer opacity-0 group-hover:opacity-100"
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 active:scale-95 transition-all cursor-pointer md:opacity-0 md:group-hover:opacity-100"
               title="الصورة السابقة"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -61,7 +82,7 @@ export default function ProductGallery({ images, productName }: ProductGalleryPr
             {/* Next (Right) */}
             <button
               onClick={handleNext}
-              className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 active:scale-95 transition-all cursor-pointer opacity-0 group-hover:opacity-100"
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 active:scale-95 transition-all cursor-pointer md:opacity-0 md:group-hover:opacity-100"
               title="الصورة التالية"
             >
               <ChevronRight className="w-5 h-5" />
@@ -71,14 +92,14 @@ export default function ProductGallery({ images, productName }: ProductGalleryPr
       </div>
 
       {/* Thumbnails Navigation */}
-      {images.length > 1 && (
+      {availableImages.length > 1 && (
         <div className="grid grid-cols-5 gap-2.5">
-          {images.map((img, idx) => (
+          {availableImages.map((img, idx) => (
             <button
               key={idx}
               onClick={() => setActiveIndex(idx)}
               className={`aspect-square rounded-xl bg-slate-50 dark:bg-slate-950 relative overflow-hidden border cursor-pointer transition-all ${
-                activeIndex === idx
+                safeActiveIndex === idx
                   ? 'border-teal-500 ring-2 ring-teal-500/20'
                   : 'border-slate-150 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
               }`}
