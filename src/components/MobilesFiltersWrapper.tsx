@@ -56,6 +56,7 @@ export default function MobilesFiltersWrapper({
           <SmartSearchInput 
             defaultValue={initialQ}
             onSearchSubmit={handleSearchSubmit}
+            country={selectedCountry}
             placeholder="ابحث بالاسم أو الماركة..."
             className="w-full bg-transparent px-3 py-0.5 outline-none text-slate-800 dark:text-white font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm"
           />

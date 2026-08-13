@@ -13,11 +13,13 @@ interface Suggestion {
 export default function SmartSearchInput({ 
   defaultValue = '', 
   onSearchSubmit,
+  country,
   placeholder = 'ابحث عن موبايل (مثال: آيفون 13 برو ماكس)...',
   className = 'w-full bg-transparent px-3 py-1 outline-none text-slate-800 dark:text-white font-medium placeholder:text-slate-400 dark:placeholder:text-slate-650 text-sm'
 }: { 
   defaultValue?: string; 
   onSearchSubmit?: (val: string) => void;
+  country?: string;
   placeholder?: string;
   className?: string;
 }) {
@@ -54,18 +56,19 @@ export default function SmartSearchInput({
     const delayDebounce = setTimeout(async () => {
       setLoading(true);
       try {
-        const getCountryFromCookie = () => {
+        const getCountryFromRequest = () => {
+          if (country === 'EG' || country === 'SA') return country;
           if (typeof window === 'undefined') return 'EG';
           const match = document.cookie.match(/(^|;)\s*selected_country\s*=\s*([^;]+)/);
           return match ? match[2] : 'EG';
         };
 
-        const country = getCountryFromCookie();
+        const activeCountry = getCountryFromRequest();
         let dbQuery = supabase
           .from('products')
           .select('name, category, specifications');
 
-        if (country === 'SA') {
+        if (activeCountry === 'SA') {
           const saudiRegions = ['الرياض', 'مكة المكرمة', 'المدينة المنورة', 'المنطقة الشرقية', 'القصيم', 'عسير', 'تبوك', 'حائل', 'الحدود الشمالية', 'جازان', 'نجران', 'الباحة', 'الجوف'];
           const orConditions = saudiRegions.map(region => `location.ilike.${region}%`).join(',');
           dbQuery = dbQuery.or(orConditions);
@@ -139,7 +142,7 @@ export default function SmartSearchInput({
     }, 250);
 
     return () => clearTimeout(delayDebounce);
-  }, [query]);
+  }, [country, query]);
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();

@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { cookies } from 'next/headers';
 import Link from 'next/link';
 import {
   BadgeCheck,
@@ -16,6 +15,7 @@ import BrandSlider from '@/components/BrandSlider';
 import HomeAccountPrompt from '@/components/HomeAccountPrompt';
 import ProductCard from '@/components/ProductCard';
 import { getCategoryImageUrl } from '@/lib/category-images';
+import { getRequestCountry } from '@/lib/request-country';
 import { supabase } from '@/lib/supabase';
 
 const productSelection = `
@@ -131,8 +131,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const cookieStore = await cookies();
-  const country = cookieStore.get('selected_country')?.value || 'EG';
+  const country = await getRequestCountry();
   const mobilesHref = (filters: Record<string, string> = {}) => {
     const params = new URLSearchParams();
     if (country === 'SA') params.set('country', 'SA');

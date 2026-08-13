@@ -6,6 +6,7 @@ import MobilesFiltersWrapper from '@/components/MobilesFiltersWrapper';
 import ProductCard, { type ProductCardProps } from '@/components/ProductCard';
 import JsonLd from '@/components/JsonLd';
 import { absoluteUrl } from '@/lib/seo';
+import { getRequestCountry } from '@/lib/request-country';
 
 const productSelection = 'id, name, price, location, condition, slug, created_at, views_count, likes_count, comments_count, is_negotiable, is_sold, product_images(image_url), specifications';
 
@@ -45,7 +46,7 @@ const filterByCountry = <T,>(query: CountryFilterable<T>, country: string): T =>
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const params = await searchParams;
   const requestedCountry = typeof params.country === 'string' ? params.country.toUpperCase() : '';
-  const country = requestedCountry === 'SA' ? 'SA' : 'EG';
+  const country = await getRequestCountry(requestedCountry);
   const category = typeof params.category === 'string' ? params.category.trim() : '';
   const q = typeof params.q === 'string' ? params.q.trim() : '';
   const hasFacets = ['sort', 'condition', 'location', 'brand'].some(
@@ -94,7 +95,7 @@ export default async function MobilesPage(props: Props) {
   const requestedCountry = typeof searchParams.country === 'string'
     ? searchParams.country.toUpperCase()
     : '';
-  const selectedCountry = requestedCountry === 'SA' ? 'SA' : 'EG';
+  const selectedCountry = await getRequestCountry(requestedCountry);
   const q = typeof searchParams.q === 'string' ? searchParams.q : '';
   const sort = typeof searchParams.sort === 'string' ? searchParams.sort : '';
   const condition = typeof searchParams.condition === 'string' ? searchParams.condition : '';
@@ -212,7 +213,7 @@ export default async function MobilesPage(props: Props) {
                   aria-current={selectedCountry === 'EG' ? 'page' : undefined}
                   className={`rounded-full px-3 py-1 text-[10px] font-black transition ${selectedCountry === 'EG' ? 'bg-[#078b43] text-white shadow-sm' : 'text-[#697075] hover:text-[#078b43] dark:text-[#c7c7c7]'}`}
                 >
-                  🇪🇬 مصر <span className="opacity-75">الأساسية</span>
+                  🇪🇬 مصر
                 </Link>
                 <Link
                   href={getCollectionPath(category, 'SA')}
