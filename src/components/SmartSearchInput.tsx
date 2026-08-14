@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, Tag, Building2, Smartphone, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { SAUDI_MARKET_ENABLED } from '@/lib/market-config';
 
 interface Suggestion {
   text: string;
@@ -57,6 +58,7 @@ export default function SmartSearchInput({
       setLoading(true);
       try {
         const getCountryFromRequest = () => {
+          if (!SAUDI_MARKET_ENABLED) return 'EG';
           if (country === 'EG' || country === 'SA') return country;
           if (typeof window === 'undefined') return 'EG';
           const match = document.cookie.match(/(^|;)\s*selected_country\s*=\s*([^;]+)/);

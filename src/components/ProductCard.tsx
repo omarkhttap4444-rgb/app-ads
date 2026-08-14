@@ -11,6 +11,7 @@ import {
 import FavoriteButton from './FavoriteButton';
 import ProductLikeButton from './ProductLikeButton';
 import { isRemoteMediaUrl } from '@/lib/media';
+import { isSaudiMarketLocation, SAUDI_MARKET_ENABLED } from '@/lib/market-config';
 
 export type ProductCardProps = {
   product: {
@@ -93,9 +94,7 @@ export default function ProductCard({
     .filter(Boolean)
     .join(' ')
     .trim() || product.name;
-  const isSaudi = /الرياض|جدة|مكة|الدمام|السعودية|riyadh|jeddah|saudi/i.test(
-    product.location ?? '',
-  );
+  const isSaudi = isSaudiMarketLocation(product.location);
   const timeAgo = getTimeAgo(product.created_at);
   const condition = product.condition?.trim() || 'مستعمل';
   const isNew = condition.includes('جديد') || /new/i.test(condition);
@@ -106,6 +105,8 @@ export default function ProductCard({
       ? 'from-[#008f83] to-[#22a99d]'
       : 'from-[#4f6971] to-[#6e858c]';
   const acceptsExchange = isTruthy(product.specifications?.accepts_exchange);
+
+  if (!SAUDI_MARKET_ENABLED && isSaudi) return null;
 
   const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
     if (images.length <= 1) return;

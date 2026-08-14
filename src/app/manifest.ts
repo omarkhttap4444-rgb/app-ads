@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'سوق فون - بيع وشراء الموبايلات',
     short_name: 'سوق فون',
-    description: 'منصة بيع وشراء الموبايلات والإلكترونيات الجديدة والمستعملة في مصر والسعودية.',
+    description: 'منصة بيع وشراء الموبايلات والإلكترونيات الجديدة والمستعملة في مصر.',
     start_url: '/',
     display: 'standalone',
     background_color: '#f7f8f8',

@@ -1,12 +1,15 @@
 import 'server-only';
 
 import { headers } from 'next/headers';
+import { SAUDI_MARKET_ENABLED } from '@/lib/market-config';
 
 export type SupportedCountry = 'EG' | 'SA';
 
 export async function getRequestCountry(
   explicitCountry?: string | null,
 ): Promise<SupportedCountry> {
+  if (!SAUDI_MARKET_ENABLED) return 'EG';
+
   const requested = explicitCountry?.trim().toUpperCase();
   if (requested === 'EG' || requested === 'SA') return requested;
 

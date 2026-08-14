@@ -30,6 +30,7 @@ import ProductLikeButton from '@/components/ProductLikeButton';
 import ProductViewCounter from '@/components/ProductViewCounter';
 import ShareProductButton from '@/components/ShareProductButton';
 import { isRemoteMediaUrl } from '@/lib/media';
+import { isSaudiMarketLocation, SAUDI_MARKET_ENABLED } from '@/lib/market-config';
 import { absoluteUrl, productConditionUrl } from '@/lib/seo';
 import { supabase } from '@/lib/supabase';
 
@@ -37,8 +38,7 @@ export const dynamic = 'force-dynamic';
 
 type Props = { params: Promise<{ slug: string }> };
 
-const saudiPattern = /الرياض|جدة|مكة|الدمام|الخبر|السعودية|riyadh|jeddah|dammam|khobar|saudi/i;
-const isSaudiLocation = (location?: string | null) => saudiPattern.test(location ?? '');
+const isSaudiLocation = isSaudiMarketLocation;
 
 const getImages = (rows: Array<{ image_url?: string | null }> | null | undefined) =>
   (rows ?? []).map((image) => image.image_url).filter(isRemoteMediaUrl);
@@ -70,7 +70,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .eq('slug', decodedSlug)
     .single();
 
-  if (!product) return { title: 'المنتج غير موجود', robots: { index: false, follow: false } };
+  if (!product || (!SAUDI_MARKET_ENABLED && isSaudiLocation(product.location))) {
+    return { title: 'المنتج غير موجود', robots: { index: false, follow: false } };
+  }
 
   const specs = (product.specifications ?? {}) as Record<string, unknown>;
   const displayName = [specs.brand, specs.model].filter(Boolean).join(' ').trim() || product.name;
@@ -121,6 +123,7 @@ export default async function ProductPage({ params }: Props) {
     .single();
 
   if (productError || !product) notFound();
+  if (!SAUDI_MARKET_ENABLED && isSaudiLocation(product.location)) notFound();
 
   const [{ data: seller }, { data: similarProducts }] = await Promise.all([
     supabase
@@ -143,6 +146,9 @@ export default async function ProductPage({ params }: Props) {
   const displayName = [brand, model].filter(Boolean).join(' ').trim() || product.name;
   const images = getImages(product.product_images);
   const isSaudi = isSaudiLocation(product.location);
+  const visibleSimilarProducts = SAUDI_MARKET_ENABLED
+    ? similarProducts
+    : similarProducts?.filter((item) => !isSaudiLocation(item.location));
   const currency = isSaudi ? 'ر.س' : 'ج.م';
   const locale = isSaudi ? 'ar-SA' : 'ar-EG';
   const sellerName = seller?.name || product.seller_name || 'بائع سوق فون';
@@ -345,10 +351,10 @@ export default async function ProductPage({ params }: Props) {
           </aside>
         </div>
 
-        {similarProducts && similarProducts.length > 0 && (
+        {visibleSimilarProducts && visibleSimilarProducts.length > 0 && (
           <section className="mt-7">
             <h2 className="mb-4 flex items-center gap-2 text-base font-black text-[#242628] dark:text-white"><span className="h-5 w-1.5 rounded-full bg-[#12b95f]" />منتجات مشابهة</h2>
-            <div className="product-card-grid">{similarProducts.map((item) => <ProductCard key={item.id} product={item} />)}</div>
+            <div className="product-card-grid">{visibleSimilarProducts.map((item) => <ProductCard key={item.id} product={item} />)}</div>
           </section>
         )}
       </div>

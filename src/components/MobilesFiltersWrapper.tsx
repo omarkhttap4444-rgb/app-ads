@@ -1,9 +1,9 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import { Search, MapPin, SlidersHorizontal, ArrowUpDown, Tag, Smartphone } from 'lucide-react';
 import SmartSearchInput from './SmartSearchInput';
+import PlayStoreLink from './PlayStoreLink';
 
 const GOVERNORATES = [
   'القاهرة', 'الجيزة', 'الإسكندرية', 'القليوبية', 'الشرقية', 'الدقهلية',
@@ -71,10 +71,8 @@ export default function MobilesFiltersWrapper({
 
       {/* ══════ ELEGANT HORIZONTAL APP DOWNLOAD BANNER ══════ */}
       <div className="animate-fadeIn">
-        <Link 
-          href="https://play.google.com/store/apps/details?id=com.souqphone.app"
-          target="_blank"
-          rel="noopener noreferrer"
+        <PlayStoreLink
+          placement="products_banner"
           className="flex flex-col sm:flex-row items-center justify-between bg-gradient-to-r from-ocean-50/80 to-blue-50/20 dark:from-ocean-950/30 dark:to-transparent border border-ocean-100/80 dark:border-ocean-900/40 hover:border-ocean-300 dark:hover:border-ocean-800 rounded-xl px-5 py-3 transition-all duration-300 cursor-pointer shadow-xs gap-3 group"
         >
           <div className="flex items-center gap-3 text-right">
@@ -98,7 +96,7 @@ export default function MobilesFiltersWrapper({
             </svg>
             <span>تثبيت التطبيق السريع</span>
           </div>
-        </Link>
+        </PlayStoreLink>
       </div>
 
       {/* Filter Grid */}

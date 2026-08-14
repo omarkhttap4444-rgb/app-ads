@@ -4,6 +4,7 @@ import { getCategoryImageUrl } from '@/lib/category-images';
 import { isRemoteMediaUrl } from '@/lib/media';
 import { SITE_URL } from '@/lib/seo';
 import { supabase } from '@/lib/supabase';
+import { isSaudiMarketLocation, SAUDI_MARKET_ENABLED } from '@/lib/market-config';
 
 export const revalidate = 3600;
 
@@ -11,6 +12,7 @@ type ProductSitemapRow = {
   slug: string;
   seller_id: string;
   last_updated: string | null;
+  location: string | null;
   product_images: Array<{ image_url: string | null }> | null;
 };
 
@@ -18,7 +20,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const routes: MetadataRoute.Sitemap = [
     { url: SITE_URL, changeFrequency: 'daily', priority: 1 },
     { url: `${SITE_URL}/mobiles`, changeFrequency: 'hourly', priority: 0.95 },
-    { url: `${SITE_URL}/mobiles?country=SA`, changeFrequency: 'hourly', priority: 0.85 },
+    ...(SAUDI_MARKET_ENABLED
+      ? [{ url: `${SITE_URL}/mobiles?country=SA`, changeFrequency: 'hourly' as const, priority: 0.85 }]
+      : []),
   ];
 
   try {
@@ -37,25 +41,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         : `${SITE_URL}${getCategoryImageUrl(category.name)}`;
       const egyptCategoryQuery = new URLSearchParams({ category: category.name }).toString();
       const saudiCategoryQuery = new URLSearchParams({ country: 'SA', category: category.name }).toString();
-      routes.push(
-        {
+      routes.push({
           url: `${SITE_URL}/mobiles?${egyptCategoryQuery}`,
           changeFrequency: 'daily',
           priority: 0.88,
           images: [categoryImage],
-        },
-        {
+        });
+      if (SAUDI_MARKET_ENABLED) {
+        routes.push({
           url: `${SITE_URL}/mobiles?${saudiCategoryQuery}`,
           changeFrequency: 'daily',
           priority: 0.78,
           images: [categoryImage],
-        },
-      );
+        });
+      }
     }
 
     const sellerIds = new Set<string>();
     for (const product of products) {
       if (!product.slug) continue;
+      if (!SAUDI_MARKET_ENABLED && isSaudiMarketLocation(product.location)) continue;
       sellerIds.add(product.seller_id);
       routes.push({
         url: `${SITE_URL}/mobiles/${encodeURIComponent(product.slug)}`,
@@ -90,7 +95,7 @@ async function loadAllProducts() {
   for (let from = 0; from < maximumProducts; from += pageSize) {
     const { data, error } = await supabase
       .from('products')
-      .select('slug,seller_id,last_updated,product_images(image_url)')
+      .select('slug,seller_id,last_updated,location,product_images(image_url)')
       .order('last_updated', { ascending: false })
       .range(from, from + pageSize - 1);
 

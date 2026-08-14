@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Plus, Image as ImageIcon, X, AlertCircle, Sparkles, ChevronDown, ChevronUp, ShieldAlert } from 'lucide-react';
+import { SAUDI_MARKET_ENABLED } from '@/lib/market-config';
 
 const GOVERNORATES = [
   'القاهرة', 'الجيزة', 'الإسكندرية', 'القليوبية', 'الشرقية', 'الدقهلية',
@@ -62,7 +63,7 @@ export default function AddProductPage() {
 
   useEffect(() => {
     const country = document.cookie.match(/(^|;)\s*selected_country\s*=\s*([^;]+)/)?.[2] || localStorage.getItem('selected_country') || 'EG';
-    setSelectedCountry(country);
+    setSelectedCountry(SAUDI_MARKET_ENABLED && country === 'SA' ? 'SA' : 'EG');
   }, []);
 
   useEffect(() => {

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { ChevronRight, ChevronLeft, Download, PlusCircle } from 'lucide-react';
+import PlayStoreLink from './PlayStoreLink';
 
 type Banner = {
   id: string;
@@ -94,6 +95,11 @@ export default function BannerCarousel({ banners }: Props) {
                         <PlusCircle className="w-3.5 h-3.5" />
                         اعرض جهازك الآن
                       </Link>
+                    ) : banner.link_url.includes('play.google.com/store/apps') ? (
+                      <PlayStoreLink placement="home_banner" className="inline-flex items-center gap-1.5 bg-white/15 hover:bg-white/25 backdrop-blur-sm text-white text-[10px] md:text-xs font-bold px-4 py-2 rounded-lg border border-white/20 transition-all cursor-pointer">
+                        <Download className="w-3.5 h-3.5" />
+                        تحميل التطبيق
+                      </PlayStoreLink>
                     ) : (
                       <a href={banner.link_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 bg-white/15 hover:bg-white/25 backdrop-blur-sm text-white text-[10px] md:text-xs font-bold px-4 py-2 rounded-lg border border-white/20 transition-all cursor-pointer">
                         <Download className="w-3.5 h-3.5" />

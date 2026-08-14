@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Smartphone, Shield, Headphones, CreditCard, MapPin, Mail, Phone, ChevronLeft } from 'lucide-react';
+import PlayStoreLink from './PlayStoreLink';
+import { SAUDI_MARKET_ENABLED } from '@/lib/market-config';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -10,7 +12,7 @@ export default function Footer() {
 
   useEffect(() => {
     const country = document.cookie.match(/(^|;)\s*selected_country\s*=\s*([^;]+)/)?.[2] || localStorage.getItem('selected_country') || 'EG';
-    setSelectedCountry(country);
+    setSelectedCountry(SAUDI_MARKET_ENABLED && country === 'SA' ? 'SA' : 'EG');
   }, []);
 
   return (
@@ -71,7 +73,9 @@ export default function Footer() {
               {[
                 { label: 'الصفحة الرئيسية', href: '/' },
                 { label: 'منتجات مصر', href: '/mobiles' },
-                { label: 'منتجات السعودية', href: '/mobiles?country=SA' },
+                ...(SAUDI_MARKET_ENABLED
+                  ? [{ label: 'منتجات السعودية', href: '/mobiles?country=SA' }]
+                  : []),
                 { label: 'أضف إعلانك', href: '/mobiles/add' },
                 { label: 'المفضلة', href: '/favorites' },
               ].map((link) => (
@@ -108,10 +112,8 @@ export default function Footer() {
           {/* Download App */}
           <div>
             <h4 className="text-sm font-bold text-slate-800 dark:text-white mb-4">حمّل التطبيق</h4>
-            <a
-              href="https://play.google.com/store/apps/details?id=com.souqphone.app"
-              target="_blank"
-              rel="noopener noreferrer"
+            <PlayStoreLink
+              placement="footer"
               className="flex items-center gap-3 bg-slate-900 dark:bg-slate-800 hover:bg-black dark:hover:bg-slate-700 text-white p-3 rounded-xl transition-all group"
             >
               <svg viewBox="0 0 512 512" className="w-7 h-7 fill-white shrink-0" xmlns="http://www.w3.org/2000/svg">
@@ -121,7 +123,7 @@ export default function Footer() {
                 <p className="text-[9px] text-slate-400 font-medium">تحميل من</p>
                 <p className="text-sm font-bold">Google Play</p>
               </div>
-            </a>
+            </PlayStoreLink>
             <div className="mt-3 flex items-center gap-1.5 text-[10px] text-slate-400 font-medium">
               <Shield className="w-3.5 h-3.5 text-ocean-500" />
               <span>تطبيق آمن ورسمي 100%</span>

@@ -113,7 +113,6 @@ export async function generateMetadata(): Promise<Metadata> {
       url: 'https://souqphone.com/',
       siteName: 'سوق فون',
       locale: 'ar_EG',
-      alternateLocale: ['ar_SA'],
       type: 'website',
       images: [
         { url: '/og.png', width: 1733, height: 909, alt: 'سوق فون - كل السوق في إيدك' },

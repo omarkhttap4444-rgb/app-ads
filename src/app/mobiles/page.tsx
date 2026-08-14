@@ -7,6 +7,7 @@ import ProductCard, { type ProductCardProps } from '@/components/ProductCard';
 import JsonLd from '@/components/JsonLd';
 import { absoluteUrl } from '@/lib/seo';
 import { getRequestCountry } from '@/lib/request-country';
+import { SAUDI_MARKET_ENABLED } from '@/lib/market-config';
 
 const productSelection = 'id, name, price, location, condition, slug, created_at, views_count, likes_count, comments_count, is_negotiable, is_sold, product_images(image_url), specifications';
 
@@ -71,7 +72,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
       canonical: canonicalPath,
       languages: {
         'ar-EG': egyptPath,
-        'ar-SA': saudiPath,
+        ...(SAUDI_MARKET_ENABLED ? { 'ar-SA': saudiPath } : {}),
         'x-default': egyptPath,
       },
     },
@@ -215,13 +216,15 @@ export default async function MobilesPage(props: Props) {
                 >
                   🇪🇬 مصر
                 </Link>
-                <Link
-                  href={getCollectionPath(category, 'SA')}
-                  aria-current={selectedCountry === 'SA' ? 'page' : undefined}
-                  className={`rounded-full px-3 py-1 text-[10px] font-black transition ${selectedCountry === 'SA' ? 'bg-[#078b43] text-white shadow-sm' : 'text-[#697075] hover:text-[#078b43] dark:text-[#c7c7c7]'}`}
-                >
-                  🇸🇦 السعودية
-                </Link>
+                {SAUDI_MARKET_ENABLED && (
+                  <Link
+                    href={getCollectionPath(category, 'SA')}
+                    aria-current={selectedCountry === 'SA' ? 'page' : undefined}
+                    className={`rounded-full px-3 py-1 text-[10px] font-black transition ${selectedCountry === 'SA' ? 'bg-[#078b43] text-white shadow-sm' : 'text-[#697075] hover:text-[#078b43] dark:text-[#c7c7c7]'}`}
+                  >
+                    🇸🇦 السعودية
+                  </Link>
+                )}
               </nav>
             </div>
             {hasFilters && (

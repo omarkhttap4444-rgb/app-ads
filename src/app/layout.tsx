@@ -3,6 +3,7 @@ import { Cairo, Inter } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import GoogleAnalytics from "@/components/GoogleAnalytics";
 import JsonLd from "@/components/JsonLd";
 import { SITE_NAME, SITE_URL } from "@/lib/seo";
 
@@ -27,8 +28,8 @@ export const metadata: Metadata = {
     default: "سوق فون مصر | بيع وشراء الموبايلات والإلكترونيات",
     template: "%s | سوق فون",
   },
-  description: "سوق فون مصر لبيع وشراء الموبايلات الجديدة والمستعملة والإلكترونيات. إعلانات حقيقية وتواصل مباشر وآمن بدون عمولة، مع قسم مستقل للسعودية.",
-  keywords: ["سوق فون", "موبايلات للبيع", "هواتف مستعملة", "موبايلات مستعملة", "بيع موبايل", "شراء موبايل", "سوق موبايلات مصر", "جوالات السعودية", "إلكترونيات مستعملة"],
+  description: "سوق فون مصر لبيع وشراء الموبايلات الجديدة والمستعملة والإلكترونيات. إعلانات حقيقية وتواصل مباشر وآمن بدون عمولة داخل مصر.",
+  keywords: ["سوق فون", "موبايلات للبيع", "هواتف مستعملة", "موبايلات مستعملة", "بيع موبايل", "شراء موبايل", "سوق موبايلات مصر", "إلكترونيات مستعملة"],
   category: "marketplace",
   creator: SITE_NAME,
   publisher: SITE_NAME,
@@ -50,12 +51,11 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "سوق فون | كل السوق في إيدك",
-    description: "سوق الموبايلات والإلكترونيات الجديدة والمستعملة في مصر، مع قسم مستقل للسعودية.",
+    description: "سوق الموبايلات والإلكترونيات الجديدة والمستعملة في مصر.",
     url: SITE_URL,
     siteName: SITE_NAME,
     images: [{ url: "/og.png", width: 1733, height: 909, alt: "سوق فون - كل السوق في إيدك" }],
     locale: "ar_EG",
-    alternateLocale: ["ar_SA"],
     type: "website",
   },
   twitter: {
@@ -142,6 +142,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="min-h-full flex flex-col bg-[#f7f8f8] dark:bg-[#0d0d0d] text-[#202124] dark:text-[#f1f1f1] pb-20 md:pb-0 transition-colors duration-200 font-[var(--font-cairo)]" style={{ fontFamily: "'Cairo', 'Inter', sans-serif" }}>
+        <GoogleAnalytics />
         <JsonLd data={websiteJsonLd} />
         <Header />
         <div className="flex-1">
