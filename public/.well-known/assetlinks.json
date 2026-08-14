@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.souqphone.app",
+      "sha256_cert_fingerprints": [
+        "C1:14:28:84:A0:23:5F:2B:BB:4F:35:F8:D8:A3:18:4C:04:2F:3F:00:32:73:B5:48:4D:E8:40:D6:3F:34:DE:59"
+      ]
+    }
+  }
+]
