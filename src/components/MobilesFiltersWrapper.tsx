@@ -4,19 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, MapPin, SlidersHorizontal, ArrowUpDown, Tag, Smartphone } from 'lucide-react';
 import SmartSearchInput from './SmartSearchInput';
 import PlayStoreLink from './PlayStoreLink';
-
-const GOVERNORATES = [
-  'القاهرة', 'الجيزة', 'الإسكندرية', 'القليوبية', 'الشرقية', 'الدقهلية',
-  'الغربية', 'المنوفية', 'البحيرة', 'كفر الشيخ', 'دمياط', 'بورسعيد',
-  'الإسماعيلية', 'السويس', 'الفيوم', 'بني سويف', 'المنيا', 'أسيوط',
-  'سوهاج', 'قنا', 'الأقصر', 'أسوان', 'البحر الأحمر', 'الوادي الجديد',
-  'مطروح', 'شمال سيناء', 'جنوب سيناء'
-];
-
-const SAUDI_REGIONS = [
-  'الرياض', 'مكة المكرمة', 'المدينة المنورة', 'المنطقة الشرقية', 'القصيم',
-  'عسير', 'تبوك', 'حائل', 'الحدود الشمالية', 'جازان', 'نجران', 'الباحة', 'الجوف'
-];
+import { EGYPT_GOVERNORATES, SAUDI_REGIONS } from '@/lib/seo-content';
 
 interface Category { id: string; name: string; }
 
@@ -40,6 +28,7 @@ export default function MobilesFiltersWrapper({
     const params = new URLSearchParams(searchParams.toString());
     if (value) params.set(key, value);
     else params.delete(key);
+    params.delete('page');
     router.push(`/mobiles?${params.toString()}`, { scroll: false });
   };
 
@@ -117,7 +106,7 @@ export default function MobilesFiltersWrapper({
           </span>
           <select value={initialLocation} onChange={(e) => handleUpdateFilter('location', e.target.value)} className={selectClass}>
             <option value="">{selectedCountry === 'SA' ? 'كل المناطق' : 'كل المحافظات'}</option>
-            {(selectedCountry === 'SA' ? SAUDI_REGIONS : GOVERNORATES).map(loc => <option key={loc} value={loc}>{loc}</option>)}
+            {(selectedCountry === 'SA' ? SAUDI_REGIONS : EGYPT_GOVERNORATES).map(loc => <option key={loc} value={loc}>{loc}</option>)}
           </select>
         </div>
 

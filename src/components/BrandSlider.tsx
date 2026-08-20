@@ -1,18 +1,6 @@
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
-
-const brands = [
-  { name: 'آبل', query: 'آبل', logo: 'apple.png' },
-  { name: 'سامسونج', query: 'سامسونج', logo: 'samsung.png' },
-  { name: 'شاومي', query: 'شاومي', logo: 'xiaomi.png' },
-  { name: 'ريلمي', query: 'ريلمي', logo: 'realme.png' },
-  { name: 'أوبو', query: 'أوبو', logo: 'oppo.png' },
-  { name: 'إنفينيكس', query: 'إنفينيكس', logo: 'infinix.png' },
-  { name: 'هونر', query: 'هونر', logo: 'honor.png' },
-  { name: 'فيفو', query: 'فيفو', logo: 'vivo.png' },
-  { name: 'هواوي', query: 'هواوي', logo: 'huawei.png' },
-  { name: 'نوكيا', query: 'نوكيا', logo: 'nokia.png' },
-];
+import { buildMobilesLandingPath, SEO_BRANDS } from '@/lib/seo-content';
 
 export default function BrandSlider() {
   return (
@@ -36,8 +24,8 @@ export default function BrandSlider() {
       </div>
 
       <div className="scroll-hide flex gap-3 overflow-x-auto pb-1">
-        {brands.map((brand) => (
-          <Link key={brand.name} href={`/mobiles?brand=${encodeURIComponent(brand.query)}`} className="group flex h-[86px] w-[94px] shrink-0 flex-col items-center justify-center gap-2 rounded-2xl border border-[#eceeed] bg-[#f8f9f8] p-3 transition hover:-translate-y-0.5 hover:border-[#9ce5ba] hover:bg-[#f2fff6] dark:border-[#343434] dark:bg-[#242424] dark:hover:border-[#315d43] dark:hover:bg-[#1d3024] md:h-[96px] md:w-[108px]">
+        {SEO_BRANDS.map((brand) => (
+          <Link key={brand.name} href={buildMobilesLandingPath({ brand: brand.name })} className="group flex h-[86px] w-[94px] shrink-0 flex-col items-center justify-center gap-2 rounded-2xl border border-[#eceeed] bg-[#f8f9f8] p-3 transition hover:-translate-y-0.5 hover:border-[#9ce5ba] hover:bg-[#f2fff6] dark:border-[#343434] dark:bg-[#242424] dark:hover:border-[#315d43] dark:hover:bg-[#1d3024] md:h-[96px] md:w-[108px]">
             <span className="flex h-9 w-14 items-center justify-center rounded-xl bg-white px-2 shadow-sm dark:bg-[#eeeeee]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={`/brands/${brand.logo}`} alt={brand.name} className="max-h-6 max-w-full object-contain" />

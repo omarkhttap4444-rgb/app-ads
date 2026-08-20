@@ -5,6 +5,12 @@ import { isRemoteMediaUrl } from '@/lib/media';
 import { SITE_URL } from '@/lib/seo';
 import { supabase } from '@/lib/supabase';
 import { isSaudiMarketLocation, SAUDI_MARKET_ENABLED } from '@/lib/market-config';
+import {
+  buildMobilesLandingPath,
+  EGYPT_GOVERNORATES,
+  SAUDI_REGIONS,
+  SEO_BRANDS,
+} from '@/lib/seo-content';
 
 export const revalidate = 3600;
 
@@ -25,6 +31,40 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       : []),
   ];
 
+  for (const brand of SEO_BRANDS) {
+    routes.push({
+      url: `${SITE_URL}${buildMobilesLandingPath({ brand: brand.name })}`,
+      changeFrequency: 'daily',
+      priority: 0.88,
+      images: [`${SITE_URL}/brands/${brand.logo}`],
+    });
+    if (SAUDI_MARKET_ENABLED) {
+      routes.push({
+        url: `${SITE_URL}${buildMobilesLandingPath({ country: 'SA', brand: brand.name })}`,
+        changeFrequency: 'daily',
+        priority: 0.78,
+        images: [`${SITE_URL}/brands/${brand.logo}`],
+      });
+    }
+  }
+
+  for (const location of EGYPT_GOVERNORATES) {
+    routes.push({
+      url: `${SITE_URL}${buildMobilesLandingPath({ location })}`,
+      changeFrequency: 'daily',
+      priority: 0.82,
+    });
+  }
+  if (SAUDI_MARKET_ENABLED) {
+    for (const location of SAUDI_REGIONS) {
+      routes.push({
+        url: `${SITE_URL}${buildMobilesLandingPath({ country: 'SA', location })}`,
+        changeFrequency: 'daily',
+        priority: 0.72,
+      });
+    }
+  }
+
   try {
     const [{ data: categories }, products] = await Promise.all([
       supabase
@@ -39,17 +79,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const categoryImage = category.icon_url?.startsWith('http')
         ? category.icon_url
         : `${SITE_URL}${getCategoryImageUrl(category.name)}`;
-      const egyptCategoryQuery = new URLSearchParams({ category: category.name }).toString();
-      const saudiCategoryQuery = new URLSearchParams({ country: 'SA', category: category.name }).toString();
       routes.push({
-          url: `${SITE_URL}/mobiles?${egyptCategoryQuery}`,
+          url: `${SITE_URL}${buildMobilesLandingPath({ category: category.name })}`,
           changeFrequency: 'daily',
           priority: 0.88,
           images: [categoryImage],
         });
       if (SAUDI_MARKET_ENABLED) {
         routes.push({
-          url: `${SITE_URL}/mobiles?${saudiCategoryQuery}`,
+          url: `${SITE_URL}${buildMobilesLandingPath({ country: 'SA', category: category.name })}`,
           changeFrequency: 'daily',
           priority: 0.78,
           images: [categoryImage],

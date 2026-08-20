@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { cache } from 'react';
 import {
   BatteryCharging,
   ChevronLeft,
@@ -43,6 +44,14 @@ const isSaudiLocation = isSaudiMarketLocation;
 const getImages = (rows: Array<{ image_url?: string | null }> | null | undefined) =>
   (rows ?? []).map((image) => image.image_url).filter(isRemoteMediaUrl);
 
+const getProduct = cache((slug: string) =>
+  supabase
+    .from('products')
+    .select('*,product_images(image_url)')
+    .eq('slug', slug)
+    .single(),
+);
+
 const textValue = (value: unknown, fallback = 'غير محدد') => {
   if (value === null || value === undefined) return fallback;
   const text = String(value).trim();
@@ -64,11 +73,7 @@ const formatWhatsAppNumber = (phone: string | null, isSaudi: boolean) => {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const decodedSlug = decodeURIComponent(slug);
-  const { data: product } = await supabase
-    .from('products')
-    .select('name,price,condition,location,description,specifications,product_images(image_url)')
-    .eq('slug', decodedSlug)
-    .single();
+  const { data: product } = await getProduct(decodedSlug);
 
   if (!product || (!SAUDI_MARKET_ENABLED && isSaudiLocation(product.location))) {
     return { title: 'المنتج غير موجود', robots: { index: false, follow: false } };
@@ -116,11 +121,7 @@ export default async function ProductPage({ params }: Props) {
   const { slug } = await params;
   const decodedSlug = decodeURIComponent(slug);
 
-  const { data: product, error: productError } = await supabase
-    .from('products')
-    .select('*,product_images(image_url)')
-    .eq('slug', decodedSlug)
-    .single();
+  const { data: product, error: productError } = await getProduct(decodedSlug);
 
   if (productError || !product) notFound();
   if (!SAUDI_MARKET_ENABLED && isSaudiLocation(product.location)) notFound();
@@ -181,7 +182,7 @@ export default async function ProductPage({ params }: Props) {
     '@id': `${productUrl}#product`,
     name: displayName,
     description: product.description || `${displayName} ${product.condition || ''} للبيع في ${product.location}.`,
-    image: images,
+    image: images.length ? images : undefined,
     url: productUrl,
     sku: product.id,
     category: product.category,
@@ -200,7 +201,11 @@ export default async function ProductPage({ params }: Props) {
               ? 'https://schema.org/SoldOut'
               : 'https://schema.org/InStock',
             itemCondition: productConditionUrl(product.condition),
-            seller: { '@type': 'Person', name: sellerName },
+            seller: {
+              '@type': 'Person',
+              name: sellerName,
+              url: absoluteUrl(`/store/${product.seller_id}`),
+            },
           },
         }
       : {}),
@@ -212,7 +217,20 @@ export default async function ProductPage({ params }: Props) {
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'الرئيسية', item: absoluteUrl('/') },
       { '@type': 'ListItem', position: 2, name: 'المنتجات', item: absoluteUrl('/mobiles') },
-      { '@type': 'ListItem', position: 3, name: displayName, item: productUrl },
+      ...(product.category
+        ? [{
+            '@type': 'ListItem',
+            position: 3,
+            name: product.category,
+            item: absoluteUrl(`/mobiles?category=${encodeURIComponent(product.category)}`),
+          }]
+        : []),
+      {
+        '@type': 'ListItem',
+        position: product.category ? 4 : 3,
+        name: displayName,
+        item: productUrl,
+      },
     ],
   };
 
@@ -239,6 +257,12 @@ export default async function ProductPage({ params }: Props) {
           <ChevronLeft className="h-3.5 w-3.5" />
           <Link href="/mobiles">المنتجات</Link>
           <ChevronLeft className="h-3.5 w-3.5" />
+          {product.category && (
+            <>
+              <Link href={`/mobiles?category=${encodeURIComponent(product.category)}`}>{product.category}</Link>
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </>
+          )}
           <span className="max-w-64 truncate text-[#4f555a] dark:text-[#d0d0d0]">{displayName}</span>
         </nav>
 

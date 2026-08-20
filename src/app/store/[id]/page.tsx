@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
+import { cache } from 'react';
 import ProfileHeader from '@/components/ProfileHeader';
 import ProductCard from '@/components/ProductCard';
 import JsonLd from '@/components/JsonLd';
@@ -10,13 +11,13 @@ export const revalidate = 60;
 
 type Props = { params: Promise<{ id: string }> };
 
+const getStore = cache((id: string) =>
+  supabase.from('users').select('*').eq('id', id).single(),
+);
+
 export async function generateMetadata(props: Props): Promise<Metadata> {
   const params = await props.params;
-  const { data: store } = await supabase
-    .from('users')
-    .select('name, bio, governorate, profile_image_url')
-    .eq('id', params.id)
-    .single();
+  const { data: store } = await getStore(params.id);
 
   if (!store) return { title: 'البائع غير موجود', robots: { index: false, follow: false } };
 
@@ -42,11 +43,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 export default async function StoreProfilePage(props: Props) {
   const params = await props.params;
   
-  const { data: store } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', params.id)
-    .single();
+  const { data: store } = await getStore(params.id);
 
   if (!store) notFound();
 

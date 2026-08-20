@@ -35,9 +35,6 @@ export const metadata: Metadata = {
   publisher: SITE_NAME,
   referrer: "origin-when-cross-origin",
   formatDetection: { email: false, address: false, telephone: false },
-  alternates: {
-    canonical: "/",
-  },
   robots: {
     index: true,
     follow: true,
@@ -99,7 +96,7 @@ const websiteJsonLd = {
       url: SITE_URL,
       name: SITE_NAME,
       alternateName: "Souq Phone",
-      inLanguage: "ar",
+      inLanguage: "ar-EG",
       publisher: { "@id": `${SITE_URL}/#organization` },
       potentialAction: {
         "@type": "SearchAction",
@@ -133,7 +130,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="ar"
+      lang="ar-EG"
       dir="rtl"
       className={`${cairo.variable} ${inter.variable} h-full antialiased`}
       suppressHydrationWarning

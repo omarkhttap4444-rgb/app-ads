@@ -149,7 +149,7 @@ export default function ProductCard({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={images[currentImageIndex] ?? images[0]}
-                alt={title}
+                alt={`${title} ${condition} للبيع في ${product.location}`}
                 loading="lazy"
                 onError={() => {
                   const failed = images[currentImageIndex] ?? images[0];

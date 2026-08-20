@@ -24,7 +24,7 @@ export default function BannerCarousel({ banners }: Props) {
       id: 'fallback-1',
       title: 'تطبيق سوق فون الرسمي الآن',
       subtitle: 'استقبل رسائل المشترين فوراً وتصفح بدون عمولة',
-      image_url: 'https://images.unsplash.com/photo-1551650975-87deedd944c3?auto=format&fit=crop&w=1200&q=80',
+      image_url: '/og.png',
       link_url: 'https://play.google.com/store/apps/details?id=com.souqphone.app',
     },
     {
@@ -63,7 +63,7 @@ export default function BannerCarousel({ banners }: Props) {
         className="w-full h-full flex transition-transform duration-700 ease-in-out"
         style={{ transform: `translateX(${currentIndex * 100}%)` }}
       >
-        {activeBanners.map((banner) => {
+        {activeBanners.map((banner, index) => {
           const isInternalLink = banner.link_url && !banner.link_url.startsWith('http');
 
           const slideContent = (
@@ -73,7 +73,8 @@ export default function BannerCarousel({ banners }: Props) {
                 src={banner.image_url} 
                 alt={banner.title || 'سوق فون'} 
                 className="w-full h-full object-cover" 
-                loading="lazy"
+                loading={index === 0 ? 'eager' : 'lazy'}
+                fetchPriority={index === 0 ? 'high' : 'auto'}
               />
               <div className="absolute inset-0 bg-gradient-to-l from-black/68 via-black/22 to-transparent" />
               
@@ -123,10 +124,10 @@ export default function BannerCarousel({ banners }: Props) {
       {/* Navigation Arrows */}
       {activeBanners.length > 1 && (
         <>
-          <button onClick={goNext} className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/10 hover:bg-white/25 backdrop-blur-sm text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer z-30">
+          <button onClick={goNext} aria-label="الإعلان التالي" className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/10 hover:bg-white/25 backdrop-blur-sm text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer z-30">
             <ChevronRight className="w-4 h-4" />
           </button>
-          <button onClick={goPrev} className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/10 hover:bg-white/25 backdrop-blur-sm text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer z-30">
+          <button onClick={goPrev} aria-label="الإعلان السابق" className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/10 hover:bg-white/25 backdrop-blur-sm text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer z-30">
             <ChevronLeft className="w-4 h-4" />
           </button>
 
@@ -136,6 +137,7 @@ export default function BannerCarousel({ banners }: Props) {
               <button
                 key={index}
                 onClick={() => setCurrentIndex(index)}
+                aria-label={`عرض الإعلان ${index + 1}`}
                 className={`h-1.5 rounded-full transition-all cursor-pointer ${
               currentIndex === index ? 'w-6 bg-[#37d57c]' : 'w-1.5 bg-white/55 hover:bg-white/75'
                 }`}

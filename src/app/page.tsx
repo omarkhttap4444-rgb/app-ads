@@ -17,6 +17,7 @@ import ProductCard from '@/components/ProductCard';
 import { getCategoryImageUrl } from '@/lib/category-images';
 import { getRequestCountry } from '@/lib/request-country';
 import { supabase } from '@/lib/supabase';
+import { buildMobilesLandingPath, EGYPT_GOVERNORATES } from '@/lib/seo-content';
 
 const productSelection = `
   id,
@@ -316,6 +317,27 @@ export default async function Home() {
             </div>
           </section>
         )}
+
+        <section className="mt-7 rounded-[28px] border border-[#e3e8e5] bg-white p-5 shadow-[0_14px_34px_-30px_rgba(16,24,40,0.4)] dark:border-[#343434] dark:bg-[#1a1a1a] md:p-7" aria-labelledby="seo-guide-title">
+          <h2 id="seo-guide-title" className="text-base font-black text-[#242628] dark:text-white md:text-xl">
+            سوق الموبايلات الجديدة والمستعملة في مصر
+          </h2>
+          <p className="mt-2 max-w-4xl text-xs font-medium leading-7 text-[#697075] dark:text-[#b7babc] md:text-sm">
+            يساعدك سوق فون على مقارنة إعلانات الهواتف والإلكترونيات حسب الماركة والحالة والمحافظة. راجع صور الجهاز ومواصفاته وسعره، ثم تواصل مباشرة مع البائع لإتمام الاتفاق بدون عمولة من المنصة.
+          </p>
+          <h3 className="mt-5 text-sm font-black text-[#303532] dark:text-white">موبايلات للبيع حسب المحافظة</h3>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {EGYPT_GOVERNORATES.slice(0, 14).map((governorate) => (
+              <Link
+                key={governorate}
+                href={buildMobilesLandingPath({ location: governorate })}
+                className="rounded-full border border-[#dfe6e2] bg-[#f8faf9] px-3 py-2 text-[10px] font-black text-[#56605b] transition hover:border-[#8dd9ac] hover:bg-[#effcf4] hover:text-[#078b43] dark:border-[#3a3a3a] dark:bg-[#242424] dark:text-[#d0d0d0]"
+              >
+                موبايلات في {governorate}
+              </Link>
+            ))}
+          </div>
+        </section>
 
         <section className="mt-7 overflow-hidden rounded-[28px] bg-gradient-to-l from-[#087d3d] to-[#10ad58] p-6 text-white shadow-[0_18px_36px_-22px_rgba(3,152,85,0.8)] md:flex md:items-center md:justify-between md:px-9">
           <div>
