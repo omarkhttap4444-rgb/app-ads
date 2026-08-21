@@ -189,7 +189,7 @@ export default async function Home() {
           { id: 'all', name: 'الكل', icon_url: null, display_order: 0 },
           { id: 'phones', name: 'هواتف', icon_url: null, display_order: 1 },
           { id: 'accessories', name: 'إكسسوارات', icon_url: null, display_order: 2 },
-          { id: 'tablets', name: 'أجهزة لوحية', icon_url: null, display_order: 3 },
+          { id: 'tablets', name: 'تابلت', icon_url: null, display_order: 3 },
           { id: 'watches', name: 'ساعات ذكية', icon_url: null, display_order: 4 },
         ];
 
