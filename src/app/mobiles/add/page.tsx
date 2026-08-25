@@ -7,31 +7,23 @@ import Link from 'next/link';
 import { Plus, Image as ImageIcon, X, AlertCircle, Sparkles, ChevronDown, ChevronUp, ShieldAlert } from 'lucide-react';
 import { SAUDI_MARKET_ENABLED } from '@/lib/market-config';
 import { EGYPT_GOVERNORATES, EGYPT_CENTERS, SAUDI_REGIONS, SAUDI_CITIES } from '@/lib/locations';
+import {
+  fetchPhoneCatalog,
+  getModelGroupsForBrand,
+  RAM_OPTIONS,
+  STORAGE_OPTIONS,
+  PHONE_COLORS,
+  ACCESSORIES_OPTIONS,
+  type PhoneCatalog,
+} from '@/lib/phone-data';
+import { compressImage } from '@/lib/image-compress';
 
 // Same limit as the Flutter app (regular user: max 4 images)
 const MAX_IMAGES = 4;
 
-const BRANDS = ['آبل', 'سامسونج', 'شاومي', 'ريلمي', 'أوبو', 'فيفو', 'هونر', 'إنفينيكس', 'نوكيا', 'وان بلس', 'أخرى'];
-
-const POPULAR_MODELS: Record<string, string[]> = {
-  'آبل': ['آيفون 15 برو ماكس', 'آيفون 15 برو', 'آيفون 15', 'آيفون 14 برو ماكس', 'آيفون 14 برو', 'آيفون 14', 'آيفون 13 برو ماكس', 'آيفون 13 برو', 'آيفون 13', 'آيفون 12 برو ماكس', 'آيفون 12 برو', 'آيفون 12', 'آيفون 11 برو ماكس', 'آيفون 11', 'آيفون XS ماكس', 'آيفون X', 'أخرى'],
-  'سامسونج': ['جالاكسي S24 الترا', 'جالاكسي S24+', 'جالاكسي S24', 'جالاكسي S23 الترا', 'جالاكسي S23', 'جالاكسي A55', 'جالاكسي A35', 'جالاكسي A54', 'جالاكسي A34', 'جالاكسي A25', 'جالاكسي A15', 'جالاكسي M54', 'جالاكسي Z فولد 5', 'جالاكسي Z فليب 5', 'أخرى'],
-  'شاومي': ['ريدمي نوت 13 برو+', 'ريدمي نوت 13 برو', 'ريدمي نوت 13', 'ريدمي 13C', 'بوكو X6 برو', 'بوكو F6 برو', 'شيومي 14 الترا', 'شيومي 14', 'ريدمي نوت 12 برو', 'ريدمي نوت 12', 'أخرى'],
-  'ريلمي': ['ريلمي 12 برو+', 'ريلمي 12', 'ريلمي C67', 'ريلمي C53', 'ريلمي 11 برو+', 'ريلمي 11', 'ريلمي C55', 'ريلمي GT5', 'أخرى'],
-  'أوبو': ['رينو 11 F', 'رينو 11', 'رينو 10 برو', 'رينو 10', 'أوبو A78', 'أوبو A58', 'أوبو A38', 'أوبو A18', 'أخرى'],
-  'أخرى': ['أخرى']
-};
-
-const STORAGE_OPTIONS = ['32 جيجا', '64 جيجا', '128 جيجا', '256 جيجا', '512 جيجا', '1 تيرابايت', 'أخرى'];
-const RAM_OPTIONS = ['2 جيجا', '3 جيجا', '4 جيجا', '6 جيجا', '8 جيجا', '12 جيجا', '16 جيجا', 'أخرى'];
-
-const ACCESSORIES_LIST = [
-  { id: 'box', label: 'العلبة الأصلية' },
-  { id: 'charger', label: 'الشاحن الأصلي' },
-  { id: 'cable', label: 'كابل الشحن' },
-  { id: 'headphone', label: 'السماعة الأصلية' },
-  { id: 'cover', label: 'جراب / لاصقة حماية' }
-];
+// App visual identity (lib/config/brand_colors.dart)
+const GREEN_PRIMARY = '#00C853';
+const GREEN_DARK = '#00A344';
 
 export default function AddProductPage() {
   const router = useRouter();
@@ -63,17 +55,18 @@ export default function AddProductPage() {
     setCenter('');
   }, [selectedCountry]);
   
-  // Mobiles Specifications
-  const [brand, setBrand] = useState(BRANDS[0]);
+  // Mobiles Specifications (catalog loaded from the same Supabase tables as the app)
+  const [catalog, setCatalog] = useState<PhoneCatalog>({ brands: [], modelsByBrand: {} });
+  const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
   const [customModel, setCustomModel] = useState('');
-  const [storage, setStorage] = useState(STORAGE_OPTIONS[2]); // Default 128GB
-  const [ram, setRam] = useState(RAM_OPTIONS[3]); // Default 6GB
+  const [storage, setStorage] = useState('128'); // Default 128GB
+  const [ram, setRam] = useState('6'); // Default 6GB
   const [color, setColor] = useState('');
   const [batteryHealth, setBatteryHealth] = useState(100);
   const [isDeviceOpened, setIsDeviceOpened] = useState('لا');
   const [ntraTax, setNtraTax] = useState('لا');
-  const [selectedAccessories, setSelectedAccessories] = useState<string[]>([]);
+  const [selectedAccessory, setSelectedAccessory] = useState<string | null>(null);
   
   // Optional Specifications (Accordion)
   const [showOptional, setShowOptional] = useState(false);
@@ -126,20 +119,26 @@ export default function AddProductPage() {
           setCategoryId(cats[0].id);
         }
       }
+
+      // Fetch phone brands/models from the same tables the app uses
+      const phoneCatalog = await fetchPhoneCatalog();
+      setCatalog(phoneCatalog);
+      setBrand((prev) => prev || phoneCatalog.brands[0] || '');
       setLoadingConfig(false);
     };
 
     initPage();
   }, [router]);
 
-  // Set default model on brand changes
+  // Set default model on brand changes (from dynamic catalog)
   useEffect(() => {
-    const models = POPULAR_MODELS[brand] || ['أخرى'];
-    setModel(models[0]);
-  }, [brand]);
+    if (!brand) return;
+    const models = catalog.modelsByBrand[brand] ?? [];
+    setModel(models.length > 0 ? models[0] : 'أخرى');
+  }, [brand, catalog]);
 
-  // Handle local file preview
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle local file preview (with client-side compression like the app)
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const filesArray = Array.from(e.target.files);
 
@@ -155,9 +154,12 @@ export default function AddProductPage() {
       } else {
         setErrorMsg(null);
       }
-      setImageFiles((prev) => [...prev, ...accepted]);
 
-      const previews = accepted.map((file) => URL.createObjectURL(file));
+      // Compress before adding (resize + JPEG quality) to save storage
+      const compressed = await Promise.all(accepted.map((f) => compressImage(f)));
+      setImageFiles((prev) => [...prev, ...compressed]);
+
+      const previews = compressed.map((file) => URL.createObjectURL(file));
       setImagePreviews((prev) => [...prev, ...previews]);
     }
   };
@@ -168,11 +170,9 @@ export default function AddProductPage() {
     setImagePreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Toggle accessories selection
+  // Accessories: single-select chips (same behavior as the app)
   const handleAccessoryChange = (label: string) => {
-    setSelectedAccessories((prev) => 
-      prev.includes(label) ? prev.filter((a) => a !== label) : [...prev, label]
-    );
+    setSelectedAccessory((prev) => (prev === label ? null : label));
   };
 
   // Click Submit - Validation and trigger Honesty Modal
@@ -202,7 +202,22 @@ export default function AddProductPage() {
     // Title validation for non-mobiles
     const selectedCat = categories.find((c) => c.id === categoryId);
     const isMobiles = selectedCat?.name === 'هواتف';
-    if (!isMobiles && name.trim().length < 3) {
+
+    // Phone specs validation (same order & messages as the app's honesty dialog)
+    if (isMobiles) {
+      if (!brand || brand.trim().length === 0) {
+        setErrorMsg('يرجى اختيار ماركة الهاتف');
+        return;
+      }
+      if (brand !== 'أخرى' && (!model || model.length === 0)) {
+        setErrorMsg('يرجى اختيار موديل الهاتف');
+        return;
+      }
+      if ((brand === 'أخرى' || model === 'أخرى') && customModel.trim().length === 0) {
+        setErrorMsg('يرجى كتابة اسم موديل الهاتف يدوياً');
+        return;
+      }
+    } else if (name.trim().length < 3) {
       setErrorMsg('يرجى كتابة عنوان واضح للإعلان (3 أحرف على الأقل).');
       return;
     }
@@ -273,19 +288,21 @@ export default function AddProductPage() {
       };
 
       if (isMobiles) {
+        // Same specification keys/values the Flutter app submits
         specifications.brand = brand;
         specifications.model = resolvedModelName || 'غير محدد';
-        specifications.ram = ram;
-        specifications.storage = storage;
+        specifications.model_is_custom = brand === 'أخرى' || model === 'أخرى';
+        specifications.ram = ram;           // raw value e.g. '6' (app parity)
+        specifications.storage = storage;   // raw value e.g. '128' | '1 تيرا'
         specifications.color = color.trim() || 'غير محدد';
-        specifications.accessories = selectedAccessories.join('، ') || 'بدون ملحقات';
+        specifications.accessories = selectedAccessory ?? 'بدون ملحقات';
         specifications.is_opened = isDeviceOpened;
         if (selectedCountry === 'EG') {
           specifications.ntra_tax = ntraTax;
         }
-        
+
         if (brand === 'آبل') {
-          specifications.battery_health = batteryHealth;
+          specifications.battery_health = Math.round(batteryHealth);
         }
 
         // Optional technical specs
@@ -399,7 +416,7 @@ export default function AddProductPage() {
         <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm mb-6 flex items-center justify-between transition-colors">
           <div>
             <h1 className="text-2xl font-black text-slate-800 dark:text-white flex items-center gap-2">
-              <Plus className="w-6 h-6 text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/40 p-1 rounded-lg" />
+              <Plus className="w-6 h-6 text-[#00A344] dark:text-[#2EE06F] bg-[#E8F5E9] dark:bg-[#0B3D22]/40 p-1 rounded-lg" />
               إضافة إعلان جديد
             </h1>
             <p className="text-xs text-slate-400 dark:text-slate-400 mt-1">اعرض جهازك للبيع مجاناً بدون عمولات في سوق فون</p>
@@ -416,7 +433,7 @@ export default function AddProductPage() {
           )}
 
           {successMsg && (
-            <div className="bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-450 p-4 rounded-2xl text-sm border border-teal-100 dark:border-teal-900/50 font-bold flex items-center gap-2">
+            <div className="bg-[#E8F5E9] dark:bg-[#0B3D22]/30 text-[#00A344] dark:text-[#2EE06F] p-4 rounded-2xl text-sm border border-[#C8E6C9] dark:border-[#1B5E20]/50 font-bold flex items-center gap-2">
               <Sparkles className="w-5 h-5 shrink-0 animate-spin" />
               <span>{successMsg}</span>
             </div>
@@ -443,7 +460,7 @@ export default function AddProductPage() {
               ))}
               
               {imageFiles.length < MAX_IMAGES && (
-                <label className="aspect-square rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-teal-500 dark:hover:border-teal-400 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-all flex flex-col items-center justify-center cursor-pointer text-slate-400 dark:text-slate-500 gap-1.5">
+                <label className="aspect-square rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-[#00C853] dark:hover:border-[#00C853] bg-slate-50/50 dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-all flex flex-col items-center justify-center cursor-pointer text-slate-400 dark:text-slate-500 gap-1.5">
                   <ImageIcon className="w-6 h-6 stroke-[1.5px]" />
                   <span className="text-[10px] font-bold">أضف صورة</span>
                   <input
@@ -471,7 +488,7 @@ export default function AddProductPage() {
                   value={categoryId}
                   onChange={(e) => setCategoryId(e.target.value)}
                   required
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
                 >
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -488,7 +505,7 @@ export default function AddProductPage() {
                   value={condition}
                   onChange={(e) => setCondition(e.target.value)}
                   required
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
                 >
                   <option value="جديد">جديد</option>
                   <option value="كسر زيرو">كسر زيرو</option>
@@ -506,7 +523,7 @@ export default function AddProductPage() {
                     onChange={(e) => setName(e.target.value)}
                     placeholder="مثال: سماعات ايربودز الجيل الثالث"
                     required={!isMobiles}
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600"
                   />
                 </div>
               )}
@@ -528,9 +545,9 @@ export default function AddProductPage() {
                     value={brand}
                     onChange={(e) => setBrand(e.target.value)}
                     required
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
                   >
-                    {BRANDS.map((b) => (
+                    {catalog.brands.map((b) => (
                       <option key={b} value={b}>
                         {b}
                       </option>
@@ -538,7 +555,7 @@ export default function AddProductPage() {
                   </select>
                 </div>
 
-                {/* Model */}
+                {/* Model - grouped by series, same grouping as the app */}
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">الموديل</label>
                   {brand !== 'أخرى' ? (
@@ -546,13 +563,18 @@ export default function AddProductPage() {
                       value={model}
                       onChange={(e) => setModel(e.target.value)}
                       required
-                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
                     >
-                      {(POPULAR_MODELS[brand] || ['أخرى']).map((m) => (
-                        <option key={m} value={m}>
-                          {m}
-                        </option>
+                      {getModelGroupsForBrand(brand, catalog.modelsByBrand[brand] ?? []).map((group) => (
+                        <optgroup key={group.title} label={group.title}>
+                          {group.models.map((m) => (
+                            <option key={m} value={m}>
+                              {m}
+                            </option>
+                          ))}
+                        </optgroup>
                       ))}
+                      <option value="أخرى">أخرى</option>
                     </select>
                   ) : (
                     <input
@@ -561,12 +583,12 @@ export default function AddProductPage() {
                       onChange={(e) => setCustomModel(e.target.value)}
                       placeholder="أدخل موديل الهاتف يدوياً"
                       required
-                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600"
                     />
                   )}
                 </div>
 
-                {/* Show custom model input if popular model 'أخرى' is chosen */}
+                {/* Show custom model input if 'أخرى' is chosen */}
                 {brand !== 'أخرى' && model === 'أخرى' && (
                   <div className="sm:col-span-2 space-y-1.5">
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">اسم الموديل المخصص</label>
@@ -576,23 +598,23 @@ export default function AddProductPage() {
                       onChange={(e) => setCustomModel(e.target.value)}
                       placeholder="مثال: جالاكسي نوت 10 بلس"
                       required
-                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600"
                     />
                   </div>
                 )}
 
                 {/* Storage */}
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">المساحة التخزينية</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">حجم الذاكرة (Storage)</label>
                   <select
                     value={storage}
                     onChange={(e) => setStorage(e.target.value)}
                     required
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
                   >
                     {STORAGE_OPTIONS.map((opt) => (
                       <option key={opt} value={opt}>
-                        {opt}
+                        {opt === '1 تيرا' ? '1 تيرا' : `${opt} جيجا`}
                       </option>
                     ))}
                   </select>
@@ -600,32 +622,48 @@ export default function AddProductPage() {
 
                 {/* RAM */}
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">الذاكرة العشوائية (RAM)</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">حجم الرام (RAM)</label>
                   <select
                     value={ram}
                     onChange={(e) => setRam(e.target.value)}
                     required
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
                   >
                     {RAM_OPTIONS.map((opt) => (
                       <option key={opt} value={opt}>
-                        {opt}
+                        {opt} جيجا
                       </option>
                     ))}
                   </select>
                 </div>
 
-                {/* Color */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">اللون</label>
-                  <input
-                    type="text"
-                    value={color}
-                    onChange={(e) => setColor(e.target.value)}
-                    placeholder="مثال: أسود، أزرق، ذهبي"
-                    required
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600"
-                  />
+                {/* Color - swatches with the same fixed list as the app */}
+                <div className="sm:col-span-2 space-y-2">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">لون الهاتف</label>
+                  <div className="flex flex-wrap gap-2.5">
+                    {PHONE_COLORS.map((c) => {
+                      const isSelected = color === c.name;
+                      return (
+                        <button
+                          key={c.name}
+                          type="button"
+                          onClick={() => setColor(isSelected ? '' : c.name)}
+                          title={c.name}
+                          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-[#00C853]/10 border-[#00C853] text-[#00A344]'
+                              : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
+                          }`}
+                        >
+                          <span
+                            className="h-4 w-4 rounded-full border border-black/15"
+                            style={{ backgroundColor: c.hex }}
+                          />
+                          {c.name}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* Battery Health (Shown only for Apple devices) */}
@@ -633,7 +671,7 @@ export default function AddProductPage() {
                   <div className="space-y-1.5 flex flex-col justify-center">
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 flex justify-between">
                       <span>نسبة صحة البطارية</span>
-                      <span className="text-teal-600 dark:text-teal-400 font-extrabold">{batteryHealth}%</span>
+                      <span className="text-[#00A344] dark:text-[#2EE06F] font-extrabold">{batteryHealth}%</span>
                     </label>
                     <div className="flex items-center gap-3 mt-1.5">
                       <input
@@ -642,7 +680,7 @@ export default function AddProductPage() {
                         max="100"
                         value={batteryHealth}
                         onChange={(e) => setBatteryHealth(Number(e.target.value))}
-                        className="w-full accent-teal-650 h-2 bg-slate-100 dark:bg-slate-850 rounded-lg cursor-pointer"
+                        className="w-full accent-[#00C853] h-2 bg-slate-100 dark:bg-slate-850 rounded-lg cursor-pointer"
                       />
                     </div>
                   </div>
@@ -654,7 +692,7 @@ export default function AddProductPage() {
                   <select
                     value={isDeviceOpened}
                     onChange={(e) => setIsDeviceOpened(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
                   >
                     <option value="لا">لا (بحالة المصنع الأصلي)</option>
                     <option value="نعم">نعم (تم فتحه أو عمل صيانة)</option>
@@ -668,7 +706,7 @@ export default function AddProductPage() {
                     <select
                       value={ntraTax}
                       onChange={(e) => setNtraTax(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
                     >
                       <option value="لا">لا (غير مسجل بالشبكة المصرية / دولي)</option>
                       <option value="نعم">نعم (مسجل / محلي مدفوع الضريبة)</option>
@@ -680,20 +718,20 @@ export default function AddProductPage() {
                 <div className="sm:col-span-2 space-y-2 pt-2">
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">الملحقات المتوفرة مع الهاتف</label>
                   <div className="flex flex-wrap gap-2.5">
-                    {ACCESSORIES_LIST.map((acc) => {
-                      const isSelected = selectedAccessories.includes(acc.label);
+                    {ACCESSORIES_OPTIONS.map((acc) => {
+                      const isSelected = selectedAccessory === acc;
                       return (
                         <button
-                          key={acc.id}
+                          key={acc}
                           type="button"
-                          onClick={() => handleAccessoryChange(acc.label)}
+                          onClick={() => handleAccessoryChange(acc)}
                           className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                            isSelected 
-                              ? 'bg-teal-500/10 border-teal-500 text-teal-600 dark:text-teal-400' 
+                            isSelected
+                              ? 'bg-[#00C853]/10 border-[#00C853] text-[#00A344]'
                               : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
                           }`}
                         >
-                          {acc.label}
+                          {acc}
                         </button>
                       );
                     })}
@@ -707,7 +745,7 @@ export default function AddProductPage() {
                 <button
                   type="button"
                   onClick={() => setShowOptional(!showOptional)}
-                  className="flex items-center justify-between w-full py-2.5 text-xs font-extrabold text-slate-600 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-450 transition-colors"
+                  className="flex items-center justify-between w-full py-2.5 text-xs font-extrabold text-slate-600 dark:text-slate-400 hover:text-[#00A344] dark:hover:text-[#2EE06F] transition-colors"
                 >
                   <span>مواصفات إضافية اختيارية (المعالج، سعة البطارية، الضمان، البدل...)</span>
                   {showOptional ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -723,7 +761,7 @@ export default function AddProductPage() {
                         value={cpu}
                         onChange={(e) => setCpu(e.target.value)}
                         placeholder="مثال: Apple A16 Bionic / Snapdragon 8 Gen 2"
-                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-650"
+                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-650"
                       />
                     </div>
 
@@ -735,7 +773,7 @@ export default function AddProductPage() {
                         value={batteryCapacity}
                         onChange={(e) => setBatteryCapacity(e.target.value)}
                         placeholder="مثال: 5000"
-                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-655"
+                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-655"
                       />
                     </div>
 
@@ -745,7 +783,7 @@ export default function AddProductPage() {
                       <select
                         value={warranty}
                         onChange={(e) => setWarranty(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
+                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
                       >
                         <option value="لا">لا</option>
                         <option value="نعم">نعم (الضمان لا يزال ساري)</option>
@@ -758,7 +796,7 @@ export default function AddProductPage() {
                       <select
                         value={acceptsExchange}
                         onChange={(e) => setAcceptsExchange(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
+                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
                       >
                         <option value="لا">لا (بيع فقط)</option>
                         <option value="نعم">نعم (مستعد للمناقشة للبدل)</option>
@@ -786,7 +824,7 @@ export default function AddProductPage() {
                   placeholder="مثال: 12500"
                   required
                   min={1}
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-655"
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-655"
                 />
               </div>
 
@@ -800,7 +838,7 @@ export default function AddProductPage() {
                     setCenter('');
                   }}
                   required
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
                 >
                   {(selectedCountry === 'SA' ? SAUDI_REGIONS : EGYPT_GOVERNORATES).map((gov) => (
                     <option key={gov} value={gov}>
@@ -817,7 +855,7 @@ export default function AddProductPage() {
                   value={center}
                   onChange={(e) => setCenter(e.target.value)}
                   required
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
                 >
                   <option value="" disabled>
                     {selectedCountry === 'SA' ? 'اختر المدينة / الحي' : 'اختر المركز / الحي'}
@@ -840,7 +878,7 @@ export default function AddProductPage() {
                   id="negotiable"
                   checked={isNegotiable}
                   onChange={(e) => setIsNegotiable(e.target.checked)}
-                  className="w-4 h-4 text-teal-600 focus:ring-teal-500 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded cursor-pointer"
+                  className="w-4 h-4 text-[#00A344] focus:ring-[#00C853] dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded cursor-pointer"
                 />
                 <label htmlFor="negotiable" className="text-xs font-bold text-slate-650 dark:text-slate-350 cursor-pointer">
                   السعر قابل للتفاوض البسيط
@@ -854,7 +892,7 @@ export default function AddProductPage() {
                   id="delivery"
                   checked={hasDelivery}
                   onChange={(e) => setHasDelivery(e.target.checked)}
-                  className="w-4 h-4 text-teal-600 focus:ring-teal-500 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded cursor-pointer"
+                  className="w-4 h-4 text-[#00A344] focus:ring-[#00C853] dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded cursor-pointer"
                 />
                 <label htmlFor="delivery" className="text-xs font-bold text-slate-655 dark:text-slate-350 cursor-pointer">
                   يتوفر الشحن أو التوصيل للمحافظات
@@ -875,7 +913,7 @@ export default function AddProductPage() {
                 placeholder="أذكر هنا تفاصيل إضافية للمشتري حول الهاتف، الملحقات المرفقة معه، أو حالة البطارية..."
                 required
                 rows={5}
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-655 resize-none"
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-655 resize-none"
               />
             </div>
           </div>
@@ -884,7 +922,7 @@ export default function AddProductPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white font-bold py-4 rounded-2xl transition-all shadow-md shadow-teal-600/10 hover:shadow-lg text-sm disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer"
+            className="w-full bg-gradient-to-r from-[#00C853] to-[#00A344] hover:from-[#00A344] hover:to-[#008C39] text-white font-bold py-4 rounded-2xl transition-all shadow-md shadow-[#00A344]/20 hover:shadow-lg text-sm disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer"
           >
             {loading ? 'جاري نشر إعلانك...' : 'نشر الإعلان الآن'}
           </button>
@@ -927,7 +965,7 @@ export default function AddProductPage() {
               <button
                 type="button"
                 onClick={confirmAndPublish}
-                className="flex-1 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white font-bold py-3.5 rounded-2xl transition-all text-xs shadow-md shadow-teal-600/10 hover:shadow-lg cursor-pointer"
+                className="flex-1 bg-gradient-to-r from-[#00C853] to-[#00A344] hover:from-[#00A344] hover:to-[#008C39] text-white font-bold py-3.5 rounded-2xl transition-all text-xs shadow-md shadow-[#00A344]/20 hover:shadow-lg cursor-pointer"
               >
                 أوافق وأنشر
               </button>
