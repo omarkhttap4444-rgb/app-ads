@@ -6,19 +6,10 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Plus, Image as ImageIcon, X, AlertCircle, Sparkles, ChevronDown, ChevronUp, ShieldAlert } from 'lucide-react';
 import { SAUDI_MARKET_ENABLED } from '@/lib/market-config';
+import { EGYPT_GOVERNORATES, EGYPT_CENTERS, SAUDI_REGIONS, SAUDI_CITIES } from '@/lib/locations';
 
-const GOVERNORATES = [
-  'القاهرة', 'الجيزة', 'الإسكندرية', 'القليوبية', 'الشرقية', 'الدقهلية',
-  'الغربية', 'المنوفية', 'البحيرة', 'كفر الشيخ', 'دمياط', 'بورسعيد',
-  'الإسماعيلية', 'السويس', 'الفيوم', 'بني سويف', 'المنيا', 'أسيوط',
-  'سوهاج', 'قنا', 'الأقصر', 'أسوان', 'البحر الأحمر', 'الوادي الجديد',
-  'مطروح', 'شمال سيناء', 'جنوب سيناء'
-];
-
-const REGIONS_SA = [
-  'الرياض', 'مكة المكرمة', 'المدينة المنورة', 'المنطقة الشرقية', 'القصيم',
-  'عسير', 'تبوك', 'حائل', 'الحدود الشمالية', 'جازان', 'نجران', 'الباحة', 'الجوف'
-];
+// Same limit as the Flutter app (regular user: max 4 images)
+const MAX_IMAGES = 4;
 
 const BRANDS = ['آبل', 'سامسونج', 'شاومي', 'ريلمي', 'أوبو', 'فيفو', 'هونر', 'إنفينيكس', 'نوكيا', 'وان بلس', 'أخرى'];
 
@@ -55,7 +46,7 @@ export default function AddProductPage() {
   const [price, setPrice] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [condition, setCondition] = useState('مستعمل');
-  const [location, setLocation] = useState(GOVERNORATES[0]);
+  const [location, setLocation] = useState(EGYPT_GOVERNORATES[0]);
   const [center, setCenter] = useState('');
   const [isNegotiable, setIsNegotiable] = useState(false);
   const [hasDelivery, setHasDelivery] = useState(false);
@@ -67,8 +58,9 @@ export default function AddProductPage() {
   }, []);
 
   useEffect(() => {
-    const list = selectedCountry === 'SA' ? REGIONS_SA : GOVERNORATES;
+    const list = selectedCountry === 'SA' ? SAUDI_REGIONS : EGYPT_GOVERNORATES;
     setLocation(list[0]);
+    setCenter('');
   }, [selectedCountry]);
   
   // Mobiles Specifications
@@ -150,17 +142,22 @@ export default function AddProductPage() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const filesArray = Array.from(e.target.files);
-      
-      // Limit to 5 images
-      if (imageFiles.length + filesArray.length > 5) {
-        setErrorMsg('الحد الأقصى المسموح به هو 5 صور فقط.');
+
+      // Limit to 4 images (same as the Flutter app); accept only what fits
+      const remaining = MAX_IMAGES - imageFiles.length;
+      if (remaining <= 0) {
+        setErrorMsg('الحد الأقصى المسموح به هو 4 صور فقط.');
         return;
       }
+      const accepted = filesArray.slice(0, remaining);
+      if (accepted.length < filesArray.length) {
+        setErrorMsg('الحد الأقصى المسموح به هو 4 صور فقط.');
+      } else {
+        setErrorMsg(null);
+      }
+      setImageFiles((prev) => [...prev, ...accepted]);
 
-      setErrorMsg(null);
-      setImageFiles((prev) => [...prev, ...filesArray]);
-
-      const previews = filesArray.map((file) => URL.createObjectURL(file));
+      const previews = accepted.map((file) => URL.createObjectURL(file));
       setImagePreviews((prev) => [...prev, ...previews]);
     }
   };
@@ -182,6 +179,17 @@ export default function AddProductPage() {
   const onSubmitPress = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+
+    const centersOptions = selectedCountry === 'SA'
+      ? (SAUDI_CITIES[location] ?? [])
+      : (EGYPT_CENTERS[location] ?? []);
+
+    // Location validation: district must belong to the selected governorate
+    if (!centersOptions.includes(center.trim())) {
+      setErrorMsg('يرجى اختيار مركز صحيح تابع للمحافظة المحددة');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
 
     // Image check
     if (imageFiles.length === 0) {
@@ -416,10 +424,10 @@ export default function AddProductPage() {
 
           {/* Section 1: Images */}
           <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-4 transition-colors">
-            <h2 className="text-base font-extrabold text-slate-800 dark:text-white">صور الهاتف (5 صور كحد أقصى)</h2>
+            <h2 className="text-base font-extrabold text-slate-800 dark:text-white">صور الهاتف (4 صور كحد أقصى)</h2>
             <p className="text-xs text-slate-400 dark:text-slate-400 mt-1">إضافة صور حقيقية واضحة تزيد من فرصة بيع موبايلك بسرعة</p>
             
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
               {imagePreviews.map((preview, index) => (
                 <div key={index} className="aspect-square rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 relative overflow-hidden group transition-colors">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -434,7 +442,7 @@ export default function AddProductPage() {
                 </div>
               ))}
               
-              {imageFiles.length < 5 && (
+              {imageFiles.length < MAX_IMAGES && (
                 <label className="aspect-square rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-teal-500 dark:hover:border-teal-400 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-all flex flex-col items-center justify-center cursor-pointer text-slate-400 dark:text-slate-500 gap-1.5">
                   <ImageIcon className="w-6 h-6 stroke-[1.5px]" />
                   <span className="text-[10px] font-bold">أضف صورة</span>
@@ -787,11 +795,14 @@ export default function AddProductPage() {
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">{selectedCountry === 'SA' ? 'المنطقة' : 'المحافظة'}</label>
                 <select
                   value={location}
-                  onChange={(e) => setLocation(e.target.value)}
+                  onChange={(e) => {
+                    setLocation(e.target.value);
+                    setCenter('');
+                  }}
                   required
                   className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
                 >
-                  {(selectedCountry === 'SA' ? REGIONS_SA : GOVERNORATES).map((gov) => (
+                  {(selectedCountry === 'SA' ? SAUDI_REGIONS : EGYPT_GOVERNORATES).map((gov) => (
                     <option key={gov} value={gov}>
                       {gov}
                     </option>
@@ -799,17 +810,27 @@ export default function AddProductPage() {
                 </select>
               </div>
 
-              {/* Location Center/District */}
+              {/* Location Center/District - dropdown bound to the selected governorate (same lists as the app) */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">{selectedCountry === 'SA' ? 'المدينة / الحي' : 'المركز / الحي (المدينة)'}</label>
-                <input
-                  type="text"
+                <select
                   value={center}
                   onChange={(e) => setCenter(e.target.value)}
-                  placeholder={selectedCountry === 'SA' ? 'مثال: العليا / الياسمين / الملقا' : 'مثال: الدقي / مصر الجديدة / محرم بك'}
                   required
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-655"
-                />
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
+                >
+                  <option value="" disabled>
+                    {selectedCountry === 'SA' ? 'اختر المدينة / الحي' : 'اختر المركز / الحي'}
+                  </option>
+                  {(selectedCountry === 'SA'
+                    ? (SAUDI_CITIES[location] ?? [])
+                    : (EGYPT_CENTERS[location] ?? [])
+                  ).map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Price Negotiable Option */}
