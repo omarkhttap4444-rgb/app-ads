@@ -179,9 +179,7 @@ export default function Header() {
     router.refresh();
   };
 
-  const accountHref = user
-    ? `/store/${profile?.id ?? user.id}`
-    : '/login';
+  const accountHref = user ? '/profile' : '/login';
   const isProductPage = pathname.startsWith('/mobiles/') && pathname !== '/mobiles/add';
   const searchPlaceholder = 'بتدور على إيه؟';
 
@@ -196,7 +194,7 @@ export default function Header() {
           backgroundSize: 'cover',
         }}
       >
-        <div className="mx-auto hidden h-[92px] max-w-7xl items-center gap-5 px-6 md:flex">
+        <div className="mx-auto hidden h-[74px] max-w-7xl items-center gap-5 px-6 md:flex">
           <Link href="/" className="flex shrink-0 items-center gap-3" aria-label="سوق فون">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -212,16 +210,16 @@ export default function Header() {
             </div>
           </Link>
 
-          <form action="/mobiles" className="app-search-pill mx-auto flex h-14 min-w-0 max-w-2xl flex-1 items-center rounded-full bg-white px-5 text-[#202124]">
-            <Search className="h-6 w-6 shrink-0 text-[#44b765]" strokeWidth={2.7} />
+          <form action="/mobiles" className="app-search-pill mx-auto flex h-11 min-w-0 max-w-2xl flex-1 items-center rounded-full bg-white px-4 text-[#202124]">
+            <Search className="h-5 w-5 shrink-0 text-[#44b765]" strokeWidth={2.7} />
             <input
               name="q"
               dir="rtl"
               aria-label="ابحث عن منتج"
               placeholder={searchPlaceholder}
-              className="h-full min-w-0 flex-1 bg-transparent px-4 text-sm font-bold outline-none placeholder:text-[#8b95a1]"
+              className="h-full min-w-0 flex-1 bg-transparent px-3 text-[13px] font-bold outline-none placeholder:text-[#8b95a1]"
             />
-            <button className="rounded-full bg-[#079447] px-5 py-2 text-xs font-black text-white transition hover:bg-[#067b3c]">
+            <button className="rounded-full bg-[#079447] px-4 py-1.5 text-[11px] font-black text-white transition hover:bg-[#067b3c]">
               بحث
             </button>
           </form>
@@ -276,14 +274,14 @@ export default function Header() {
           </div>
         </div>
 
-        <div className="flex h-[104px] items-center gap-2.5 px-4 max-[340px]:gap-1.5 max-[340px]:px-2 md:hidden" dir="ltr">
+        <div className="flex h-[84px] items-center gap-2.5 px-4 max-[340px]:gap-1.5 max-[340px]:px-2 md:hidden" dir="ltr">
           <button onClick={() => setDrawerOpen(true)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/10 backdrop-blur-sm" aria-label="فتح القائمة">
             <Menu className="h-7 w-7" strokeWidth={2.8} />
           </button>
           <ThemeToggle />
-          <form action="/mobiles" className="app-search-pill flex h-14 min-w-0 flex-1 items-center rounded-full bg-white px-3 text-[#202124]">
-            <Search className="h-6 w-6 shrink-0 text-[#48b765]" strokeWidth={2.8} />
-            <input name="q" dir="rtl" aria-label="ابحث عن منتج" placeholder={searchPlaceholder} className="h-full min-w-0 flex-1 bg-transparent px-2 text-xs font-bold outline-none placeholder:text-[#8b95a1]" />
+          <form action="/mobiles" className="app-search-pill flex h-11 min-w-0 flex-1 items-center rounded-full bg-white px-3 text-[#202124]">
+            <Search className="h-5 w-5 shrink-0 text-[#48b765]" strokeWidth={2.8} />
+            <input name="q" dir="rtl" aria-label="ابحث عن منتج" placeholder={searchPlaceholder} className="h-full min-w-0 flex-1 bg-transparent px-2 text-[11px] font-bold outline-none placeholder:text-[#8b95a1]" />
           </form>
           <Link href="/mobiles" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/10 backdrop-blur-sm max-[340px]:hidden" aria-label="المتجر">
             <Store className="h-7 w-7 fill-white/20" strokeWidth={2.4} />
@@ -324,7 +322,7 @@ export default function Header() {
             </span>
             رسائل
           </Link>
-          <Link href={accountHref} className={`relative flex h-14 flex-col items-center justify-center gap-1 text-[10px] font-bold ${pathname.startsWith('/store/') ? 'text-[#10b759]' : 'text-[#70757a]'}`}>
+          <Link href={accountHref} className={`relative flex h-14 flex-col items-center justify-center gap-1 text-[10px] font-bold ${pathname.startsWith('/store/') || pathname === '/profile' ? 'text-[#10b759]' : 'text-[#70757a]'}`}>
             <User className="h-6 w-6" strokeWidth={2} />
             حسابي
           </Link>

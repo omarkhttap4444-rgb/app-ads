@@ -178,6 +178,7 @@ export default async function MobilesPage(props: Props) {
       dbQuery = filterByCountry(dbQuery, selectedCountry);
       if (location) dbQuery = dbQuery.ilike('location', `%${location}%`);
       if (brand) dbQuery = dbQuery.eq('specifications->>brand', brand);
+      dbQuery = dbQuery.eq('is_sold', false);
       const { data: fullProducts } = await dbQuery;
       if (fullProducts) {
         const hydratedProducts = fullProducts as Product[];
@@ -215,6 +216,7 @@ export default async function MobilesPage(props: Props) {
     if (condition) query = query.eq('condition', condition);
     if (location) query = query.ilike('location', `%${location}%`);
     if (brand) query = query.eq('specifications->>brand', brand);
+    query = query.eq('is_sold', false);
     if (sort === 'price_asc') query = query.order('price', { ascending: true });
     else if (sort === 'price_desc') query = query.order('price', { ascending: false });
     else query = query.order('created_at', { ascending: false });

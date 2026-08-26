@@ -4,15 +4,16 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { 
-  Send, 
-  ArrowRight, 
-  MessageSquare, 
-  Smartphone, 
-  MapPin, 
-  Clock, 
-  Check, 
-  CheckCheck 
+import {
+  Send,
+  ArrowRight,
+  MessageSquare,
+  Smartphone,
+  MapPin,
+  Clock,
+  Check,
+  CheckCheck,
+  Trash2
 } from 'lucide-react';
 
 function ChatRoom() {
@@ -56,39 +57,56 @@ function ChatRoom() {
         .from('conversations')
         .select('*, product:products(id, name, specifications, price, slug)')
         .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
-        .order('last_message_at', { ascending: false });
+        .order('last_message_at', { ascending: false, nullsFirst: false });
 
       if (error) {
         console.error('Error fetching conversations:', error);
         return;
       }
 
-      if (convs && convs.length > 0) {
-        setConversations(convs);
+      let visible = convs ?? [];
 
-        // Extract and resolve other user profiles
-        const otherUserIds = Array.from(
-          new Set(
-            convs.map((c) => (c.user1_id === user.id ? c.user2_id : c.user1_id))
-          )
-        );
-
-        if (otherUserIds.length > 0) {
-          const { data: userProfiles, error: profileErr } = await supabase
-            .from('users')
-            .select('id, name, profile_image_url')
-            .in('id', otherUserIds);
-
-          if (!profileErr && userProfiles) {
-            const profilesMap: { [key: string]: any } = {};
-            userProfiles.forEach((p) => {
-              profilesMap[p.id] = p;
-            });
-            setProfiles((prev) => ({ ...prev, ...profilesMap }));
-          }
+      // Same "clear for me" semantics as the app: hide conversations whose
+      // cleared_at is newer than their last message (conversation_user_settings)
+      if (visible.length > 0) {
+        const { data: settings } = await supabase
+          .from('conversation_user_settings')
+          .select('conversation_id, cleared_at')
+          .eq('user_id', user.id)
+          .in('conversation_id', visible.map((c: any) => c.id));
+        if (settings) {
+          const clearedMap = new Map(settings.map((s: any) => [s.conversation_id, s.cleared_at]));
+          visible = visible.filter((c: any) => {
+            const clearedAt = clearedMap.get(c.id);
+            if (!clearedAt) return true;
+            if (!c.last_message_at) return false;
+            return new Date(c.last_message_at) > new Date(clearedAt);
+          });
         }
-      } else {
-        setConversations([]);
+      }
+
+      setConversations(visible);
+
+      // Extract and resolve other user profiles
+      const otherUserIds = Array.from(
+        new Set(
+          visible.map((c: any) => (c.user1_id === user.id ? c.user2_id : c.user1_id))
+        )
+      );
+
+      if (otherUserIds.length > 0) {
+        const { data: userProfiles, error: profileErr } = await supabase
+          .from('users')
+          .select('id, name, profile_image_url')
+          .in('id', otherUserIds);
+
+        if (!profileErr && userProfiles) {
+          const profilesMap: { [key: string]: any } = {};
+          userProfiles.forEach((p) => {
+            profilesMap[p.id] = p;
+          });
+          setProfiles((prev) => ({ ...prev, ...profilesMap }));
+        }
       }
     } catch (err) {
       console.error(err);
@@ -110,18 +128,33 @@ function ChatRoom() {
     }
   }, [activeConvIdFromUrl]);
 
-  // 3. Fetch messages for active conversation
+  // 3. Fetch messages for active conversation (hiding pre-clear history,
+  // exactly like the app)
   const fetchMessages = async (convId: string) => {
     setLoadingMsgs(true);
     try {
-      const { data: msgs, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('conversation_id', convId)
-        .order('created_at', { ascending: true });
+      const [{ data: msgs, error }, { data: settingsRows }] = await Promise.all([
+        supabase
+          .from('messages')
+          .select('*')
+          .eq('conversation_id', convId)
+          .order('created_at', { ascending: true }),
+        user
+          ? supabase
+              .from('conversation_user_settings')
+              .select('cleared_at')
+              .eq('user_id', user.id)
+              .eq('conversation_id', convId)
+              .maybeSingle()
+          : Promise.resolve({ data: null } as any),
+      ]);
 
       if (!error && msgs) {
-        setMessages(msgs);
+        const clearedAt = settingsRows?.cleared_at as string | undefined;
+        const visible = clearedAt
+          ? msgs.filter((m: any) => new Date(m.created_at) > new Date(clearedAt))
+          : msgs;
+        setMessages(visible);
         // Mark as read
         await supabase.rpc('mark_messages_read', { p_conversation_id: convId });
         // Refresh conversations list to update local unread counts
@@ -132,6 +165,43 @@ function ChatRoom() {
     } finally {
       setLoadingMsgs(false);
     }
+  };
+
+  // Clear conversation for me — same RPC the app uses; the other participant
+  // keeps everything untouched.
+  const handleClearConversation = async (convId: string) => {
+    if (!window.confirm('هل تريد مسح هذه المحادثة لديك؟ سيتم إخفاء رسائلها نهائياً لديك فقط.')) return;
+    try {
+      const { error } = await supabase.rpc('clear_conversation_for_me', {
+        p_conversation_id: convId,
+      });
+      if (!error) {
+        if (activeConvId === convId) {
+          setActiveConvId(null);
+          setMessages([]);
+          router.push('/chat');
+        }
+        await fetchConversations();
+      } else {
+        console.error('clear_conversation_for_me error:', error);
+        window.alert('تعذر مسح المحادثة، حاول مرة أخرى.');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Mark ALL conversations read — same loop behavior as the app's list screen
+  const handleMarkAllRead = async () => {
+    const withUnread = conversations.filter((c: any) =>
+      c.user1_id === user?.id ? c.unread_count_user1 > 0 : c.unread_count_user2 > 0,
+    );
+    await Promise.all(
+      withUnread.map((c: any) =>
+        supabase.rpc('mark_messages_read', { p_conversation_id: c.id }),
+      ),
+    );
+    await fetchConversations();
   };
 
   useEffect(() => {
@@ -286,12 +356,26 @@ function ChatRoom() {
           }`}
         >
           {/* Header */}
-          <div className="p-5 border-b border-slate-50 dark:border-slate-850">
-            <h1 className="text-xl font-black text-slate-808 dark:text-white flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-teal-600 dark:text-teal-400" />
-              الرسائل والمحادثات
-            </h1>
-            <p className="text-xs text-slate-400 dark:text-slate-450 mt-1">تواصل مباشرة وبأمان مع البائعين والمشترين</p>
+          <div className="p-5 border-b border-slate-50 dark:border-slate-850 flex items-center justify-between gap-3">
+            <div>
+              <h1 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-[#00A344]" />
+                الرسائل والمحادثات
+              </h1>
+              <p className="text-xs text-slate-400 mt-1">تواصل مباشر وبأمان مع البائعين والمشترين</p>
+            </div>
+            {conversations.some((c: any) =>
+              c.user1_id === user?.id ? c.unread_count_user1 > 0 : c.unread_count_user2 > 0,
+            ) && (
+              <button
+                onClick={handleMarkAllRead}
+                title="تحديد الكل كمقروء"
+                className="flex items-center gap-1 bg-[#E8F5E9] hover:bg-[#dcefe2] text-[#00A344] text-[10px] font-bold px-3 py-2 rounded-xl border border-[#C8E6C9] transition-all cursor-pointer shrink-0"
+              >
+                <CheckCheck className="w-3.5 h-3.5" />
+                قراءة الكل
+              </button>
+            )}
           </div>
 
           {/* List */}
@@ -308,11 +392,11 @@ function ChatRoom() {
                   key={conv.id}
                   onClick={() => handleSelectConv(conv.id)}
                   className={`w-full p-4 flex items-start gap-3 text-right hover:bg-slate-50 dark:hover:bg-slate-950/60 transition-all cursor-pointer ${
-                    isActive ? 'bg-teal-50/40 dark:bg-teal-950/20 border-r-4 border-teal-600 dark:border-teal-500' : ''
+                    isActive ? 'bg-[#E8F5E9]/60 dark:bg-[#0B3D22]/20 border-r-4 border-[#00A344]' : ''
                   }`}
                 >
                   {/* Avatar */}
-                  <div className="w-11 h-11 rounded-xl bg-teal-100/85 dark:bg-teal-900 text-teal-700 dark:text-teal-300 font-extrabold text-sm flex items-center justify-center overflow-hidden border border-teal-200/50 dark:border-teal-800 shrink-0">
+                  <div className="w-11 h-11 rounded-xl bg-[#E8F5E9] dark:bg-[#123f27] text-[#007a36] dark:text-[#7fe3a8] font-extrabold text-sm flex items-center justify-center overflow-hidden border border-[#C8E6C9]/60 dark:border-[#1B5E20] shrink-0">
                     {otherUserProfile?.profile_image_url ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img src={otherUserProfile.profile_image_url} alt="Profile" className="w-full h-full object-cover" />
@@ -349,12 +433,24 @@ function ChatRoom() {
                     )}
                   </div>
 
-                  {/* Unread badge */}
-                  {hasUnread && (
-                    <span className="bg-teal-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 min-w-[18px] text-center self-center">
-                      {unreadCount}
-                    </span>
-                  )}
+                  {/* Unread badge + clear */}
+                  <div className="flex flex-col items-center gap-2 self-center shrink-0">
+                    {hasUnread && (
+                      <span className="bg-[#00A344] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                        {unreadCount}
+                      </span>
+                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void handleClearConversation(conv.id);
+                      }}
+                      title="مسح المحادثة لديّ"
+                      className="opacity-40 hover:opacity-100 hover:text-rose-600 text-slate-400 transition-all cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </button>
               );
             })}
@@ -389,7 +485,7 @@ function ChatRoom() {
                   </button>
 
                   {/* Avatar */}
-                  <div className="w-10 h-10 rounded-xl bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-350 font-extrabold text-sm flex items-center justify-center overflow-hidden border border-teal-200 dark:border-teal-800">
+                  <div className="w-10 h-10 rounded-xl bg-[#E8F5E9] dark:bg-[#123f27] text-[#007a36] dark:text-[#7fe3a8] font-extrabold text-sm flex items-center justify-center overflow-hidden border border-[#C8E6C9] dark:border-[#1B5E20]">
                     {otherUser?.profile_image_url ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img src={otherUser.profile_image_url} alt="Profile" className="w-full h-full object-cover" />
@@ -405,7 +501,7 @@ function ChatRoom() {
                     {activeConv.product && (
                       <Link 
                         href={`/mobiles/${activeConv.product.slug}`}
-                        className="text-[10px] text-teal-600 dark:text-teal-400 font-semibold hover:underline flex items-center gap-0.5 mt-0.5"
+                        className="text-[10px] text-[#00A344] dark:text-[#2EE06F] font-semibold hover:underline flex items-center gap-0.5 mt-0.5"
                       >
                         <span>حول: {activeConv.product.name}</span>
                         <span>({activeConv.product.price.toLocaleString('ar-EG')} جنيه)</span>
@@ -432,14 +528,14 @@ function ChatRoom() {
                         <div 
                            className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
                              isOwn 
-                               ? 'bg-teal-600 dark:bg-teal-700 text-white rounded-tl-none font-medium' 
+                               ? 'bg-[#00A344] dark:bg-[#008C39] text-white rounded-tl-none font-medium' 
                                : 'bg-white dark:bg-slate-955 text-slate-800 dark:text-slate-205 border border-slate-100 dark:border-slate-850 rounded-tr-none'
                            }`}
                         >
                           <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                           
                           <div className="flex items-center justify-end gap-1 mt-1">
-                            <span className={`text-[9px] block text-left font-medium ${isOwn ? 'text-teal-200 dark:text-teal-400' : 'text-slate-450 dark:text-slate-500'}`}>
+                            <span className={`text-[9px] block text-left font-medium ${isOwn ? 'text-[#c9f7d9] dark:text-[#7fe3a8]' : 'text-slate-450 dark:text-slate-500'}`}>
                               {new Date(msg.created_at).toLocaleTimeString('ar-EG', {
                                 hour: '2-digit',
                                 minute: '2-digit',
@@ -449,7 +545,7 @@ function ChatRoom() {
                               msg.is_read ? (
                                 <CheckCheck className="w-3.5 h-3.5 text-cyan-300 dark:text-cyan-400" />
                               ) : (
-                                <Check className="w-3.5 h-3.5 text-teal-300 dark:text-teal-400" />
+                                <Check className="w-3.5 h-3.5 text-[#e0fbe9] dark:text-[#7fe3a8]" />
                               )
                             )}
                           </div>
@@ -471,12 +567,12 @@ function ChatRoom() {
                   value={messageText}
                   onChange={(e) => setMessageText(e.target.value)}
                   placeholder="اكتب رسالتك هنا..."
-                  className="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                  className="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600"
                 />
                 <button 
                   type="submit" 
                   disabled={!messageText.trim() || sending}
-                  className="bg-teal-600 hover:bg-teal-500 active:bg-teal-700 disabled:opacity-50 text-white p-3.5 rounded-2xl shadow-md shadow-teal-600/10 hover:shadow-lg transition-all flex items-center justify-center shrink-0 cursor-pointer"
+                  className="bg-[#00A344] hover:bg-[#00913d] active:bg-[#007a36] disabled:opacity-50 text-white p-3.5 rounded-2xl shadow-md shadow-[#00A344]/20 hover:shadow-lg transition-all flex items-center justify-center shrink-0 cursor-pointer"
                 >
                   <Send className="w-4 h-4 transform rotate-180" />
                 </button>

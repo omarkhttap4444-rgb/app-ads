@@ -153,8 +153,8 @@ export default async function Home() {
     categoriesResult,
     bannersResult,
   ] = await Promise.all([
-    latestQuery.order('created_at', { ascending: false }).limit(20),
-    trendingQuery.order('views_count', { ascending: false }).limit(10),
+    latestQuery.eq('is_sold', false).order('created_at', { ascending: false }).limit(20),
+    trendingQuery.eq('is_sold', false).order('views_count', { ascending: false }).limit(10),
     supabase
       .from('categories')
       .select('id, name, icon_url, display_order')

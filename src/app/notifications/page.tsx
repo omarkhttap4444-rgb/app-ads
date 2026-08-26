@@ -37,15 +37,18 @@ export default function NotificationsPage() {
     checkUser();
   }, [router]);
 
-  // 2. Fetch notifications list
+  // 2. Fetch notifications list — EXACT same semantics as the app
+  // (notification_provider.dart): exclude type='message', newest first, limit 50
   const fetchNotifications = async () => {
     if (!user) return;
     try {
       const { data: notifs, error } = await supabase
         .from('notifications')
-        .select('*')
+        .select('id,title,body,type,reference_id,data,is_read,sender_id,created_at')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .neq('type', 'message')
+        .order('created_at', { ascending: false })
+        .limit(50);
 
       if (error) {
         console.error('Error fetching notifications:', error);
@@ -92,7 +95,15 @@ export default function NotificationsPage() {
     }
   }, [user]);
 
-  // 3. Subscribe to new notifications in real-time
+  // Fallback poll — same 45s cadence as the app provider
+  useEffect(() => {
+    if (!user) return;
+    const poll = setInterval(() => void fetchNotifications(), 45_000);
+    return () => clearInterval(poll);
+  }, [user]);
+
+  // 3. Realtime sync — handle INSERT + UPDATE + DELETE like the app does,
+  // so read/deleted states stay identical across web and app.
   useEffect(() => {
     if (!user) return;
 
@@ -108,7 +119,8 @@ export default function NotificationsPage() {
         },
         async (payload) => {
           const newNotif = payload.new;
-          setNotifications((prev) => [newNotif, ...prev]);
+          if (newNotif.type === 'message') return; // app excludes message type here
+          setNotifications((prev) => [newNotif, ...prev].slice(0, 50));
 
           // Fetch new sender profile if missing
           if (newNotif.sender_id && !profiles[newNotif.sender_id]) {
@@ -123,6 +135,37 @@ export default function NotificationsPage() {
           }
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const updated = payload.new;
+          // e.g. marked as read from the app → reflect instantly here
+          setNotifications((prev) =>
+            prev.map((n) => (n.id === updated.id ? { ...n, ...updated } : n)),
+          );
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const deletedId = payload.old?.id;
+          if (!deletedId) return;
+          // e.g. swiped away in the app → remove here too
+          setNotifications((prev) => prev.filter((n) => n.id !== deletedId));
+        }
+      )
       .subscribe();
 
     return () => {
@@ -130,14 +173,18 @@ export default function NotificationsPage() {
     };
   }, [user, profiles]);
 
-  // 4. Mark all as read
+  // 4. Mark all as read — RPC requires the user id param (same call as the app)
   const handleMarkAllRead = async () => {
     if (!user || markingAll) return;
     setMarkingAll(true);
     try {
-      const { data, error } = await supabase.rpc('mark_all_notifications_as_read');
+      const { error } = await supabase.rpc('mark_all_notifications_as_read', {
+        p_user_id: user.id,
+      });
       if (!error) {
         setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      } else {
+        console.error('mark_all error:', error);
       }
     } catch (err) {
       console.error(err);
@@ -162,41 +209,32 @@ export default function NotificationsPage() {
       }
     }
 
-    // 2. Navigate based on type and reference_id
-    if (!notif.reference_id) return;
+    // 2. Navigate based on type — same key precedence as the app
+    // (data.product_id ?? data.entity_id ?? reference_id)
+    const data = (notif.data && typeof notif.data === 'object') ? notif.data : {};
+    const targetId = data.product_id ?? data.entity_id ?? notif.reference_id;
+    if (!targetId) return;
 
     try {
-      if (notif.type === 'message') {
-        // Find conversation ID for this message
-        const { data: msg } = await supabase
-          .from('messages')
-          .select('conversation_id')
-          .eq('id', notif.reference_id)
-          .single();
-
-        if (msg) {
-          router.push(`/chat?id=${msg.conversation_id}`);
-        } else {
-          router.push('/chat');
-        }
-      } else if (notif.type === 'like' || notif.type === 'product') {
-        // Get product slug
+      if (notif.type === 'like' || notif.type === 'product' || notif.type === 'rating') {
+        // Get product slug and open its details page
         const { data: prod } = await supabase
           .from('products')
           .select('slug')
-          .eq('id', notif.reference_id)
+          .eq('id', targetId)
           .single();
 
         if (prod) {
           router.push(`/mobiles/${prod.slug}`);
+        } else if (notif.type === 'rating') {
+          router.push(`/profile`);
         }
       } else if (notif.type === 'follow') {
         // Navigate to follower profile page
-        router.push(`/store/${notif.reference_id}`);
-      } else if (notif.type === 'rating') {
-        // Navigate to own profile
-        router.push(`/store/${user.id}`);
+        router.push(`/store/${targetId}`);
       }
+      // type==='system' stays inline (same as app's detail bottom-sheet):
+      // nothing to navigate to.
     } catch (err) {
       console.error('Redirection error:', err);
     }
