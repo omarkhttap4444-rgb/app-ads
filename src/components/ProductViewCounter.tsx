@@ -32,7 +32,7 @@ export default function ProductViewCounter({
         // Storage can be unavailable in strict private-browsing modes.
       }
 
-      const { error } = await supabase.rpc('increment_product_views', {
+      const { data: result, error } = await supabase.rpc('increment_product_views', {
         p_product_id: productId,
         p_viewer_key: viewerKey,
       });
@@ -42,12 +42,17 @@ export default function ProductViewCounter({
         return;
       }
 
-      const { data } = await supabase
-        .from('products')
-        .select('views_count')
-        .eq('id', productId)
-        .single();
-      if (active && typeof data?.views_count === 'number') setCount(data.views_count);
+      const rpcResult = result as { views_count?: number } | null;
+      if (active && typeof rpcResult?.views_count === 'number') {
+        setCount(rpcResult.views_count);
+      } else {
+        const { data: product } = await supabase
+          .from('products')
+          .select('views_count')
+          .eq('id', productId)
+          .single();
+        if (active && typeof product?.views_count === 'number') setCount(product.views_count);
+      }
     };
 
     void recordView();

@@ -69,7 +69,7 @@ export default function NotificationsPage() {
 
         if (senderIds.length > 0) {
           const { data: userProfiles, error: profileErr } = await supabase
-            .from('users')
+            .from('public_profiles')
             .select('id, name, profile_image_url')
             .in('id', senderIds);
 
@@ -125,7 +125,7 @@ export default function NotificationsPage() {
           // Fetch new sender profile if missing
           if (newNotif.sender_id && !profiles[newNotif.sender_id]) {
             const { data: senderProfile } = await supabase
-              .from('users')
+              .from('public_profiles')
               .select('id, name, profile_image_url')
               .eq('id', newNotif.sender_id)
               .single();

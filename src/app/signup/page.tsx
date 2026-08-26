@@ -172,24 +172,8 @@ export default function SignupPage() {
     }
 
     try {
-      // 1. Check if user already exists in public.users table (Pre-verification check)
-      const { data: existingUser, error: checkError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', email.trim().toLowerCase())
-        .maybeSingle();
-
-      if (checkError) {
-        console.error('Error pre-checking user email:', checkError);
-      }
-
-      if (existingUser) {
-        setError('البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول أو استخدام بريد آخر');
-        setLoading(false);
-        return;
-      }
-
-      // 2. Register user using Supabase Auth (which automatically sends an OTP code if email confirmation is enabled)
+      // يعتمد فقط على Supabase Auth لمعرفة هل البريد مسجل — بلا قراءة public.users
+      // Register user using Supabase Auth (which automatically sends an OTP code if email confirmation is enabled)
       const { data, error: signupError } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,

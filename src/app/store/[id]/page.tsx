@@ -12,7 +12,13 @@ export const revalidate = 60;
 type Props = { params: Promise<{ id: string }> };
 
 const getStore = cache((id: string) =>
-  supabase.from('users').select('*').eq('id', id).single(),
+  supabase
+    .from('public_profiles')
+    .select(
+      'id, user_id, name, profile_image_url, cover_image_url, bio, governorate, is_verified, is_store, subscription_type, followers_count, following_count, seller_rating, seller_ratings_count, created_at, glow_mode, updated_at, contact_phone, is_contact_phone_visible, phone, contact_whatsapp, is_contact_whatsapp_visible',
+    )
+    .eq('id', id)
+    .single(),
 );
 
 export async function generateMetadata(props: Props): Promise<Metadata> {

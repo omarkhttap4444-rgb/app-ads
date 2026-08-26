@@ -96,7 +96,7 @@ function ChatRoom() {
 
       if (otherUserIds.length > 0) {
         const { data: userProfiles, error: profileErr } = await supabase
-          .from('users')
+          .from('public_profiles')
           .select('id, name, profile_image_url')
           .in('id', otherUserIds);
 

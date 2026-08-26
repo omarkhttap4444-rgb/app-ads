@@ -63,7 +63,7 @@ export default function ProductLikeButton({
     setCount(Math.max(0, previousCount + (nextLiked ? 1 : -1)));
     setLoading(true);
 
-    const { error } = await supabase.rpc('toggle_like', {
+    const { data, error } = await supabase.rpc('toggle_like', {
       p_product_id: productId,
       p_is_adding: nextLiked,
     });
@@ -73,12 +73,19 @@ export default function ProductLikeButton({
       setIsLiked(!nextLiked);
       setCount(previousCount);
     } else {
-      const { data } = await supabase
-        .from('products')
-        .select('likes_count')
-        .eq('id', productId)
-        .single();
-      if (typeof data?.likes_count === 'number') setCount(data.likes_count);
+      const result = data as { is_liked?: boolean; likes_count?: number } | null;
+      if (typeof result?.is_liked === 'boolean') setIsLiked(result.is_liked);
+      if (typeof result?.likes_count === 'number') {
+        setCount(result.likes_count);
+      } else {
+        // Compatibility while an older database migration is still active.
+        const { data: product } = await supabase
+          .from('products')
+          .select('likes_count')
+          .eq('id', productId)
+          .single();
+        if (typeof product?.likes_count === 'number') setCount(product.likes_count);
+      }
     }
 
     setLoading(false);

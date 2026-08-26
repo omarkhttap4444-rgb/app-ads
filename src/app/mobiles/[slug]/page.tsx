@@ -128,7 +128,7 @@ export default async function ProductPage({ params }: Props) {
 
   const [{ data: seller }, { data: similarProducts }] = await Promise.all([
     supabase
-      .from('users')
+      .from('public_profiles')
       .select('phone,contact_phone,is_contact_phone_visible,contact_whatsapp,is_contact_whatsapp_visible,name,profile_image_url,is_verified,seller_rating,followers_count,created_at,bio')
       .eq('id', product.seller_id)
       .single(),

@@ -46,7 +46,7 @@ export default function ProductComments({
   const loadComments = useCallback(async () => {
     const { data, error: queryError } = await supabase
       .from('comments')
-      .select('id,user_id,parent_id,content,created_at,users!comments_user_id_fkey(name,profile_image_url)')
+      .select('id,user_id,parent_id,content,created_at')
       .eq('product_id', productId)
       .or('is_deleted.is.null,is_deleted.eq.false')
       .order('created_at', { ascending: false });
@@ -55,7 +55,20 @@ export default function ProductComments({
       console.error('[comments] Could not load comments:', queryError.message);
       setError('تعذر تحميل التعليقات الآن. حاول مرة أخرى.');
     } else {
-      setComments((data ?? []) as ProductComment[]);
+      const rows = (data ?? []) as ProductComment[];
+      // Hydrate user profiles from public surface (view has no FK)
+      const userIds = Array.from(new Set(rows.map((r) => r.user_id).filter(Boolean))) as string[];
+      let hydrated = rows;
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('public_profiles')
+          .select('id,name,profile_image_url')
+          .in('id', userIds);
+        const map = new Map<string, CommentUser>();
+        (profiles ?? []).forEach((p: any) => map.set(p.id, p));
+        hydrated = rows.map((r) => ({ ...r, users: map.get(r.user_id) ?? null }));
+      }
+      setComments(hydrated as ProductComment[]);
       setError(null);
     }
     setLoading(false);
