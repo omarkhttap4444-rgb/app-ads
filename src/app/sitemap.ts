@@ -134,6 +134,9 @@ async function loadAllProducts() {
     const { data, error } = await supabase
       .from('products')
       .select('slug,seller_id,last_updated,location,product_images(image_url)')
+      .eq('is_sold', false)
+      .not('slug', 'is', null)
+      .neq('slug', '')
       .order('last_updated', { ascending: false })
       .range(from, from + pageSize - 1);
 
