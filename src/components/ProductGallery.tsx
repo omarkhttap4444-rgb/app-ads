@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useMemo, useRef, useState } from 'react';
 import { ChevronRight, ChevronLeft, Smartphone } from 'lucide-react';
 
@@ -52,12 +53,15 @@ export default function ProductGallery({ images, productName }: ProductGalleryPr
         onTouchStart={(event) => { touchStartX.current = event.touches[0].clientX; }}
         onTouchEnd={handleTouchEnd}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={availableImages[safeActiveIndex]}
-          alt={`${productName} - صورة ${safeActiveIndex + 1}`}
+          alt={`${productName} ${productName.includes('مستعمل') || productName.includes('جديد') ? '' : 'مستعمل'} - صورة ${safeActiveIndex + 1} - ${productName} للبيع`}
+          fill
+          priority={safeActiveIndex === 0}
+          sizes="(max-width: 768px) 100vw, 50vw"
           onError={() => setFailedImages((current) => [...new Set([...current, availableImages[safeActiveIndex]])])}
-          className="object-contain w-full h-full p-2 sm:p-4 select-none transition-all duration-300"
+          className="object-contain p-2 sm:p-4 select-none transition-all duration-300"
+          style={{ objectFit: 'contain' }}
         />
 
         {/* Image Counter Badge */}
@@ -104,8 +108,7 @@ export default function ProductGallery({ images, productName }: ProductGalleryPr
                   : 'border-slate-150 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
               }`}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img} alt={`مصغرة ${idx + 1}`} className="object-cover w-full h-full" />
+              <Image src={img} alt={`${productName} - مصغرة ${idx + 1}`} fill sizes="80px" className="object-cover" style={{ objectFit: 'cover' }} />
             </button>
           ))}
         </div>

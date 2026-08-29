@@ -84,13 +84,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = isSaudiLocation(product.location) ? 'ar-SA' : 'ar-EG';
   const currency = isSaudiLocation(product.location) ? 'ريال' : 'جنيه';
   const title = Number(product.price ?? 0) > 0
-    ? `${displayName} للبيع - ${Number(product.price).toLocaleString(locale)} ${currency}`
-    : `${displayName} للبيع - تواصل لمعرفة السعر`;
+    ? `${displayName}${product.condition ? ` ${product.condition}` : ''} للبيع في ${product.location || 'مصر'} - ${Number(product.price).toLocaleString(locale)} ${currency} | سوق فون`
+    : `${displayName}${product.condition ? ` ${product.condition}` : ''} للبيع في ${product.location || 'مصر'} | سوق فون`;
   const description = [
-    `${displayName} ${product.condition || ''} للبيع`,
-    product.location,
+    `${displayName}${product.condition ? ` ${product.condition}` : ''} للبيع في ${product.location || 'مصر'}`,
+    Number(product.price) > 0
+      ? `${Number(product.price).toLocaleString(locale)} ${currency}${product.is_negotiable ? ' قابل للتفاوض' : ''}`
+      : null,
     product.description,
-  ].filter(Boolean).join(' - ').slice(0, 165);
+  ]
+    .filter(Boolean)
+    .join(' - ')
+    .slice(0, 160);
   const images = getImages(product.product_images);
   const canonicalPath = `/mobiles/${encodeURIComponent(decodedSlug)}`;
 
@@ -107,13 +112,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title,
       description,
-      images: images.length ? [images[0]] : ['/og.png'],
-      url: canonicalPath,
+      images: images.length ? [images[0]] : [absoluteUrl('/og.png')],
+      url: absoluteUrl(canonicalPath),
       type: 'website',
       locale: isSaudiLocation(product.location) ? 'ar_SA' : 'ar_EG',
       siteName: 'سوق فون',
     },
-    twitter: { card: 'summary_large_image', title, description, images: images.length ? [images[0]] : ['/og.png'] },
+    twitter: { card: 'summary_large_image', title, description, images: images.length ? [images[0]] : [absoluteUrl('/og.png')] },
   };
 }
 

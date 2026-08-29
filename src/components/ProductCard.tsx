@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useState } from 'react';
 import Link from 'next/link';
 import {
@@ -146,16 +147,17 @@ export default function ProductCard({
         >
           {images.length > 0 ? (
             <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={images[currentImageIndex] ?? images[0]}
-                alt={`${title} ${condition} للبيع في ${product.location}`}
-                loading="lazy"
+                alt={`${title} ${condition} للبيع في ${product.location} - ${product.price > 0 ? `${product.price.toLocaleString('ar-EG')} جنيه` : 'سعر عند التواصل'}`}
+                fill
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                 onError={() => {
                   const failed = images[currentImageIndex] ?? images[0];
                   if (failed) setFailedImages((current) => [...new Set([...current, failed])]);
                 }}
-                className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.025]"
+                className="object-cover transition duration-500 group-hover:scale-[1.025]"
+                style={{ objectFit: 'cover' }}
               />
               <span className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/5 via-transparent to-black/8" />
             </>
