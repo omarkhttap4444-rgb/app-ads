@@ -12,8 +12,10 @@ import { getRequestCountry } from '@/lib/request-country';
 import { SAUDI_MARKET_ENABLED } from '@/lib/market-config';
 import {
   buildMobilesLandingPath,
+  EGYPT_GOVERNORATES,
   isKnownSeoBrand,
   isKnownSeoLocation,
+  SEO_BRANDS,
 } from '@/lib/seo-content';
 
 const productSelection = 'id, name, price, location, condition, slug, created_at, views_count, likes_count, comments_count, is_negotiable, is_sold, product_images(image_url), specifications';
@@ -61,6 +63,20 @@ const filterByCountry = <T,>(query: CountryFilterable<T>, country: string): T =>
   }
 };
 
+// Phase 3: Brand+Location qualifying check — exactly brand+location, no q/sort/condition, count>=3, Egypt only
+const QUALIFYING_THRESHOLD = 3;
+const isBrandLocationQualifying = cache(async (brand: string, location: string): Promise<number> => {
+  if (!brand || !location) return 0;
+  if (!isKnownSeoBrand(brand) || !isKnownSeoLocation(location, 'EG')) return 0;
+  const { count } = await supabase
+    .from('products')
+    .select('id', { count: 'exact', head: true })
+    .eq('is_sold', false)
+    .eq('specifications->>brand', brand)
+    .ilike('location', `${location}%`);
+  return count ?? 0;
+});
+
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const params = await searchParams;
   const requestedCountry = typeof params.country === 'string' ? params.country.toUpperCase() : '';
@@ -83,25 +99,49 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     (!brand || isKnownSeoBrand(brand)) &&
     (!location || isKnownSeoLocation(location, country));
   const countryName = country === 'SA' ? 'السعودية' : 'مصر';
-  const baseTitle = brand
-    ? `موبايلات ${brand} للبيع في ${countryName} - جديد ومستعمل`
-    : location
-      ? `موبايلات للبيع في ${location} - جديد ومستعمل`
-      : category
-        ? `${category} للبيع في ${countryName} - جديد ومستعمل`
-        : `موبايلات وإلكترونيات للبيع في ${countryName}`;
+  // Phase 3: brand+location title/description
+  const isBrandLocationCombo = !!brand && !!location && !category && country === 'EG' && isKnownSeoBrand(brand) && isKnownSeoLocation(location, 'EG');
+  const baseTitle = isBrandLocationCombo
+    ? `موبايلات ${brand} مستعملة للبيع في ${location}`
+    : brand
+      ? `موبايلات ${brand} للبيع في ${countryName} - جديد ومستعمل`
+      : location
+        ? `موبايلات للبيع في ${location} - جديد ومستعمل`
+        : category
+          ? `${category} للبيع في ${countryName} - جديد ومستعمل`
+          : `موبايلات وإلكترونيات للبيع في ${countryName}`;
   const title = `${baseTitle}${page > 1 ? ` - صفحة ${page}` : ''}`;
-  const description = brand
-    ? `قارن أسعار أحدث موبايلات ${brand} الجديدة والمستعملة المعروضة للبيع في ${countryName} وتواصل مباشرة مع البائع بدون عمولة.`
-    : location
-      ? `اعثر على موبايلات جديدة ومستعملة للبيع في ${location}، قارن الأسعار والحالة وتواصل مباشرة مع البائعين على سوق فون.`
-      : category
-        ? `تصفح أحدث إعلانات ${category} الجديدة والمستعملة في ${countryName}، قارن الأسعار وتواصل مباشرة مع البائع على سوق فون.`
-        : `تصفح الموبايلات والإلكترونيات الجديدة والمستعملة للبيع في ${countryName}. بحث ذكي، أسعار متنوعة وتواصل مباشر مع البائعين.`;
-  const indexable = !q && !hasSortingOrCondition && activeLandingFacets.length <= 1 && hasValidFacet;
-  const landingOptions = indexable ? { category, brand, location } : {};
+  const description = isBrandLocationCombo
+    ? `تصفح موبايلات ${brand} المستعملة المعروضة للبيع في ${location} على سوق فون، وقارن الأسعار والحالة وتواصل مع البائع مباشرة.`
+    : brand
+      ? `قارن أسعار أحدث موبايلات ${brand} الجديدة والمستعملة المعروضة للبيع في ${countryName} وتواصل مباشرة مع البائع بدون عمولة.`
+      : location
+        ? `اعثر على موبايلات جديدة ومستعملة للبيع في ${location}، قارن الأسعار والحالة وتواصل مباشرة مع البائعين على سوق فون.`
+        : category
+          ? `تصفح أحدث إعلانات ${category} الجديدة والمستعملة في ${countryName}، قارن الأسعار وتواصل مباشرة مع البائع على سوق فون.`
+          : `تصفح الموبايلات والإلكترونيات الجديدة والمستعملة للبيع في ${countryName}. بحث ذكي، أسعار متنوعة وتواصل مباشر مع البائعين.`;
+  let indexable = !q && !hasSortingOrCondition && hasValidFacet && (
+    activeLandingFacets.length === 0 ||
+    activeLandingFacets.length === 1 ||
+    (activeLandingFacets.length === 2 && !!brand && !!location && !category && country === 'EG')
+  );
+  // Brand+Location requires count>=3
+  if (indexable && brand && location && !category && country === 'EG') {
+    const count = await isBrandLocationQualifying(brand, location);
+    if (count < QUALIFYING_THRESHOLD) indexable = false;
+  }
+  // Thin brand+location -> canonical to parent brand
+  const landingOptions = (() => {
+    if (!indexable) {
+      if (brand && location && !category && !q && !hasSortingOrCondition && isKnownSeoBrand(brand) && isKnownSeoLocation(location, country) && country === 'EG') {
+        return { brand };
+      }
+      return {};
+    }
+    return { category, brand, location };
+  })();
   const canonicalPath = buildMobilesLandingPath({ country, ...landingOptions, page: indexable ? page : 1 });
-  const egyptPath = buildMobilesLandingPath({ country: 'EG', category, brand, page });
+  const egyptPath = buildMobilesLandingPath({ country: 'EG', category, brand, location, page });
   const saudiPath = buildMobilesLandingPath({ country: 'SA', category, brand, page });
   
   return {
@@ -228,31 +268,72 @@ export default async function MobilesPage(props: Props) {
 
   const hasFilters = q || condition || location || sort || category || brand;
   const countryName = selectedCountry === 'SA' ? 'السعودية' : 'مصر';
-  const collectionName = brand
-    ? `موبايلات ${brand} للبيع في ${countryName}`
-    : location
-      ? `موبايلات للبيع في ${location}`
-      : category
-        ? `${category} للبيع في ${countryName}`
-        : `موبايلات وإلكترونيات للبيع في ${countryName}`;
-  const collectionDescription = brand
-    ? `قارن بين موبايلات ${brand} الجديدة والمستعملة، وتحقق من السعر والحالة ومكان البائع قبل التواصل المباشر.`
-    : location
-      ? `إعلانات موبايلات وإلكترونيات من بائعين في ${location}. قارن الأسعار والحالة واختر العرض الأنسب لك.`
-      : category
-        ? `أحدث إعلانات ${category} الجديدة والمستعملة مع أسعار وصور وتفاصيل تساعدك على المقارنة قبل التواصل.`
-        : 'اكتشف أحدث الموبايلات والإلكترونيات الجديدة والمستعملة، وقارن الأسعار وتواصل مع البائع مباشرة بدون عمولة.';
+  const isBrandLocationPage = !!brand && !!location && !category && selectedCountry === 'EG' && isKnownSeoBrand(brand) && isKnownSeoLocation(location, selectedCountry);
+  const collectionName = isBrandLocationPage
+    ? `موبايلات ${brand} مستعملة للبيع في ${location}`
+    : brand
+      ? `موبايلات ${brand} للبيع في ${countryName}`
+      : location
+        ? `موبايلات للبيع في ${location}`
+        : category
+          ? `${category} للبيع في ${countryName}`
+          : `موبايلات وإلكترونيات للبيع في ${countryName}`;
+  const collectionDescription = isBrandLocationPage
+    ? `تصفح موبايلات ${brand} المستعملة المعروضة للبيع في ${location} على سوق فون، وقارن الأسعار والحالة وتواصل مع البائع مباشرة.`
+    : brand
+      ? `قارن بين موبايلات ${brand} الجديدة والمستعملة، وتحقق من السعر والحالة ومكان البائع قبل التواصل المباشر.`
+      : location
+        ? `إعلانات موبايلات وإلكترونيات من بائعين في ${location}. قارن الأسعار والحالة واختر العرض الأنسب لك.`
+        : category
+          ? `أحدث إعلانات ${category} الجديدة والمستعملة مع أسعار وصور وتفاصيل تساعدك على المقارنة قبل التواصل.`
+          : 'اكتشف أحدث الموبايلات والإلكترونيات الجديدة والمستعملة، وقارن الأسعار وتواصل مع البائع مباشرة بدون عمولة.';
   const isKnownCategory = !category || (categories ?? []).some((item) => item.name === category);
   const activeLandingFacets = [category, brand, location].filter(Boolean);
-  const isIndexableCollection = !q && !sort && !condition && activeLandingFacets.length <= 1
-    && isKnownCategory && (!brand || isKnownSeoBrand(brand))
-    && (!location || isKnownSeoLocation(location, selectedCountry));
+  const hasValidFacet = isKnownCategory && (!brand || isKnownSeoBrand(brand)) && (!location || isKnownSeoLocation(location, selectedCountry));
+  let isIndexableCollection = !q && !sort && !condition && hasValidFacet && (
+    activeLandingFacets.length === 0 ||
+    activeLandingFacets.length === 1 ||
+    (activeLandingFacets.length === 2 && !!brand && !!location && !category && selectedCountry === 'EG')
+  );
+  if (isIndexableCollection && brand && location && !category && selectedCountry === 'EG') {
+    const count = await isBrandLocationQualifying(brand, location);
+    if (count < QUALIFYING_THRESHOLD) isIndexableCollection = false;
+  }
+  const landingOptions = (() => {
+    if (!isIndexableCollection) {
+      if (brand && location && !category && !q && !sort && !condition && isKnownSeoBrand(brand) && isKnownSeoLocation(location, selectedCountry) && selectedCountry === 'EG') {
+        return { brand };
+      }
+      return {};
+    }
+    return { category, brand, location };
+  })();
   const collectionPath = buildMobilesLandingPath({
     country: selectedCountry,
-    ...(isIndexableCollection ? { category, brand, location } : {}),
+    ...landingOptions,
     page: isIndexableCollection ? page : 1,
   });
   const totalPages = Math.max(1, Math.ceil(totalProducts / PAGE_SIZE));
+
+  // Phase 3: contextual Brand+Location links (only qualifying, max 6, no N+1 for sitemap)
+  let brandLocationLinks: Array<{ brand: string; location: string }> = [];
+  if (isIndexableCollection && brand && !location && !category && selectedCountry === 'EG' && isKnownSeoBrand(brand)) {
+    const locs: string[] = [];
+    for (const loc of EGYPT_GOVERNORATES) {
+      if (locs.length >= 6) break;
+      const c = await isBrandLocationQualifying(brand, loc);
+      if (c >= 3) locs.push(loc);
+    }
+    brandLocationLinks = locs.map((loc) => ({ brand, location: loc }));
+  } else if (isIndexableCollection && location && !brand && !category && selectedCountry === 'EG' && isKnownSeoLocation(location, 'EG')) {
+    const brands: string[] = [];
+    for (const b of SEO_BRANDS) {
+      if (brands.length >= 6) break;
+      const c = await isBrandLocationQualifying(b.name, location);
+      if (c >= 3) brands.push(b.name);
+    }
+    brandLocationLinks = brands.map((b) => ({ brand: b, location }));
+  }
 
   if (totalProducts > 0 && page > totalPages) notFound();
 
@@ -313,6 +394,9 @@ export default async function MobilesPage(props: Props) {
             <div>
               <h1 className="text-lg font-black text-[#242628] dark:text-white md:text-xl">{collectionName}</h1>
               <p className="mt-1 max-w-3xl text-[11px] font-bold leading-6 text-[#737b80] dark:text-[#aeb4b7]">{collectionDescription}</p>
+              {isBrandLocationPage && isIndexableCollection && (
+                <p className="mt-2 text-[11px] font-bold text-[#078b43]">يوجد حالياً {totalProducts} إعلان نشط لـ {brand} في {location} — قارن الأسعار وتواصل مباشرة</p>
+              )}
               <nav className="mt-2 flex items-center gap-1 rounded-full bg-[#f1f4f2] p-1 dark:bg-[#292929]" aria-label="اختيار البلد">
                 <Link
                   href={getCollectionPath(category, 'EG')}
@@ -381,6 +465,16 @@ export default async function MobilesPage(props: Props) {
             )}
             <span className="text-slate-400 font-medium self-center mr-1">{totalProducts} نتيجة</span>
           </div>
+        )}
+
+        {brandLocationLinks.length > 0 && (
+          <nav className="mb-4 flex flex-wrap gap-2" aria-label="روابط ذات صلة">
+            {brandLocationLinks.map(({ brand: b, location: l }) => (
+              <Link key={`${b}-${l}`} href={buildMobilesLandingPath({ brand: b, location: l })} className="rounded-full border border-[#dfe6e2] bg-[#f8faf9] px-3 py-1.5 text-[10px] font-black text-[#56605b] transition hover:border-[#8dd9ac] hover:bg-[#effcf4] hover:text-[#078b43] dark:border-[#3a3a3a] dark:bg-[#242424] dark:text-[#d0d0d0]">
+                {b} في {l}
+              </Link>
+            ))}
+          </nav>
         )}
 
         {/* Products Grid */}

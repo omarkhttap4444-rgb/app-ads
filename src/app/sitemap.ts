@@ -8,6 +8,7 @@ import { isSaudiMarketLocation, SAUDI_MARKET_ENABLED } from '@/lib/market-config
 import {
   buildMobilesLandingPath,
   EGYPT_GOVERNORATES,
+  isKnownSeoBrand,
   SAUDI_REGIONS,
   SEO_BRANDS,
 } from '@/lib/seo-content';
@@ -19,6 +20,7 @@ type ProductSitemapRow = {
   seller_id: string;
   last_updated: string | null;
   location: string | null;
+  specifications: { brand?: string | null } | null;
   product_images: Array<{ image_url: string | null }> | null;
 };
 
@@ -118,6 +120,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.7,
       });
     }
+
+    // Phase 3: Brand+Location — only qualifying >=3, single aggregation (no N+1)
+    const brandLocationCounts = new Map<string, number>();
+    for (const p of products) {
+      const b = (p.specifications as any)?.brand as string | undefined;
+      if (!b || !isKnownSeoBrand(b)) continue;
+      const locMatch = EGYPT_GOVERNORATES.find((gov) => p.location?.startsWith(gov));
+      if (!locMatch) continue;
+      const key = `${b}||${locMatch}`;
+      brandLocationCounts.set(key, (brandLocationCounts.get(key) ?? 0) + 1);
+    }
+    for (const [key, count] of brandLocationCounts) {
+      if (count >= 3) {
+        const [brand, location] = key.split('||');
+        routes.push({
+          url: `${SITE_URL}${buildMobilesLandingPath({ brand, location })}`,
+          changeFrequency: 'daily',
+          priority: 0.8,
+        });
+      }
+    }
   } catch (error) {
     console.error('[sitemap] Could not load all public URLs:', error);
   }
@@ -133,7 +156,7 @@ async function loadAllProducts() {
   for (let from = 0; from < maximumProducts; from += pageSize) {
     const { data, error } = await supabase
       .from('products')
-      .select('slug,seller_id,last_updated,location,product_images(image_url)')
+      .select('slug,seller_id,last_updated,location,specifications,product_images(image_url)')
       .eq('is_sold', false)
       .not('slug', 'is', null)
       .neq('slug', '')
