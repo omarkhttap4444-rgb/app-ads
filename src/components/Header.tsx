@@ -200,6 +200,8 @@ export default function Header() {
             <img
               src="/logo.png"
               alt="سوق فون"
+              width={48}
+              height={48}
               className="h-12 w-12 rounded-2xl bg-white/92 object-contain p-1 shadow-lg"
             />
             <div className="leading-none">
@@ -336,7 +338,7 @@ export default function Header() {
             <div className="flex items-center justify-between border-b border-[#eceeed] pb-4 dark:border-[#343434]">
               <div className="flex items-center gap-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo.png" alt="سوق فون" className="h-11 w-11 rounded-2xl object-contain" />
+                <img src="/logo.png" alt="سوق فون" width={44} height={44} className="h-11 w-11 rounded-2xl object-contain" />
                 <div>
                   <p className="font-black text-[#087d3d] dark:text-[#53d889]">سوق فون</p>
                   <p className="text-[10px] text-[#7a8086]">كل السوق في إيدك</p>

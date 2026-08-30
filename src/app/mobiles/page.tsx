@@ -24,7 +24,7 @@ const PAGE_SIZE = 24;
 const getActiveCategories = cache(() =>
   supabase
     .from('categories')
-    .select('*')
+    .select('id, name, icon_url, display_order')
     .eq('is_active', true)
     .order('display_order', { ascending: true }),
 );
@@ -179,7 +179,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   };
 }
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 export default async function MobilesPage(props: Props) {
   const searchParams = await props.searchParams;
@@ -479,8 +479,8 @@ export default async function MobilesPage(props: Props) {
 
         {/* Products Grid */}
         <div className="product-card-grid">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
+          {products.map((product, index) => (
+            <ProductCard key={product.id} product={product} priority={index < 4} />
           ))}
         </div>
 

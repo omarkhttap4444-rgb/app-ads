@@ -15,10 +15,28 @@ import BrandSlider from '@/components/BrandSlider';
 import HomeAccountPrompt from '@/components/HomeAccountPrompt';
 import PlayStoreLink from '@/components/PlayStoreLink';
 import ProductCard from '@/components/ProductCard';
+import { cache } from 'react';
 import { getCategoryImageUrl } from '@/lib/category-images';
 import { getRequestCountry } from '@/lib/request-country';
 import { supabase } from '@/lib/supabase';
 import { buildMobilesLandingPath, EGYPT_GOVERNORATES } from '@/lib/seo-content';
+
+const getCachedCategories = cache(() =>
+  supabase
+    .from('categories')
+    .select('id, name, icon_url, display_order')
+    .eq('is_active', true)
+    .order('display_order', { ascending: true }),
+);
+
+const getCachedBanners = cache(() =>
+  supabase
+    .from('app_banners')
+    .select('id, title, subtitle, image_url, link_url')
+    .eq('is_active', true)
+    .eq('placement', 'home_top')
+    .order('sort_order', { ascending: true }),
+);
 
 const productSelection = `
   id,
@@ -129,7 +147,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 export default async function Home() {
   const country = await getRequestCountry();
@@ -155,17 +173,8 @@ export default async function Home() {
   ] = await Promise.all([
     latestQuery.eq('is_sold', false).order('created_at', { ascending: false }).limit(20),
     trendingQuery.eq('is_sold', false).order('views_count', { ascending: false }).limit(10),
-    supabase
-      .from('categories')
-      .select('id, name, icon_url, display_order')
-      .eq('is_active', true)
-      .order('display_order', { ascending: true }),
-    supabase
-      .from('app_banners')
-      .select('id, title, subtitle, image_url, link_url')
-      .eq('is_active', true)
-      .eq('placement', 'home_top')
-      .order('sort_order', { ascending: true }),
+    getCachedCategories(),
+    getCachedBanners(),
   ]);
 
   if (latestResult.error) {
@@ -294,8 +303,8 @@ export default async function Home() {
           </div>
 
           <div className="product-card-grid">
-            {latestProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
+            {latestProducts.map((product, index) => (
+              <ProductCard key={product.id} product={product} priority={index < 4} />
             ))}
           </div>
 

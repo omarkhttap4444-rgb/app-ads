@@ -15,26 +15,26 @@ type Banner = {
 
 type Props = { banners: Banner[] };
 
+const fallbackBanners: Banner[] = [
+  {
+    id: 'fallback-1',
+    title: 'تطبيق سوق فون الرسمي الآن',
+    subtitle: 'استقبل رسائل المشترين فوراً وتصفح بدون عمولة',
+    image_url: '/og.png',
+    link_url: 'https://play.google.com/store/apps/details?id=com.souqphone.app',
+  },
+  {
+    id: 'fallback-2',
+    title: 'بيع موبايلك القديم بأفضل سعر',
+    subtitle: 'اعرض جهازك للبيع مجاناً ودع آلاف المشترين يتواصلون معك',
+    image_url: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=1200&q=80',
+    link_url: '/mobiles/add',
+  }
+];
+
 export default function BannerCarousel({ banners }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
-
-  const fallbackBanners: Banner[] = [
-    {
-      id: 'fallback-1',
-      title: 'تطبيق سوق فون الرسمي الآن',
-      subtitle: 'استقبل رسائل المشترين فوراً وتصفح بدون عمولة',
-      image_url: '/og.png',
-      link_url: 'https://play.google.com/store/apps/details?id=com.souqphone.app',
-    },
-    {
-      id: 'fallback-2',
-      title: 'بيع موبايلك القديم بأفضل سعر',
-      subtitle: 'اعرض جهازك للبيع مجاناً ودع آلاف المشترين يتواصلون معك',
-      image_url: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=1200&q=80',
-      link_url: '/mobiles/add',
-    }
-  ];
 
   const activeBanners = banners.length > 0 ? banners : fallbackBanners;
 

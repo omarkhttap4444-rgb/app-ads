@@ -41,6 +41,7 @@ export type ProductCardProps = {
     product_images?: Array<{ image_url: string }>;
   };
   onFavoriteToggle?: (isFavorited: boolean) => void;
+  priority?: boolean;
 };
 
 function getTimeAgo(dateValue?: string) {
@@ -78,6 +79,7 @@ function isTruthy(value: string | boolean | undefined) {
 export default function ProductCard({
   product,
   onFavoriteToggle,
+  priority = false,
 }: ProductCardProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [failedImages, setFailedImages] = useState<string[]>([]);
@@ -152,6 +154,7 @@ export default function ProductCard({
                 alt={`${title} ${condition} للبيع في ${product.location} - ${product.price > 0 ? `${product.price.toLocaleString('ar-EG')} جنيه` : 'سعر عند التواصل'}`}
                 fill
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                priority={priority}
                 onError={() => {
                   const failed = images[currentImageIndex] ?? images[0];
                   if (failed) setFailedImages((current) => [...new Set([...current, failed])]);

@@ -36,7 +36,7 @@ import { absoluteUrl, productConditionUrl } from '@/lib/seo';
 import { buildMobilesLandingPath, EGYPT_GOVERNORATES, isKnownSeoBrand, isKnownSeoLocation } from '@/lib/seo-content';
 import { supabase } from '@/lib/supabase';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -48,7 +48,9 @@ const getImages = (rows: Array<{ image_url?: string | null }> | null | undefined
 const getProduct = cache((slug: string) =>
   supabase
     .from('products')
-    .select('*,product_images(image_url)')
+    .select(
+      'id, name, price, location, condition, slug, created_at, last_updated, views_count, likes_count, comments_count, is_negotiable, is_sold, seller_id, seller_name, description, category, specifications, product_images(image_url)',
+    )
     .eq('slug', slug)
     .single(),
 );

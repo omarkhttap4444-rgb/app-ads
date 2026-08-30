@@ -10,14 +10,14 @@ import { SITE_NAME, SITE_URL } from "@/lib/seo";
 const cairo = Cairo({
   subsets: ["arabic", "latin"],
   display: "swap",
-  weight: ["300", "400", "500", "600", "700", "800", "900"],
+  weight: ["400", "700"],
   variable: "--font-cairo",
 });
 
 const inter = Inter({
   subsets: ["latin"],
   display: "swap",
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["400", "700"],
   variable: "--font-inter",
 });
 
