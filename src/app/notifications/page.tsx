@@ -240,14 +240,16 @@ export default function NotificationsPage() {
     }
   };
 
-  // Delete individual notification
+  // Delete individual notification — hard delete same row as Flutter (user_id predicate + RLS)
   const handleDeleteNotification = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation(); // Stop click from triggering parent handleNotificationClick
+    if (!user) return;
     try {
       const { error } = await supabase
         .from('notifications')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', user.id);
 
       if (!error) {
         setNotifications((prev) => prev.filter((n) => n.id !== id));
