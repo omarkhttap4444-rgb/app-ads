@@ -22,7 +22,6 @@ type ProductRow = {
   slug: string | null;
   location: string | null;
   last_updated: string | null;
-  updated_at: string | null;
   created_at: string | null;
   product_images: Array<{ image_url: string | null }> | null;
 };
@@ -47,7 +46,7 @@ export async function GET(
   // Then filter Egypt only and dedupe. Use range for non-overlapping batches.
   const { data, error } = await supabase
     .from('products')
-    .select('id,slug,location,last_updated,updated_at,created_at,product_images(image_url)')
+    .select('id,slug,location,last_updated,created_at,product_images(image_url)')
     .eq('is_sold', false)
     .not('slug', 'is', null)
     .neq('slug', '')
@@ -73,7 +72,7 @@ export async function GET(
     if (seen.has(slug)) continue;
     seen.add(slug);
 
-    const lastmodRaw = row.last_updated || row.updated_at || row.created_at || new Date().toISOString();
+    const lastmodRaw = row.last_updated || row.created_at || new Date().toISOString();
     let lastmod: string;
     try {
       lastmod = new Date(lastmodRaw).toISOString();
