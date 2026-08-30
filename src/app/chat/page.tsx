@@ -128,36 +128,54 @@ function ChatRoom() {
     }
   }, [activeConvIdFromUrl]);
 
-  // 3. Fetch messages for active conversation (hiding pre-clear history,
-  // exactly like the app)
+  // 3. Fetch messages for active conversation — server-authoritative via get_conversation_messages
+  // Respects cleared_at + message_user_hidden + delete-for-everyone semantics (Phase B/C)
   const fetchMessages = async (convId: string) => {
     setLoadingMsgs(true);
     try {
-      const [{ data: msgs, error }, { data: settingsRows }] = await Promise.all([
-        supabase
-          .from('messages')
-          .select('*')
-          .eq('conversation_id', convId)
-          .order('created_at', { ascending: true }),
-        user
-          ? supabase
-              .from('conversation_user_settings')
-              .select('cleared_at')
-              .eq('user_id', user.id)
-              .eq('conversation_id', convId)
-              .maybeSingle()
-          : Promise.resolve({ data: null } as any),
-      ]);
+      // Prefer RPC (cleared_at + hidden + tombstones), fallback to direct select for old deployments
+      let msgs: any[] | null = null;
+      let rpcError: any = null;
+      try {
+        const { data, error } = await supabase.rpc('get_conversation_messages', {
+          p_conversation_id: convId,
+        });
+        if (error) rpcError = error;
+        else if (Array.isArray(data)) msgs = data as any[];
+      } catch (e) {
+        rpcError = e;
+      }
 
-      if (!error && msgs) {
-        const clearedAt = settingsRows?.cleared_at as string | undefined;
-        const visible = clearedAt
-          ? msgs.filter((m: any) => new Date(m.created_at) > new Date(clearedAt))
-          : msgs;
-        setMessages(visible);
-        // Mark as read
+      if (msgs === null) {
+        // Fallback: direct select + cleared_at filter (legacy)
+        const [{ data: directMsgs, error }, { data: settingsRows }] = await Promise.all([
+          supabase
+            .from('messages')
+            .select('*')
+            .eq('conversation_id', convId)
+            .order('created_at', { ascending: true }),
+          user
+            ? supabase
+                .from('conversation_user_settings')
+                .select('cleared_at')
+                .eq('user_id', user.id)
+                .eq('conversation_id', convId)
+                .maybeSingle()
+            : Promise.resolve({ data: null } as any),
+        ]);
+        if (error) throw error;
+        const clearedAt = (settingsRows as any)?.cleared_at as string | undefined;
+        msgs = clearedAt
+          ? (directMsgs as any[]).filter((m: any) => new Date(m.created_at) > new Date(clearedAt))
+          : (directMsgs as any[]);
+        if (rpcError) console.warn('get_conversation_messages RPC failed, used fallback', rpcError);
+      }
+
+      if (msgs) {
+        setMessages(msgs);
+        // Mark as read — server authoritative
         await supabase.rpc('mark_messages_read', { p_conversation_id: convId });
-        // Refresh conversations list to update local unread counts
+        // Refresh conversations list to update local unread counts (server)
         fetchConversations();
       }
     } catch (err) {

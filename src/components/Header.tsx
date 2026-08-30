@@ -200,6 +200,8 @@ export default function Header() {
             <img
               src="/logo.png"
               alt="سوق فون"
+              width={48}
+              height={48}
               className="h-12 w-12 rounded-2xl bg-white/92 object-contain p-1 shadow-lg"
             />
             <div className="leading-none">
@@ -210,16 +212,16 @@ export default function Header() {
             </div>
           </Link>
 
-          <form action="/mobiles" className="app-search-pill mx-auto flex h-11 min-w-0 max-w-2xl flex-1 items-center rounded-full bg-white px-4 text-[#202124]">
-            <Search className="h-5 w-5 shrink-0 text-[#44b765]" strokeWidth={2.7} />
+          <form action="/mobiles" className="app-search-pill mx-auto flex h-9 min-w-0 max-w-2xl flex-1 items-center rounded-full bg-white px-3.5 text-[#202124]">
+            <Search className="h-4 w-4 shrink-0 text-[#44b765]" strokeWidth={2.7} />
             <input
               name="q"
               dir="rtl"
               aria-label="ابحث عن منتج"
               placeholder={searchPlaceholder}
-              className="h-full min-w-0 flex-1 bg-transparent px-3 text-[13px] font-bold outline-none placeholder:text-[#8b95a1]"
+              className="h-full min-w-0 flex-1 bg-transparent px-2.5 text-xs font-bold outline-none placeholder:text-[#8b95a1]"
             />
-            <button className="rounded-full bg-[#079447] px-4 py-1.5 text-[11px] font-black text-white transition hover:bg-[#067b3c]">
+            <button className="rounded-full bg-[#079447] px-3.5 py-1 text-[10px] font-black text-white transition hover:bg-[#067b3c]">
               بحث
             </button>
           </form>
@@ -279,8 +281,8 @@ export default function Header() {
             <Menu className="h-7 w-7" strokeWidth={2.8} />
           </button>
           <ThemeToggle />
-          <form action="/mobiles" className="app-search-pill flex h-11 min-w-0 flex-1 items-center rounded-full bg-white px-3 text-[#202124]">
-            <Search className="h-5 w-5 shrink-0 text-[#48b765]" strokeWidth={2.8} />
+          <form action="/mobiles" className="app-search-pill flex h-9 min-w-0 flex-1 items-center rounded-full bg-white px-3 text-[#202124]">
+            <Search className="h-4 w-4 shrink-0 text-[#48b765]" strokeWidth={2.8} />
             <input name="q" dir="rtl" aria-label="ابحث عن منتج" placeholder={searchPlaceholder} className="h-full min-w-0 flex-1 bg-transparent px-2 text-[11px] font-bold outline-none placeholder:text-[#8b95a1]" />
           </form>
           <Link href="/mobiles" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/10 backdrop-blur-sm max-[340px]:hidden" aria-label="المتجر">
@@ -336,7 +338,7 @@ export default function Header() {
             <div className="flex items-center justify-between border-b border-[#eceeed] pb-4 dark:border-[#343434]">
               <div className="flex items-center gap-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo.png" alt="سوق فون" className="h-11 w-11 rounded-2xl object-contain" />
+                <img src="/logo.png" alt="سوق فون" width={44} height={44} className="h-11 w-11 rounded-2xl object-contain" />
                 <div>
                   <p className="font-black text-[#087d3d] dark:text-[#53d889]">سوق فون</p>
                   <p className="text-[10px] text-[#7a8086]">كل السوق في إيدك</p>

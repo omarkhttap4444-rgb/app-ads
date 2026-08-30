@@ -94,10 +94,11 @@ export default function Footer() {
             <h4 className="text-sm font-bold text-slate-800 dark:text-white mb-4">المساعدة</h4>
             <ul className="space-y-2.5">
               {[
-                { label: 'كيف أبيع جهازي؟', href: '#' },
-                { label: 'نصائح الشراء الآمن', href: '#' },
-                { label: 'الأسئلة الشائعة', href: '#' },
-                { label: 'تواصل معنا', href: '#' },
+                { label: 'دليل شراء موبايل مستعمل', href: '/help/buying-used-phone' },
+                { label: 'دليل بيع موبايل مستعمل', href: '/help/selling-used-phone' },
+                { label: 'كيف تفحص الموبايل', href: '/help/check-used-phone' },
+                { label: 'نصائح الأمان', href: '/help/phone-safety' },
+                { label: 'عن سوق فون', href: '/about' },
               ].map((link) => (
                 <li key={link.label}>
                   <Link href={link.href} className="text-xs text-slate-500 dark:text-slate-400 hover:text-ocean-600 dark:hover:text-ocean-400 transition-colors font-medium flex items-center gap-1">

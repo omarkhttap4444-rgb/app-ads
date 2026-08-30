@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { cache } from 'react';
 import MobilesFiltersWrapper from '@/components/MobilesFiltersWrapper';
 import ProductCard, { type ProductCardProps } from '@/components/ProductCard';
+import QuickBrowseView from '@/components/QuickBrowseView';
 import JsonLd from '@/components/JsonLd';
 import { absoluteUrl } from '@/lib/seo';
 import { getRequestCountry } from '@/lib/request-country';
@@ -24,7 +25,7 @@ const PAGE_SIZE = 24;
 const getActiveCategories = cache(() =>
   supabase
     .from('categories')
-    .select('*')
+    .select('id, name, icon_url, display_order')
     .eq('is_active', true)
     .order('display_order', { ascending: true }),
 );
@@ -179,7 +180,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   };
 }
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 export default async function MobilesPage(props: Props) {
   const searchParams = await props.searchParams;
@@ -347,6 +348,20 @@ export default async function MobilesPage(props: Props) {
     const query = params.toString();
     return `/mobiles${query ? `?${query}` : ''}`;
   };
+  const browseHref = (updates: Record<string, string | null>) => {
+    const params = new URLSearchParams();
+    Object.entries(searchParams).forEach(([key, value]) => {
+      if (key === 'page' || key === 'view' || typeof value !== 'string' || !value) return;
+      params.set(key, value);
+    });
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) params.set(key, value);
+      else params.delete(key);
+    });
+    const query = params.toString();
+    return `/mobiles${query ? `?${query}` : ''}`;
+  };
+  const isQuickView = searchParams.view === 'quick';
   const collectionJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
@@ -388,6 +403,18 @@ export default async function MobilesPage(props: Props) {
           <span aria-current="page">{collectionName}</span>
         </nav>
         
+        {isQuickView ? (
+          <QuickBrowseView
+            products={products}
+            totalProducts={totalProducts}
+            quickHref={browseHref({ view: 'quick' })}
+            detailedHref={browseHref({})}
+            newHref={browseHref({ view: 'quick', condition: 'جديد' })}
+            usedHref={browseHref({ view: 'quick', condition: 'مستعمل' })}
+            activeCondition={condition}
+          />
+        ) : (
+          <>
         {/* Search & Filters Card */}
         <div className="mb-5 rounded-[22px] border border-[#e7e9ec] bg-white p-3.5 shadow-[0_14px_34px_-28px_rgba(16,24,40,0.4)] transition-colors dark:border-[#343434] dark:bg-[#1f1f1f] sm:rounded-[26px] sm:p-5 md:p-6">
           <div className="flex items-center justify-between mb-4">
@@ -479,8 +506,8 @@ export default async function MobilesPage(props: Props) {
 
         {/* Products Grid */}
         <div className="product-card-grid">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
+          {products.map((product, index) => (
+            <ProductCard key={product.id} product={product} priority={index < 4} />
           ))}
         </div>
 
@@ -508,6 +535,8 @@ export default async function MobilesPage(props: Props) {
               </Link>
             ) : <span />}
           </nav>
+        )}
+          </>
         )}
       </div>
     </main>

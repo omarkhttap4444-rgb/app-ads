@@ -16,7 +16,15 @@ export async function GET() {
   const now = new Date().toISOString();
 
   // Public indexable static URLs only — no auth/chat/admin/private
-  const staticPaths: string[] = ['/', '/mobiles'];
+  const staticPaths: string[] = [
+    '/',
+    '/mobiles',
+    '/help/buying-used-phone',
+    '/help/selling-used-phone',
+    '/help/check-used-phone',
+    '/help/phone-safety',
+    '/about',
+  ];
 
   const urls = staticPaths.map((path) => ({
     loc: `${SITE_URL}${path}`,

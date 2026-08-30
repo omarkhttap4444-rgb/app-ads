@@ -15,10 +15,28 @@ import BrandSlider from '@/components/BrandSlider';
 import HomeAccountPrompt from '@/components/HomeAccountPrompt';
 import PlayStoreLink from '@/components/PlayStoreLink';
 import ProductCard from '@/components/ProductCard';
+import { cache } from 'react';
 import { getCategoryImageUrl } from '@/lib/category-images';
 import { getRequestCountry } from '@/lib/request-country';
 import { supabase } from '@/lib/supabase';
 import { buildMobilesLandingPath, EGYPT_GOVERNORATES } from '@/lib/seo-content';
+
+const getCachedCategories = cache(() =>
+  supabase
+    .from('categories')
+    .select('id, name, icon_url, display_order')
+    .eq('is_active', true)
+    .order('display_order', { ascending: true }),
+);
+
+const getCachedBanners = cache(() =>
+  supabase
+    .from('app_banners')
+    .select('id, title, subtitle, image_url, link_url')
+    .eq('is_active', true)
+    .eq('placement', 'home_top')
+    .order('sort_order', { ascending: true }),
+);
 
 const productSelection = `
   id,
@@ -129,7 +147,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 export default async function Home() {
   const country = await getRequestCountry();
@@ -155,17 +173,8 @@ export default async function Home() {
   ] = await Promise.all([
     latestQuery.eq('is_sold', false).order('created_at', { ascending: false }).limit(20),
     trendingQuery.eq('is_sold', false).order('views_count', { ascending: false }).limit(10),
-    supabase
-      .from('categories')
-      .select('id, name, icon_url, display_order')
-      .eq('is_active', true)
-      .order('display_order', { ascending: true }),
-    supabase
-      .from('app_banners')
-      .select('id, title, subtitle, image_url, link_url')
-      .eq('is_active', true)
-      .eq('placement', 'home_top')
-      .order('sort_order', { ascending: true }),
+    getCachedCategories(),
+    getCachedBanners(),
   ]);
 
   if (latestResult.error) {
@@ -205,19 +214,21 @@ export default async function Home() {
         <div className="pt-3 md:pt-5">
           <PlayStoreLink
             placement="home_banner"
-            className="group flex w-full items-center justify-between gap-3 rounded-[24px] bg-gradient-to-l from-[#087d3d] to-[#10ad58] px-5 py-4 text-white shadow-[0_14px_30px_-18px_rgba(3,152,85,0.9)] transition hover:brightness-105 md:py-5"
+            className="group flex w-full items-center justify-between gap-3 rounded-[22px] border border-white/15 bg-gradient-to-l from-[#087d3d] via-[#0b9147] to-[#18b962] px-4 py-3.5 text-white shadow-[0_16px_30px_-20px_rgba(3,152,85,0.95)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_34px_-20px_rgba(3,152,85,1)] md:px-6 md:py-4"
           >
             <span className="flex items-center gap-3">
-              <svg viewBox="0 0 24 24" className="h-8 w-8 shrink-0" fill="currentColor" aria-hidden="true">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/20">
+              <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor" aria-hidden="true">
                 <path d="M3.6 2.3c-.36.37-.6.95-.6 1.7v16c0 .75.24 1.33.62 1.68l.09.08L12.7 13v-.02L3.69 2.22l-.09.08Zm10.4 9.38L12.7 13l-8.98 8.98c.25.26.65.29 1.11.03l10.17-5.79-1.4-2.2Zm3.35-1.9-2.05-1.17-1.55 1.39 1.72 1.72 1.88-1.07c.6-.34.6-.9 0-1.24v-.63ZM3.72 2.02c.25-.13.58-.1.93.1l10.15 5.78-1.75 1.75L3.72 2.02Z"/>
               </svg>
+              </span>
               <span>
-                <span className="block text-[10px] font-bold text-white/85">حمّل تطبيق سوق فون</span>
-                <span className="block text-sm font-black md:text-base">متاح الآن على Google Play</span>
+                <span className="block text-[10px] font-bold tracking-[0.01em] text-white/80">حمّل تطبيق سوق فون</span>
+                <span className="block text-[13px] font-black leading-6 md:text-[15px]">تجربة أسرع على Google Play</span>
               </span>
             </span>
-            <span className="rounded-xl bg-white/15 px-3 py-2 text-[10px] font-black transition group-hover:bg-white/25 md:text-xs">
-              تحميل
+            <span className="rounded-xl bg-white px-4 py-2 text-[11px] font-black text-[#087d3d] shadow-[0_5px_14px_rgba(0,0,0,.16)] transition group-hover:bg-[#effff4] md:text-xs">
+              حمّل الآن
             </span>
           </PlayStoreLink>
         </div>
@@ -237,7 +248,7 @@ export default async function Home() {
             <BadgeCheck className="h-5 w-5 fill-current" />
             جديد
           </Link>
-          <Link href={mobilesHref()} className="flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-[#ff8a22] to-[#ff6d34] px-3 text-xs font-black text-white shadow-[0_12px_24px_-14px_rgba(255,109,52,0.8)] transition hover:brightness-105 md:text-sm">
+          <Link href={mobilesHref({ view: 'quick' })} className="flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-[#ff8a22] to-[#ff6d34] px-3 text-xs font-black text-white shadow-[0_12px_24px_-14px_rgba(255,109,52,0.8)] transition hover:brightness-105 md:text-sm">
             <Sparkles className="h-5 w-5" />
             تصفح سريع
             <Grid2X2 className="h-5 w-5 fill-white" />
@@ -294,8 +305,8 @@ export default async function Home() {
           </div>
 
           <div className="product-card-grid">
-            {latestProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
+            {latestProducts.map((product, index) => (
+              <ProductCard key={product.id} product={product} priority={index < 4} />
             ))}
           </div>
 

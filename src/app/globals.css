@@ -142,7 +142,7 @@ body {
 }
 
 .app-search-pill {
-  box-shadow: 0 8px 24px rgba(0, 69, 40, 0.16);
+  box-shadow: 0 5px 16px rgba(0, 69, 40, 0.15);
 }
 
 .app-product-card {
