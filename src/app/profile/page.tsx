@@ -92,30 +92,57 @@ export default function ProfilePage() {
   const [bioDraft, setBioDraft] = useState('');
   const [savingBio, setSavingBio] = useState(false);
 
-  const loadAll = useCallback(async (userId: string) => {
-    const [profileRes, statsRes, followersRes, followingRes, productsRes] =
-      await Promise.all([
-        supabase.from('users').select('*').eq('id', userId).maybeSingle(),
-        supabase.rpc('get_profile_product_stats', { p_user_id: userId }),
-        supabase
-          .from('follows')
-          .select('*', { count: 'exact', head: true })
-          .eq('following_id', userId),
-        supabase
-          .from('follows')
-          .select('*', { count: 'exact', head: true })
-          .eq('follower_id', userId),
-        supabase
-          .from('products')
-          .select('id, name, price, condition, location, slug, is_sold, views_count, likes_count, created_at, product_images(image_url)')
-          .eq('seller_id', userId)
-          .order('created_at', { ascending: false })
-          .limit(100),
-      ]);
+  const loadAll = useCallback(async (authUid: string) => {
+    // Resolve public users.id via auth_user_id (users.id != auth.uid() for many rows)
+    let resolvedId = authUid;
+    let profileRow: any = null;
+    const userSelect = 'id, name, bio, governorate, contact_phone, is_contact_phone_visible, profile_image_url, cover_image_url, is_verified, subscription_type, subscription_end_date, user_id, created_at';
+    try {
+      const { data: byAuth } = await supabase
+        .from('users')
+        .select(userSelect)
+        .eq('auth_user_id', authUid)
+        .maybeSingle();
+      if (byAuth) {
+        profileRow = byAuth;
+        resolvedId = (byAuth as any).id as string;
+      } else {
+        const { data: byId } = await supabase
+          .from('users')
+          .select(userSelect)
+          .eq('id', authUid)
+          .maybeSingle();
+        if (byId) {
+          profileRow = byId;
+          resolvedId = (byId as any).id as string;
+        }
+      }
+    } catch (e) {
+      console.warn('[profile] users lookup failed', e);
+    }
 
-    if (profileRes.data) setProfile(profileRes.data as ProfileRow);
+    const [statsRes, followersRes, followingRes, productsRes] = await Promise.all([
+      supabase.rpc('get_seller_public_stats', { p_user_id: resolvedId }),
+      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', resolvedId),
+      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', resolvedId),
+      supabase
+        .from('products')
+        .select('id, name, price, condition, location, slug, is_sold, views_count, likes_count, created_at, product_images(image_url)')
+        .eq('seller_id', resolvedId)
+        .order('created_at', { ascending: false })
+        .limit(100),
+    ]);
 
-    // Same jsonb shape returned by get_profile_product_stats in the app
+    if (profileRow) setProfile(profileRow as ProfileRow);
+    else {
+      // Fallback: try to set from resolved lookup if not already
+      const { data: fallback } = await supabase.from('users').select(userSelect).eq('id', resolvedId).maybeSingle();
+      if (fallback) setProfile(fallback as ProfileRow);
+    }
+
+    if (statsRes.error) {
+      console.warn('[profile] get_seller_public_stats error', statsRes.error);
+    }
     const raw = (statsRes.data ?? {}) as Record<string, any>;
     setStats({
       products: Number(raw.products ?? 0),

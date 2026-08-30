@@ -53,11 +53,25 @@ export default async function StoreProfilePage(props: Props) {
 
   if (!store) notFound();
 
-  const { data: products } = await supabase
-    .from('products')
-    .select('id, name, price, location, condition, slug, created_at, views_count, likes_count, comments_count, is_negotiable, is_sold, product_images(image_url), specifications')
-    .eq('seller_id', params.id)
-    .order('created_at', { ascending: false });
+  const [{ data: products }, { data: statsRaw }] = await Promise.all([
+    supabase
+      .from('products')
+      .select('id, name, price, location, condition, slug, created_at, views_count, likes_count, comments_count, is_negotiable, is_sold, product_images(image_url), specifications')
+      .eq('seller_id', params.id)
+      .order('created_at', { ascending: false }),
+    supabase.rpc('get_seller_public_stats', { p_user_id: params.id }),
+  ]);
+
+  const stats = (statsRaw ?? {}) as Record<string, any>;
+  const sellerStats = {
+    products: Number(stats.products ?? 0),
+    sold_products: Number(stats.sold_products ?? 0),
+    views: Number(stats.views ?? 0),
+    likes: Number(stats.likes ?? 0),
+    seller_rating: Number(stats.seller_rating ?? store.seller_rating ?? 0),
+    seller_ratings_count: Number(stats.seller_ratings_count ?? store.seller_ratings_count ?? 0),
+    followers: Number(stats.followers ?? store.followers_count ?? 0),
+  };
 
   const storeUrl = absoluteUrl(`/store/${params.id}`);
   const profileJsonLd = {
@@ -96,7 +110,17 @@ export default async function StoreProfilePage(props: Props) {
     <main className="min-h-screen bg-slate-50 dark:bg-[#0a0e17] pb-20 transition-colors">
       <JsonLd data={profileJsonLd} />
       <JsonLd data={listingsJsonLd} />
-      <ProfileHeader store={store} productsCount={products?.length || 0} />
+      <ProfileHeader store={{ ...store, followers_count: sellerStats.followers, seller_rating: sellerStats.seller_rating, seller_ratings_count: sellerStats.seller_ratings_count } as any} productsCount={sellerStats.products} />
+      {/* Seller public stats — same definitions as Flutter get_seller_public_stats */}
+      <div className="container mx-auto px-4 max-w-7xl -mt-4 relative z-10">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 grid grid-cols-3 md:grid-cols-5 gap-3 text-center">
+          <div><div className="text-lg font-black text-slate-800 dark:text-white">{sellerStats.sold_products}</div><div className="text-xs text-slate-400 font-semibold">مبيعاتي</div></div>
+          <div><div className="text-lg font-black text-slate-800 dark:text-white">{sellerStats.products}</div><div className="text-xs text-slate-400 font-semibold">إعلاناتي</div></div>
+          <div><div className="text-lg font-black text-slate-800 dark:text-white">{sellerStats.views}</div><div className="text-xs text-slate-400 font-semibold">المشاهدات</div></div>
+          <div><div className="text-lg font-black text-slate-800 dark:text-white">{sellerStats.likes}</div><div className="text-xs text-slate-400 font-semibold">الإعجابات</div></div>
+          <div><div className="text-lg font-black text-slate-800 dark:text-white">{sellerStats.seller_ratings_count > 0 ? `${sellerStats.seller_rating.toFixed(1)} (${sellerStats.seller_ratings_count})` : '0'}</div><div className="text-xs text-slate-400 font-semibold">تقييمي</div></div>
+        </div>
+      </div>
 
       <div className="container mx-auto px-4 max-w-7xl relative z-10">
         <div className="mt-10">
