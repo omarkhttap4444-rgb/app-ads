@@ -366,6 +366,9 @@ export default async function ProductPage({ params }: Props) {
             )}
           </nav>
         )}
+        <div className="mt-3 text-xs">
+          <Link href="/help/check-used-phone" className="font-bold text-[#078b43] underline hover:text-[#067a37]">دليل فحص الموبايل المستعمل قبل الشراء</Link>
+        </div>
 
         <div className="mt-4 grid gap-4 lg:grid-cols-12">
           <div className="space-y-4 lg:col-span-8">
