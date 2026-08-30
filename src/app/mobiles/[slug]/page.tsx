@@ -33,6 +33,7 @@ import ShareProductButton from '@/components/ShareProductButton';
 import { isRemoteMediaUrl } from '@/lib/media';
 import { isSaudiMarketLocation, SAUDI_MARKET_ENABLED } from '@/lib/market-config';
 import { absoluteUrl, productConditionUrl } from '@/lib/seo';
+import { buildMobilesLandingPath, EGYPT_GOVERNORATES, isKnownSeoBrand, isKnownSeoLocation } from '@/lib/seo-content';
 import { supabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -252,6 +253,18 @@ export default async function ProductPage({ params }: Props) {
     ...(acceptsExchange ? [{ icon: RefreshCw, label: 'يقبل البدل', value: 'نعم' }] : []),
   ];
 
+  const governorate = EGYPT_GOVERNORATES.find((g) => product.location?.startsWith(g)) || null;
+  let showBrandLocationLink = false;
+  if (brand && governorate && isKnownSeoBrand(brand) && isKnownSeoLocation(governorate, 'EG')) {
+    const { count } = await supabase
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_sold', false)
+      .eq('specifications->>brand', brand)
+      .ilike('location', `${governorate}%`);
+    showBrandLocationLink = (count ?? 0) >= 3;
+  }
+
   return (
     <main className="min-h-screen bg-[#f7f8f8] pb-32 dark:bg-[#0d0d0d] md:pb-10">
       <JsonLd data={productJsonLd} />
@@ -331,6 +344,26 @@ export default async function ProductPage({ params }: Props) {
             </div>
           </div>
         </article>
+
+        {(brand || governorate) && (
+          <nav className="mt-4 flex flex-wrap gap-2" aria-label="روابط ذات صلة">
+            {brand && isKnownSeoBrand(brand) && (
+              <Link href={buildMobilesLandingPath({ brand })} className="rounded-full border border-[#dfe6e2] bg-[#f8faf9] px-3 py-1.5 text-[10px] font-black text-[#56605b] transition hover:border-[#8dd9ac] hover:bg-[#effcf4] hover:text-[#078b43] dark:border-[#3a3a3a] dark:bg-[#242424] dark:text-[#d0d0d0]">
+                موبايلات {brand}
+              </Link>
+            )}
+            {governorate && isKnownSeoLocation(governorate, 'EG') && (
+              <Link href={buildMobilesLandingPath({ location: governorate })} className="rounded-full border border-[#dfe6e2] bg-[#f8faf9] px-3 py-1.5 text-[10px] font-black text-[#56605b] transition hover:border-[#8dd9ac] hover:bg-[#effcf4] hover:text-[#078b43] dark:border-[#3a3a3a] dark:bg-[#242424] dark:text-[#d0d0d0]">
+                موبايلات للبيع في {governorate}
+              </Link>
+            )}
+            {showBrandLocationLink && brand && governorate && (
+              <Link href={buildMobilesLandingPath({ brand, location: governorate })} className="rounded-full border border-[#8dd9ac] bg-[#effcf4] px-3 py-1.5 text-[10px] font-black text-[#078b43] dark:border-[#2d5a3f] dark:bg-[#1a3329] dark:text-[#6ee7b7]">
+                {brand} في {governorate}
+              </Link>
+            )}
+          </nav>
+        )}
 
         <div className="mt-4 grid gap-4 lg:grid-cols-12">
           <div className="space-y-4 lg:col-span-8">
