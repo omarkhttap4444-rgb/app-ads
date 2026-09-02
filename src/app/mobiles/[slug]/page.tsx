@@ -35,6 +35,7 @@ import { isSaudiMarketLocation, SAUDI_MARKET_ENABLED } from '@/lib/market-config
 import { absoluteUrl, productConditionUrl } from '@/lib/seo';
 import { buildMobilesLandingPath, EGYPT_GOVERNORATES, isKnownSeoBrand, isKnownSeoLocation } from '@/lib/seo-content';
 import { supabase } from '@/lib/supabase';
+import { formatWhatsAppNumber, visibleSellerContacts } from '@/lib/seller-contact';
 
 export const revalidate = 60;
 
@@ -63,15 +64,6 @@ const textValue = (value: unknown, fallback = 'غير محدد') => {
 
 const truthy = (value: unknown) =>
   value === true || ['true', '1', 'yes', 'نعم'].includes(String(value ?? '').toLowerCase());
-
-const formatWhatsAppNumber = (phone: string | null, isSaudi: boolean) => {
-  if (!phone) return '';
-  const clean = phone.replace(/\D/g, '').replace(/^0+/, '');
-  if (clean.startsWith('20') || clean.startsWith('966')) return clean;
-  if (clean.startsWith('1') && clean.length === 10) return `20${clean}`;
-  if (clean.startsWith('5') && clean.length === 9) return `966${clean}`;
-  return `${isSaudi ? '966' : '20'}${clean}`;
-};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -103,7 +95,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const canonicalPath = `/mobiles/${encodeURIComponent(decodedSlug)}`;
 
   return {
-    title,
+    title: { absolute: title },
     description,
     keywords: [displayName, `${displayName} للبيع`, product.condition, product.location, 'سوق فون'].filter(Boolean) as string[],
     alternates: { canonical: canonicalPath },
@@ -115,7 +107,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title,
       description,
-      images: images.length ? [images[0]] : [absoluteUrl('/og.png')],
+      images: images.length ? images.map((url) => ({ url, alt: displayName })) : [absoluteUrl('/og.png')],
       url: absoluteUrl(canonicalPath),
       type: 'website',
       locale: isSaudiLocation(product.location) ? 'ar_SA' : 'ar_EG',
@@ -161,16 +153,11 @@ export default async function ProductPage({ params }: Props) {
   const currency = isSaudi ? 'ر.س' : 'ج.م';
   const locale = isSaudi ? 'ar-SA' : 'ar-EG';
   const sellerName = seller?.name || product.seller_name || 'بائع سوق فون';
-  const sellerPhone = seller?.is_contact_phone_visible
-    ? seller.contact_phone || seller.phone || null
-    : null;
-  const sellerWhatsapp = seller?.is_contact_whatsapp_visible
-    ? seller.contact_whatsapp || null
-    : null;
+  const { phone: sellerPhone, whatsapp: sellerWhatsapp } = visibleSellerContacts(seller);
   const acceptsExchange = truthy(specs.accepts_exchange);
   const batteryHealth = specs.battery_health ? `${textValue(specs.battery_health)}%` : null;
   const accessories = textValue(specs.accessories, '');
-  const whatsappNumber = formatWhatsAppNumber(sellerWhatsapp || sellerPhone, isSaudi);
+  const whatsappNumber = formatWhatsAppNumber(sellerWhatsapp, isSaudi);
   const productPath = `/mobiles/${encodeURIComponent(product.slug)}`;
   const productUrl = absoluteUrl(productPath);
 
@@ -192,6 +179,7 @@ export default async function ProductPage({ params }: Props) {
     description: product.description || `${displayName} ${product.condition || ''} للبيع في ${product.location}.`,
     image: images.length ? images : undefined,
     url: productUrl,
+    mainEntityOfPage: { '@id': `${productUrl}#webpage` },
     sku: product.id,
     category: product.category,
     itemCondition: productConditionUrl(product.condition),
@@ -269,6 +257,15 @@ export default async function ProductPage({ params }: Props) {
 
   return (
     <main className="min-h-screen bg-[#f7f8f8] pb-32 dark:bg-[#0d0d0d] md:pb-10">
+      <JsonLd data={{
+        '@context': 'https://schema.org',
+        '@type': 'ItemPage',
+        '@id': `${productUrl}#webpage`,
+        url: productUrl,
+        name: displayName,
+        mainEntity: { '@id': `${productUrl}#product` },
+        ...(images.length ? { primaryImageOfPage: { '@type': 'ImageObject', url: images[0] } } : {}),
+      }} />
       <JsonLd data={productJsonLd} />
       <JsonLd data={breadcrumbJsonLd} />
       <div className="mx-auto max-w-6xl px-3 py-3 sm:px-5 md:py-6">

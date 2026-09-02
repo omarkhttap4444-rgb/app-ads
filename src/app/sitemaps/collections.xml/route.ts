@@ -26,7 +26,6 @@ type ProductBrandLocationRow = {
 };
 
 export async function GET() {
-  const now = new Date().toISOString();
   const urls: string[] = [];
 
   const addUrl = (path: string) => {
@@ -114,7 +113,6 @@ export async function GET() {
     .map(
       (loc) => `  <url>
     <loc>${escapeXml(loc)}</loc>
-    <lastmod>${now}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.85</priority>
   </url>`,

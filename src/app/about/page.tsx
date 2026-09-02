@@ -12,7 +12,6 @@ export const metadata: Metadata = {
   title: 'عن سوق فون | منصة بيع وشراء الموبايلات في مصر',
   description: 'سوق فون منصة مصرية لعرض وبيع وشراء الموبايلات الجديدة والمستعملة. المستخدمون يتواصلون مباشرة بدون عمولة، مع التركيز على الشفافية والأمان.',
   alternates: { canonical: canonicalPath },
-  robots: { index: true, follow: true },
   openGraph: {
     title: 'عن سوق فون',
     description: 'منصة مصرية لبيع وشراء الموبايلات بتواصل مباشر.',
@@ -20,7 +19,7 @@ export const metadata: Metadata = {
     siteName: 'سوق فون',
     locale: 'ar_EG',
     type: 'website',
-    images: [{ url: '/og.png', width: 1733, height: 909 }],
+    images: [{ url: '/og.png', width: 1731, height: 909 }],
   },
   twitter: { card: 'summary_large_image', title: 'عن سوق فون', description: 'منصة مصرية للموبايلات.', images: ['/og.png'] },
 };

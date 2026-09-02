@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import { formatWhatsAppNumber } from '@/lib/seller-contact';
+import { isSaudiMarketLocation } from '@/lib/market-config';
 import { Phone, MessageSquare, AlertCircle, Loader2 } from 'lucide-react';
 
 type Props = {
@@ -32,35 +34,7 @@ export default function MobileContactBar({
 
   const cleanPhone = sellerPhone ? sellerPhone.replace(/\D/g, '') : '';
   
-  const formatWhatsapp = (phone: string | null) => {
-    if (!phone) return '';
-    let clean = phone.replace(/\D/g, '');
-    
-    // Remove leading zeros
-    while (clean.startsWith('0')) {
-      clean = clean.substring(1);
-    }
-    
-    // If it already has country code, return it
-    if (clean.startsWith('20') && clean.length > 10) return clean;
-    if (clean.startsWith('966') && clean.length > 8) return clean;
-    
-    // Check standard prefixes
-    if (clean.startsWith('1') && clean.length === 10) return `20${clean}`;
-    if (clean.startsWith('5') && clean.length === 9) return `966${clean}`;
-    
-    // Fallback based on product location
-    const saudiRegions = ['الرياض', 'مكة المكرمة', 'المدينة المنورة', 'المنطقة الشرقية', 'القصيم', 'عسير', 'تبوك', 'حائل', 'الحدود الشمالية', 'جازان', 'نجران', 'الباحة', 'الجوف'];
-    const isSaudi = saudiRegions.some(r => location.includes(r)) || 
-                    location.toLowerCase().includes('riyadh') || 
-                    location.toLowerCase().includes('saudi') ||
-                    location.toLowerCase().includes('jeddah') ||
-                    location.toLowerCase().includes('dammam');
-                    
-    return isSaudi ? `966${clean}` : `20${clean}`;
-  };
-
-  const whatsappPhone = formatWhatsapp(sellerWhatsapp || sellerPhone);
+  const whatsappPhone = formatWhatsAppNumber(sellerWhatsapp, isSaudiMarketLocation(location));
 
   const handleChat = async () => {
     setLoadingChat(true);

@@ -12,7 +12,6 @@ export const metadata: Metadata = {
   title: 'كيف تفحص موبايل مستعمل قبل الشراء | فحص عملي',
   description: 'فحص عملي لموبايل مستعمل: الشاشة والكاميرات والبطارية والشحن والشبكة والحساسات والتخزين وIMEI وأقفال الحساب.',
   alternates: { canonical: canonicalPath },
-  robots: { index: true, follow: true },
   openGraph: {
     title: 'كيف تفحص موبايل مستعمل قبل الشراء',
     description: 'قائمة فحص عملية خطوة بخطوة قبل دفع أي مبلغ.',

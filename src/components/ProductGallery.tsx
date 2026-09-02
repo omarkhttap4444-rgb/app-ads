@@ -55,7 +55,7 @@ export default function ProductGallery({ images, productName }: ProductGalleryPr
       >
         <Image
           src={availableImages[safeActiveIndex]}
-          alt={`${productName} ${productName.includes('مستعمل') || productName.includes('جديد') ? '' : 'مستعمل'} - صورة ${safeActiveIndex + 1} - ${productName} للبيع`}
+          alt={`${productName} - صورة ${safeActiveIndex + 1}`}
           fill
           priority={safeActiveIndex === 0}
           sizes="(max-width: 768px) 100vw, 50vw"

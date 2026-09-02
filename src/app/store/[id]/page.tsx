@@ -34,7 +34,6 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     title,
     description: description.slice(0, 165),
     alternates: { canonical: canonicalPath },
-    robots: { index: true, follow: true },
     openGraph: {
       title,
       description,
