@@ -12,7 +12,6 @@ export const metadata: Metadata = {
   title: 'نصائح الأمان عند شراء وبيع موبايل مستعمل',
   description: 'نصائح أمان لمقابلة البائع، الفحص قبل الدفع، تجنب الدفع المقدم المشبوه، حماية OTP وكلمات المرور، والتبليغ عن الإعلانات المخالفة.',
   alternates: { canonical: canonicalPath },
-  robots: { index: true, follow: true },
   openGraph: {
     title: 'نصائح الأمان عند شراء وبيع موبايل مستعمل',
     description: 'كيف تحافظ على أمانك عند الشراء والبيع في سوق الموبايلات.',

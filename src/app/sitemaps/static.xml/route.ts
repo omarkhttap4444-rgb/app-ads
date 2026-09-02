@@ -13,7 +13,6 @@ function escapeXml(value: string): string {
 }
 
 export async function GET() {
-  const now = new Date().toISOString();
 
   // Public indexable static URLs only — no auth/chat/admin/private
   const staticPaths: string[] = [
@@ -28,7 +27,6 @@ export async function GET() {
 
   const urls = staticPaths.map((path) => ({
     loc: `${SITE_URL}${path}`,
-    lastmod: now,
     changefreq: path === '/' ? 'daily' : 'hourly',
     priority: path === '/' ? '1.0' : '0.95',
   }));
@@ -37,7 +35,6 @@ export async function GET() {
     .map(
       (entry) => `  <url>
     <loc>${escapeXml(entry.loc)}</loc>
-    <lastmod>${entry.lastmod}</lastmod>
     <changefreq>${entry.changefreq}</changefreq>
     <priority>${entry.priority}</priority>
   </url>`,

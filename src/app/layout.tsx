@@ -5,7 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import JsonLd from "@/components/JsonLd";
-import { SITE_NAME, SITE_URL } from "@/lib/seo";
+import { INDEXABLE_ROBOTS, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 const cairo = Cairo({
   subsets: ["arabic", "latin"],
@@ -35,23 +35,22 @@ export const metadata: Metadata = {
   publisher: SITE_NAME,
   referrer: "origin-when-cross-origin",
   formatDetection: { email: false, address: false, telephone: false },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-      "max-video-preview": -1,
-    },
+  robots: INDEXABLE_ROBOTS,
+  icons: {
+    icon: [
+      { url: '/icon-16.png', type: 'image/png', sizes: '16x16' },
+      { url: '/icon-32.png', type: 'image/png', sizes: '32x32' },
+      { url: '/icon-48.png', type: 'image/png', sizes: '48x48' },
+      { url: '/icon-96.png', type: 'image/png', sizes: '96x96' },
+    ],
+    apple: [{ url: '/apple-touch-icon.png', type: 'image/png', sizes: '180x180' }],
   },
   openGraph: {
     title: "سوق فون | كل السوق في إيدك",
     description: "سوق الموبايلات والإلكترونيات الجديدة والمستعملة في مصر.",
     url: SITE_URL,
     siteName: SITE_NAME,
-    images: [{ url: "/og.png", width: 1733, height: 909, alt: "سوق فون - كل السوق في إيدك" }],
+    images: [{ url: "/og.png", width: 1731, height: 909, alt: "سوق فون - كل السوق في إيدك" }],
     locale: "ar_EG",
     type: "website",
   },
@@ -86,7 +85,7 @@ const websiteJsonLd = {
       name: SITE_NAME,
       alternateName: "Souq Phone",
       url: SITE_URL,
-      logo: { "@type": "ImageObject", url: `${SITE_URL}/logo.png`, width: 512, height: 512 },
+      logo: { "@type": "ImageObject", url: `${SITE_URL}/icon-512.png`, width: 512, height: 512 },
       image: `${SITE_URL}/og.png`,
       description: "منصة عربية لبيع وشراء الموبايلات والإلكترونيات الجديدة والمستعملة.",
     },

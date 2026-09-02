@@ -12,7 +12,6 @@ export const metadata: Metadata = {
   title: 'دليل بيع موبايل مستعمل في مصر | صور ووصف وسعر',
   description: 'كيف تبيع موبايلك المستعمل بسرعة وأمان: عنوان صادق، صور واضحة، وصف دقيق للعيوب، سعر واقعي، وتجهيز الجهاز وحماية بياناتك قبل التسليم.',
   alternates: { canonical: canonicalPath },
-  robots: { index: true, follow: true },
   openGraph: {
     title: 'دليل بيع موبايل مستعمل في مصر',
     description: 'خطوات عملية لعرض موبايلك للبيع بشكل صادق وآمن.',

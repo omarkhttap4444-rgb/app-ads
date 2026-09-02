@@ -14,7 +14,6 @@ export const metadata: Metadata = {
   description:
     'دليل عملي لشراء موبايل مستعمل في مصر: كيف تفحص الشاشة والبطارية والشحن والسماعات والشبكة، وتنتبه لقفل الحساب وIMEI، وتقارن السعر وتتجنب الدفع المقدم.',
   alternates: { canonical: canonicalPath },
-  robots: { index: true, follow: true },
   openGraph: {
     title: 'دليل شراء موبايل مستعمل في مصر',
     description: 'خطوات عملية لفحص الموبايل المستعمل قبل الشراء وتجنب المشاكل الشائعة.',

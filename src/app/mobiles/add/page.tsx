@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -17,6 +17,10 @@ import {
   type PhoneCatalog,
 } from '@/lib/phone-data';
 import { compressImage } from '@/lib/image-compress';
+import {
+  commitPublication, preparePublication, readPendingPublication, PublicationError,
+  type PendingPublication,
+} from '@/lib/product-publication';
 
 // Same limit as the Flutter app (regular user: max 4 images)
 const MAX_IMAGES = 4;
@@ -83,6 +87,11 @@ export default function AddProductPage() {
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [pendingPublication, setPendingPublication] = useState<PendingPublication | null>(null);
+  const [recoveryBlocked, setRecoveryBlocked] = useState(false);
+  const [preparingImages, setPreparingImages] = useState(false);
+  const publishingRef = useRef(false);
+  const preparingImagesRef = useRef(false);
 
   // Honesty Modal State
   const [showHonestyModal, setShowHonestyModal] = useState(false);
@@ -96,6 +105,12 @@ export default function AddProductPage() {
         return;
       }
       setUser(session.user);
+      try {
+        setPendingPublication(readPendingPublication(sessionStorage, session.user.id));
+      } catch {
+        setRecoveryBlocked(true);
+        setErrorMsg('تعذر قراءة سجل النشر في المتصفح. راجع إعلاناتك وسماح المتصفح بالتخزين قبل بدء إعلان آخر.');
+      }
 
       // Fetch user profile name/avatar & subscription status
       const { data: userProfile } = await supabase
@@ -139,6 +154,7 @@ export default function AddProductPage() {
 
   // Handle local file preview (with client-side compression like the app)
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (publishingRef.current || preparingImagesRef.current || pendingPublication || recoveryBlocked) return;
     if (e.target.files) {
       const filesArray = Array.from(e.target.files);
 
@@ -156,16 +172,27 @@ export default function AddProductPage() {
       }
 
       // Compress before adding (resize + JPEG quality) to save storage
-      const compressed = await Promise.all(accepted.map((f) => compressImage(f)));
-      setImageFiles((prev) => [...prev, ...compressed]);
-
-      const previews = compressed.map((file) => URL.createObjectURL(file));
-      setImagePreviews((prev) => [...prev, ...previews]);
+      preparingImagesRef.current = true;
+      setPreparingImages(true);
+      try {
+        const compressed = await Promise.all(accepted.map((f) => compressImage(f)));
+        setImageFiles((prev) => [...prev, ...compressed]);
+        const previews = compressed.map((file) => URL.createObjectURL(file));
+        setImagePreviews((prev) => [...prev, ...previews]);
+      } catch {
+        setErrorMsg('تعذر تجهيز الصور المختارة. يرجى اختيارها مرة أخرى.');
+      } finally {
+        preparingImagesRef.current = false;
+        setPreparingImages(false);
+        e.target.value = '';
+      }
     }
   };
 
   // Remove local file preview
   const removeImage = (index: number) => {
+    if (publishingRef.current || preparingImagesRef.current || pendingPublication || recoveryBlocked) return;
+    URL.revokeObjectURL(imagePreviews[index]);
     setImageFiles((prev) => prev.filter((_, i) => i !== index));
     setImagePreviews((prev) => prev.filter((_, i) => i !== index));
   };
@@ -178,6 +205,7 @@ export default function AddProductPage() {
   // Click Submit - Validation and trigger Honesty Modal
   const onSubmitPress = (e: React.FormEvent) => {
     e.preventDefault();
+    if (publishingRef.current || preparingImagesRef.current || pendingPublication || recoveryBlocked || successMsg) return;
     setErrorMsg(null);
 
     const centersOptions = selectedCountry === 'SA'
@@ -235,13 +263,28 @@ export default function AddProductPage() {
   // Real Submit Listing after Honesty Confirmation
   const confirmAndPublish = async () => {
     setShowHonestyModal(false);
-    if (loading) return;
+    if (publishingRef.current || preparingImagesRef.current || recoveryBlocked || successMsg || !user) return;
+    publishingRef.current = true;
 
     setLoading(true);
     setErrorMsg(null);
     setSuccessMsg(null);
 
     try {
+      const completePublication = async (pending: PendingPublication) => {
+        const result = await commitPublication(supabase, sessionStorage, pending);
+        setPendingPublication(null);
+        setSuccessMsg('تم حفظ إعلانك وجميع صوره بنجاح! جاري فتح الإعلان...');
+        setTimeout(() => {
+          router.push(result.slug ? `/mobiles/${encodeURIComponent(result.slug)}` : '/mobiles');
+          router.refresh();
+        }, 1200);
+      };
+      // Retry the immutable request BEFORE validation/cooldown; it may already be saved.
+      if (pendingPublication) {
+        await completePublication(pendingPublication);
+        return;
+      }
       const selectedCategory = categories.find((c) => c.id === categoryId);
       const isMobiles = selectedCategory?.name === 'هواتف';
       
@@ -258,6 +301,9 @@ export default function AddProductPage() {
           .eq('seller_id', user.id)
           .eq('category', 'هواتف')
           .gt('created_at', seventyTwoHoursAgo);
+        if (recentErr) {
+          throw new PublicationError('تعذر التحقق من الإعلانات السابقة. لم يتم النشر؛ تحقق من الاتصال وأعد المحاولة.');
+        }
           
         if (!recentErr && recentProducts) {
           const duplicate = recentProducts.find((p: any) => {
@@ -317,82 +363,25 @@ export default function AddProductPage() {
         ? `${brand} رام ${ram} ${resolvedModelName}`.trim()
         : name.trim();
 
-      // 1. Insert product listing
-      const { data: newProduct, error: productErr } = await supabase
-        .from('products')
-        .insert({
+      // Upload all images first, then atomically save the product AND image links.
+      const pending = await preparePublication(supabase, sessionStorage, user.id, {
           name: finalTitle,
           description: description.trim(),
           price: price ? parseFloat(price) : 0,
-          category: selectedCategory?.name || 'هواتف',
           category_id: categoryId,
           specifications,
-          seller_id: user.id,
-          seller_name: profile?.name || user.email,
-          seller_avatar: profile?.profile_image_url || null,
           is_negotiable: isNegotiable,
           condition,
           location: center.trim() ? `${location} - ${center.trim()}` : location
-        })
-        .select()
-        .single();
-
-      if (productErr || !newProduct) {
-        console.error('Product insertion error:', productErr);
-        setErrorMsg(productErr?.message || 'فشل إدراج الإعلان في قاعدة البيانات.');
-        setLoading(false);
-        return;
-      }
-
-      // 2. Upload images to Supabase Storage bucket 'product-images'
-      const imageUrls: string[] = [];
-
-      for (let i = 0; i < imageFiles.length; i++) {
-        const file = imageFiles[i];
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${newProduct.id}-${i}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
-        const filePath = `products/${user.id}/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('product-images')
-          .upload(filePath, file);
-
-        if (uploadError) {
-          console.error(`Error uploading image ${i}:`, uploadError);
-          continue;
-        }
-
-        // Get public URL
-        const { data: pubData } = supabase.storage
-          .from('product-images')
-          .getPublicUrl(filePath);
-
-        if (pubData?.publicUrl) {
-          imageUrls.push(pubData.publicUrl);
-          
-          // Insert into public.product_images database table
-          await supabase
-            .from('product_images')
-            .insert({
-              product_id: newProduct.id,
-              user_id: user.id,
-              image_url: pubData.publicUrl
-            });
-        }
-      }
-
-      setSuccessMsg('تم نشر إعلانك بنجاح! جاري التوجيه لتصفح الإعلانات...');
-      
-      // Redirect to listing page
-      setTimeout(() => {
-        router.push('/mobiles');
-        router.refresh();
-      }, 2000);
-
-    } catch (err: any) {
-      console.error(err);
-      setErrorMsg(err.message || 'حدث خطأ غير متوقع أثناء إضافة الإعلان.');
+      }, imageFiles);
+      setPendingPublication(pending);
+      await completePublication(pending);
+    } catch (err: unknown) {
+      if (err instanceof PublicationError && !err.uncertain) setPendingPublication(null);
+      setErrorMsg(err instanceof PublicationError ? err.message : 'تعذر إكمال النشر. تحقق من الاتصال ثم أعد المحاولة.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
+      publishingRef.current = false;
       setLoading(false);
     }
   };
@@ -426,19 +415,36 @@ export default function AddProductPage() {
         <form onSubmit={onSubmitPress} className="space-y-6">
           
           {errorMsg && (
-            <div className="bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-450 p-4 rounded-2xl text-sm border border-rose-100 dark:border-rose-900/50 font-semibold flex items-center gap-2">
+            <div role="alert" className="bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-450 p-4 rounded-2xl text-sm border border-rose-100 dark:border-rose-900/50 font-semibold flex items-center gap-2">
               <AlertCircle className="w-5 h-5 shrink-0" />
               <span>{errorMsg}</span>
             </div>
           )}
 
           {successMsg && (
-            <div className="bg-[#E8F5E9] dark:bg-[#0B3D22]/30 text-[#00A344] dark:text-[#2EE06F] p-4 rounded-2xl text-sm border border-[#C8E6C9] dark:border-[#1B5E20]/50 font-bold flex items-center gap-2">
+            <div role="status" className="bg-[#E8F5E9] dark:bg-[#0B3D22]/30 text-[#00A344] dark:text-[#2EE06F] p-4 rounded-2xl text-sm border border-[#C8E6C9] dark:border-[#1B5E20]/50 font-bold flex items-center gap-2">
               <Sparkles className="w-5 h-5 shrink-0 animate-spin" />
               <span>{successMsg}</span>
             </div>
           )}
 
+          {pendingPublication && !successMsg && (
+            <div role="status" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 space-y-3 text-sm text-amber-900">
+              <p>توجد محاولة نشر محفوظة: {pendingPublication.product.name}. سنتحقق منها بنفس المعرّف دون تكرار الإعلان. لا تبدأ إعلانًا آخر حتى تتأكد من النتيجة.</p>
+              <button type="button" onClick={confirmAndPublish} disabled={loading}
+                className="rounded-xl bg-amber-900 px-4 py-2 font-bold text-white disabled:opacity-50">
+                {loading ? 'جاري التحقق...' : 'التحقق وإعادة المحاولة'}
+              </button>
+            </div>
+          )}
+          {(pendingPublication || recoveryBlocked) && (
+            <Link href="/profile" className="inline-block text-sm font-bold text-[#008C39] dark:text-[#2EE06F] underline">
+              مراجعة إعلاناتي قبل بدء محاولة جديدة
+            </Link>
+          )}
+          <fieldset disabled={loading || preparingImages || !!pendingPublication || recoveryBlocked || !!successMsg}
+            className="space-y-6 min-w-0" aria-busy={loading || preparingImages}>
+          <legend className="sr-only">تفاصيل الإعلان وصوره</legend>
           {/* Section 1: Images */}
           <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-4 transition-colors">
             <h2 className="text-base font-extrabold text-slate-800 dark:text-white">صور الهاتف (4 صور كحد أقصى)</h2>
@@ -465,7 +471,7 @@ export default function AddProductPage() {
                   <span className="text-[10px] font-bold">أضف صورة</span>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
                     multiple
                     onChange={handleImageChange}
                     className="hidden"
@@ -924,8 +930,9 @@ export default function AddProductPage() {
             disabled={loading}
             className="w-full bg-gradient-to-r from-[#00C853] to-[#00A344] hover:from-[#00A344] hover:to-[#008C39] text-white font-bold py-4 rounded-2xl transition-all shadow-md shadow-[#00A344]/20 hover:shadow-lg text-sm disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer"
           >
-            {loading ? 'جاري نشر إعلانك...' : 'نشر الإعلان الآن'}
+            {loading ? 'جاري نشر إعلانك...' : preparingImages ? 'جاري تجهيز الصور...' : 'نشر الإعلان الآن'}
           </button>
+          </fieldset>
         </form>
 
       </div>
@@ -965,6 +972,7 @@ export default function AddProductPage() {
               <button
                 type="button"
                 onClick={confirmAndPublish}
+                disabled={loading || preparingImages}
                 className="flex-1 bg-gradient-to-r from-[#00C853] to-[#00A344] hover:from-[#00A344] hover:to-[#008C39] text-white font-bold py-3.5 rounded-2xl transition-all text-xs shadow-md shadow-[#00A344]/20 hover:shadow-lg cursor-pointer"
               >
                 أوافق وأنشر

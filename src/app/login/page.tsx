@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { safeInternalRedirect } from '@/lib/safe-redirect';
 import { Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 // Google Icon SVG
@@ -19,7 +20,7 @@ const GoogleIcon = () => (
 
 function LoginForm() {
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirectTo') || '/';
+  const redirectTo = safeInternalRedirect(searchParams.get('redirectTo'));
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

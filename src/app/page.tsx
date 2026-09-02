@@ -19,6 +19,7 @@ import { cache } from 'react';
 import { getCategoryImageUrl } from '@/lib/category-images';
 import { getRequestCountry } from '@/lib/request-country';
 import { supabase } from '@/lib/supabase';
+import { INDEXABLE_ROBOTS } from '@/lib/seo';
 import { buildMobilesLandingPath, EGYPT_GOVERNORATES } from '@/lib/seo-content';
 
 const getCachedCategories = cache(() =>
@@ -126,7 +127,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: { absolute: 'سوق فون مصر | بيع وشراء الموبايلات والإلكترونيات' },
     description: 'بيع واشتري الموبايلات والإلكترونيات الجديدة والمستعملة في مصر. إعلانات حقيقية، بحث ذكي وتواصل مباشر مع البائع بدون عمولة.',
     alternates: { canonical: 'https://souqphone.com/' },
-    robots: { index: true, follow: true },
+    robots: INDEXABLE_ROBOTS,
     openGraph: {
       title: `سوق فون | كل السوق في إيدك`,
       description: 'بيع واشتري الموبايلات والإلكترونيات مباشرة وبدون عمولة في مصر.',
@@ -135,7 +136,7 @@ export async function generateMetadata(): Promise<Metadata> {
       locale: 'ar_EG',
       type: 'website',
       images: [
-        { url: '/og.png', width: 1733, height: 909, alt: 'سوق فون - كل السوق في إيدك' },
+        { url: '/og.png', width: 1731, height: 909, alt: 'سوق فون - كل السوق في إيدك' },
       ],
     },
     twitter: {

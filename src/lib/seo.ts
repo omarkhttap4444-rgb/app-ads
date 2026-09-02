@@ -1,8 +1,24 @@
+import type { Metadata } from 'next';
+
 export const SITE_URL = (
   process.env.NEXT_PUBLIC_SITE_URL || 'https://souqphone.com'
 ).replace(/\/$/, '');
 
 export const SITE_NAME = 'سوق فون';
+
+// Metadata is shallow-merged: pages must reuse the full robots policy.
+export const INDEXABLE_ROBOTS: Metadata['robots'] = {
+  index: true,
+  follow: true,
+  'max-image-preview': 'large',
+  googleBot: {
+    index: true,
+    follow: true,
+    'max-image-preview': 'large',
+    'max-snippet': -1,
+    'max-video-preview': -1,
+  },
+};
 
 export const absoluteUrl = (path = '/') =>
   path.startsWith('http://') || path.startsWith('https://')
