@@ -342,7 +342,7 @@ export default function AddProductPage() {
         specifications.storage = storage;   // raw value e.g. '128' | '1 تيرا'
         specifications.color = color.trim() || 'غير محدد';
         specifications.accessories = selectedAccessory ?? 'بدون ملحقات';
-        specifications.is_opened = isDeviceOpened;
+        specifications.is_opened = condition === 'جديد' ? 'لا' : isDeviceOpened;
         if (selectedCountry === 'EG') {
           specifications.ntra_tax = ntraTax;
         }
@@ -509,7 +509,13 @@ export default function AddProductPage() {
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">حالة الجهاز</label>
                 <select
                   value={condition}
-                  onChange={(e) => setCondition(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCondition(val);
+                    if (val === 'جديد') {
+                      setIsDeviceOpened('لا');
+                    }
+                  }}
                   required
                   className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
                 >
@@ -692,18 +698,20 @@ export default function AddProductPage() {
                   </div>
                 )}
 
-                {/* Device Opened? */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">هل الجهاز مفتوح أو تم صيانته؟</label>
-                  <select
-                    value={isDeviceOpened}
-                    onChange={(e) => setIsDeviceOpened(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
-                  >
-                    <option value="لا">لا (بحالة المصنع الأصلي)</option>
-                    <option value="نعم">نعم (تم فتحه أو عمل صيانة)</option>
-                  </select>
-                </div>
+                {/* Device Opened? (Shown only for non-new condition) */}
+                {condition !== 'جديد' && (
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">هل الجهاز مفتوح أو تم صيانته؟</label>
+                    <select
+                      value={isDeviceOpened}
+                      onChange={(e) => setIsDeviceOpened(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
+                    >
+                      <option value="لا">لا (بحالة المصنع الأصلي)</option>
+                      <option value="نعم">نعم (تم فتحه أو عمل صيانة)</option>
+                    </select>
+                  </div>
+                )}
 
                 {/* NTRA Customs Tax Paid? */}
                 {selectedCountry === 'EG' && (
