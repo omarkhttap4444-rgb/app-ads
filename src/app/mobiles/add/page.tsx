@@ -358,9 +358,10 @@ export default function AddProductPage() {
         specifications.accepts_exchange = acceptsExchange;
       }
 
-      // Build automatic phone title
+      // Build automatic phone title - لا تستخدم 'أخرى' كجزء من العنوان (تصنيف فقط)
+      const effectiveBrand = brand.trim() === 'أخرى' ? '' : brand;
       const finalTitle = isMobiles 
-        ? `${brand} رام ${ram} ${resolvedModelName}`.trim()
+        ? [effectiveBrand, ram ? `رام ${ram}` : '', resolvedModelName].filter((s) => s && s.trim().length > 0).join(' ').trim()
         : name.trim();
 
       // Upload all images first, then atomically save the product AND image links.
