@@ -52,7 +52,7 @@ const productSelection = `
   comments_count,
   is_negotiable,
   is_sold,
-  product_images(image_url),
+  product_images(image_url,position),
   specifications
 `;
 
@@ -172,8 +172,8 @@ export default async function Home() {
     categoriesResult,
     bannersResult,
   ] = await Promise.all([
-    latestQuery.eq('is_sold', false).order('created_at', { ascending: false }).limit(20),
-    trendingQuery.eq('is_sold', false).order('views_count', { ascending: false }).limit(10),
+    latestQuery.eq('is_sold', false).order('created_at', { ascending: false }).order('position', { referencedTable: 'product_images', ascending: true }).limit(20),
+    trendingQuery.eq('is_sold', false).order('views_count', { ascending: false }).order('position', { referencedTable: 'product_images', ascending: true }).limit(10),
     getCachedCategories(),
     getCachedBanners(),
   ]);

@@ -55,9 +55,10 @@ export default async function StoreProfilePage(props: Props) {
   const [{ data: products }, { data: statsRaw }] = await Promise.all([
     supabase
       .from('products')
-      .select('id, name, price, location, condition, slug, created_at, views_count, likes_count, comments_count, is_negotiable, is_sold, product_images(image_url), specifications')
+      .select('id, name, price, location, condition, slug, created_at, views_count, likes_count, comments_count, is_negotiable, is_sold, product_images(image_url,position), specifications')
       .eq('seller_id', params.id)
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false })
+      .order('position', { referencedTable: 'product_images', ascending: true }),
     supabase.rpc('get_seller_public_stats', { p_user_id: params.id }),
   ]);
 

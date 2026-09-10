@@ -18,7 +18,7 @@ import {
   SEO_BRANDS,
 } from '@/lib/seo-content';
 
-const productSelection = 'id, name, price, location, condition, slug, created_at, views_count, likes_count, comments_count, is_negotiable, is_sold, product_images(image_url), specifications';
+const productSelection = 'id, name, price, location, condition, slug, created_at, views_count, likes_count, comments_count, is_negotiable, is_sold, product_images(image_url,position), specifications';
 const PAGE_SIZE = 24;
 
 const getActiveCategories = cache(() =>
@@ -242,7 +242,7 @@ export default async function MobilesPage(props: Props) {
       if (sort === 'price_asc') fallbackQuery = fallbackQuery.order('price', { ascending: true });
       else if (sort === 'price_desc') fallbackQuery = fallbackQuery.order('price', { ascending: false });
       else fallbackQuery = fallbackQuery.order('created_at', { ascending: false });
-      const { data: fallbackData } = await fallbackQuery.limit(50);
+      const { data: fallbackData } = await fallbackQuery.order('position', { referencedTable: 'product_images', ascending: true }).limit(50);
       products = (fallbackData || []) as Product[];
     }
     totalProducts = products.length;
@@ -261,7 +261,7 @@ export default async function MobilesPage(props: Props) {
     else if (sort === 'price_desc') query = query.order('price', { ascending: false });
     else query = query.order('created_at', { ascending: false });
     const from = (page - 1) * PAGE_SIZE;
-    const { data, count } = await query.range(from, from + PAGE_SIZE - 1);
+    const { data, count } = await query.order('position', { referencedTable: 'product_images', ascending: true }).range(from, from + PAGE_SIZE - 1);
     products = (data || []) as Product[];
     totalProducts = count ?? from + products.length;
   }

@@ -45,7 +45,7 @@ export default function FavoritesPage() {
             slug,
             is_negotiable,
             specifications,
-            product_images (image_url)
+            product_images (image_url, position)
           )
         `)
         .eq('user_id', user.id);

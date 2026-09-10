@@ -19,6 +19,7 @@ import {
   Users,
 } from 'lucide-react';
 import { compressImage } from '@/lib/image-compress';
+import { firstProductImageUrl } from '@/lib/product-images';
 
 type ProfileRow = {
   id: string;
@@ -56,7 +57,7 @@ type MyProduct = {
   views_count: number;
   likes_count: number;
   created_at: string;
-  product_images: { image_url: string }[];
+  product_images: { image_url: string; position?: number | null }[];
 };
 
 const PLANS_AR: Record<string, string> = {
@@ -127,9 +128,10 @@ export default function ProfilePage() {
       supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', resolvedId),
       supabase
         .from('products')
-        .select('id, name, price, condition, location, slug, is_sold, views_count, likes_count, created_at, product_images(image_url)')
+        .select('id, name, price, condition, location, slug, is_sold, views_count, likes_count, created_at, product_images(image_url,position)')
         .eq('seller_id', resolvedId)
         .order('created_at', { ascending: false })
+        .order('position', { referencedTable: 'product_images', ascending: true })
         .limit(100),
     ]);
 
@@ -459,9 +461,9 @@ export default function ProfilePage() {
                 }`}
               >
                 <Link href={`/mobiles/${p.slug}`} className="block aspect-square overflow-hidden bg-slate-100 dark:bg-[#222]">
-                  {p.product_images?.[0]?.image_url ? (
+                  {firstProductImageUrl(p.product_images) ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
-                    <img src={p.product_images[0].image_url} alt={p.name} className="h-full w-full object-cover" />
+                    <img src={firstProductImageUrl(p.product_images)} alt={p.name} className="h-full w-full object-cover" />
                   ) : (
                     <span className="flex h-full items-center justify-center text-3xl">📱</span>
                   )}

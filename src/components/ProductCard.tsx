@@ -11,7 +11,7 @@ import {
 
 import FavoriteButton from './FavoriteButton';
 import ProductLikeButton from './ProductLikeButton';
-import { isRemoteMediaUrl } from '@/lib/media';
+import { productImageUrls } from '@/lib/product-images';
 import { isSaudiMarketLocation, SAUDI_MARKET_ENABLED } from '@/lib/market-config';
 
 export type ProductCardProps = {
@@ -38,7 +38,7 @@ export type ProductCardProps = {
       accepts_exchange?: string | boolean;
       has_delivery?: string | boolean;
     };
-    product_images?: Array<{ image_url: string }>;
+    product_images?: Array<{ image_url: string; position?: number | null }>;
   };
   onFavoriteToggle?: (isFavorited: boolean) => void;
   priority?: boolean;
@@ -84,11 +84,9 @@ export default function ProductCard({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [failedImages, setFailedImages] = useState<string[]>([]);
 
-  const images = (Array.isArray(product.product_images)
-    ? product.product_images
-        .map((image) => image.image_url)
-        .filter(isRemoteMediaUrl)
-    : []).filter((image) => !failedImages.includes(image));
+  const images = productImageUrls(
+    Array.isArray(product.product_images) ? product.product_images : [],
+  ).filter((image) => !failedImages.includes(image));
   const href = `/mobiles/${product.slug}`;
   const title = [
     product.specifications?.brand,
