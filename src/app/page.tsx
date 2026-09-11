@@ -10,7 +10,6 @@ import {
   Sparkles,
 } from 'lucide-react';
 
-import BannerCarousel from '@/components/BannerCarousel';
 import BrandSlider from '@/components/BrandSlider';
 import HomeAccountPrompt from '@/components/HomeAccountPrompt';
 import PlayStoreLink from '@/components/PlayStoreLink';
@@ -30,15 +29,6 @@ const getCachedCategories = cache(() =>
     .order('display_order', { ascending: true }),
 );
 
-const getCachedBanners = cache(() =>
-  supabase
-    .from('app_banners')
-    .select('id, title, subtitle, image_url, link_url')
-    .eq('is_active', true)
-    .eq('placement', 'home_top')
-    .order('sort_order', { ascending: true }),
-);
-
 const productSelection = `
   id,
   name,
@@ -52,7 +42,7 @@ const productSelection = `
   comments_count,
   is_negotiable,
   is_sold,
-  product_images(image_url),
+  product_images(image_url,position),
   specifications
 `;
 
@@ -170,12 +160,10 @@ export default async function Home() {
     latestResult,
     trendingResult,
     categoriesResult,
-    bannersResult,
   ] = await Promise.all([
-    latestQuery.eq('is_sold', false).order('created_at', { ascending: false }).limit(20),
-    trendingQuery.eq('is_sold', false).order('views_count', { ascending: false }).limit(10),
+    latestQuery.eq('is_sold', false).order('created_at', { ascending: false }).order('position', { referencedTable: 'product_images', ascending: true }).limit(20),
+    trendingQuery.eq('is_sold', false).order('views_count', { ascending: false }).order('position', { referencedTable: 'product_images', ascending: true }).limit(10),
     getCachedCategories(),
-    getCachedBanners(),
   ]);
 
   if (latestResult.error) {
@@ -186,9 +174,6 @@ export default async function Home() {
   }
   if (categoriesResult.error) {
     console.error('[home] Could not load categories:', categoriesResult.error.message);
-  }
-  if (bannersResult.error) {
-    console.error('[home] Could not load banners:', bannersResult.error.message);
   }
 
   const latestProducts = latestResult.data ?? [];
@@ -211,7 +196,7 @@ export default async function Home() {
       </h1>
 
       <div className="mx-auto max-w-7xl px-3 sm:px-5 lg:px-6">
-        {/* Download app CTA — above the animated banner */}
+        {/* Download app CTA */}
         <div className="pt-3 md:pt-5">
           <PlayStoreLink
             placement="home_banner"
@@ -233,10 +218,6 @@ export default async function Home() {
             </span>
           </PlayStoreLink>
         </div>
-
-        <section className="pt-3">
-          <BannerCarousel banners={bannersResult.data ?? []} />
-        </section>
 
         <HomeAccountPrompt />
 
@@ -307,7 +288,10 @@ export default async function Home() {
 
           <div className="product-card-grid">
             {latestProducts.map((product, index) => (
-              <ProductCard key={product.id} product={product} priority={index < 4} />
+              // Only the first row (above the fold on mobile, 2-col grid)
+              // preloads; everything else is lazy to avoid preloading
+              // dozens of Vercel-optimized variants on page load.
+              <ProductCard key={product.id} product={product} priority={index < 2} />
             ))}
           </div>
 

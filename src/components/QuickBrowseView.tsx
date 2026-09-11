@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { ChevronLeft, Eye, Grid2X2, History, MapPin, Star } from 'lucide-react';
 
 import type { ProductCardProps } from './ProductCard';
+import { firstProductImageUrl } from '@/lib/product-images';
 
 type Product = ProductCardProps['product'];
 
@@ -81,12 +82,12 @@ export default function QuickBrowseView({
           </div>
           <div className="scroll-hide flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2" dir="rtl">
             {brandProducts.map((product) => {
-              const image = product.product_images?.[0]?.image_url;
+              const image = firstProductImageUrl(product.product_images);
               const title = [product.specifications?.brand, product.specifications?.model].filter(Boolean).join(' ') || product.name;
               return (
                 <Link key={product.id} href={`/mobiles/${product.slug}`} className="group flex w-[min(92vw,430px)] shrink-0 snap-start overflow-hidden rounded-2xl border border-[#e2e7e4] bg-white shadow-[0_9px_22px_-18px_rgba(16,24,40,.55)] transition hover:border-[#98dcb1] dark:border-[#353535] dark:bg-[#1f1f1f]">
                   <div className="relative h-[104px] w-[104px] shrink-0 bg-[#f0f2f1] dark:bg-[#151515]">
-                    {image ? <Image src={image} alt="" fill sizes="104px" className="object-cover" /> : <div className="flex h-full items-center justify-center text-3xl">📱</div>}
+                    {image ? <Image src={image} alt={title} fill sizes="104px" quality={65} loading="lazy" className="object-cover" /> : <div className="flex h-full items-center justify-center text-3xl">📱</div>}
                   </div>
                   <div className="flex min-w-0 flex-1 flex-col justify-between px-3 py-2.5 text-right" dir="rtl">
                     <div>

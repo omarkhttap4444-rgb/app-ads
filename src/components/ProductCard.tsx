@@ -11,8 +11,9 @@ import {
 
 import FavoriteButton from './FavoriteButton';
 import ProductLikeButton from './ProductLikeButton';
-import { isRemoteMediaUrl } from '@/lib/media';
+import { productImageUrls } from '@/lib/product-images';
 import { isSaudiMarketLocation, SAUDI_MARKET_ENABLED } from '@/lib/market-config';
+import { orderedProductImages } from '@/lib/product-images';
 
 export type ProductCardProps = {
   product: {
@@ -38,7 +39,7 @@ export type ProductCardProps = {
       accepts_exchange?: string | boolean;
       has_delivery?: string | boolean;
     };
-    product_images?: Array<{ image_url: string }>;
+    product_images?: Array<{ image_url: string; position?: number | null }>;
   };
   onFavoriteToggle?: (isFavorited: boolean) => void;
   priority?: boolean;
@@ -81,14 +82,11 @@ export default function ProductCard({
   onFavoriteToggle,
   priority = false,
 }: ProductCardProps) {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [failedImages, setFailedImages] = useState<string[]>([]);
 
-  const images = (Array.isArray(product.product_images)
-    ? product.product_images
-        .map((image) => image.image_url)
-        .filter(isRemoteMediaUrl)
-    : []).filter((image) => !failedImages.includes(image));
+  const images = productImageUrls(
+    Array.isArray(product.product_images) ? product.product_images : [],
+  ).filter((image) => !failedImages.includes(image));
   const href = `/mobiles/${product.slug}`;
   const title = [
     product.specifications?.brand,
@@ -111,19 +109,6 @@ export default function ProductCard({
 
   if (!SAUDI_MARKET_ENABLED && isSaudi) return null;
 
-  const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (images.length <= 1) return;
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const visualPosition = (event.clientX - bounds.left) / bounds.width;
-    const nextIndex = Math.min(
-      images.length - 1,
-      Math.max(0, Math.floor((1 - visualPosition) * images.length)),
-    );
-    if (nextIndex !== currentImageIndex) {
-      setCurrentImageIndex(nextIndex);
-    }
-  };
-
   return (
     <article className="app-product-card group relative flex h-full min-w-0 flex-col overflow-hidden rounded-[22px] border border-[#e7e9ec] bg-white transition duration-300 hover:-translate-y-1 hover:border-[#cfe9da] dark:border-[#343434] dark:bg-[#1f1f1f] dark:hover:border-[#315d43]">
       <div className="absolute right-2 top-2 z-30 sm:right-3 sm:top-3">
@@ -142,21 +127,24 @@ export default function ProductCard({
       </div>
 
       <Link href={href} className="block">
-        <div
-          className="relative aspect-[1/1.08] w-full overflow-hidden bg-[#f2f3f2] dark:bg-[#121212]"
-          onMouseMove={handleMouseMove}
-          onMouseLeave={() => setCurrentImageIndex(0)}
-        >
+        <div className="relative aspect-[1/1.08] w-full overflow-hidden bg-[#f2f3f2] dark:bg-[#121212]">
           {images.length > 0 ? (
             <>
               <Image
-                src={images[currentImageIndex] ?? images[0]}
+                src={images[0]}
                 alt={`${title} ${condition} للبيع في ${product.location} - ${product.price > 0 ? `${product.price.toLocaleString('ar-EG')} جنيه` : 'سعر عند التواصل'}`}
                 fill
-                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                // Matches the real .product-card-grid: 2 cols on mobile
+                // (~45vw after padding/gap), 3 cols on tablet (~30vw),
+                // 4-5 cols on desktop (card caps ~230px, so fixed px).
+                // A tight `sizes` keeps Vercel to 1-2 variants per card
+                // instead of one per viewport bucket.
+                sizes="(max-width: 360px) 50vw, (max-width: 768px) 45vw, (max-width: 1024px) 30vw, 230px"
+                quality={70}
                 priority={priority}
+                loading={priority ? undefined : 'lazy'}
                 onError={() => {
-                  const failed = images[currentImageIndex] ?? images[0];
+                  const failed = images[0];
                   if (failed) setFailedImages((current) => [...new Set([...current, failed])]);
                 }}
                 className="object-cover transition duration-500 group-hover:scale-[1.025]"
@@ -182,16 +170,6 @@ export default function ProductCard({
             </span>
           )}
 
-          {images.length > 1 && (
-            <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5">
-              {images.slice(0, 6).map((_, index) => (
-                <span
-                  key={index}
-                  className={`rounded-full border border-white/40 transition-all ${index === currentImageIndex ? 'h-2.5 w-2.5 bg-white' : 'h-2 w-2 bg-white/65'}`}
-                />
-              ))}
-            </div>
-          )}
         </div>
       </Link>
 

@@ -13,9 +13,10 @@ const product = { name: 'هاتف اختبار', description: 'وصف واضح �
   condition: 'مستعمل', location: 'القاهرة - مدينة نصر', seller_id: otherUser, seller_name: 'forged',
   is_hidden: false, views_count: 99999 };
 const id = () => crypto.randomUUID();
-const paths = (productId: string, owner = user) => [0, 1].map(i => `products/${owner}/${productId}-${i}.jpg`);
-async function upload(productId: string, owner = user) {
-  for (const path of paths(productId, owner)) {
+const paths = (productId: string, owner = user, count = 2) =>
+  Array.from({ length: count }, (_, i) => `products/${owner}/${productId}-${i}.jpg`);
+async function upload(productId: string, owner = user, count = 2) {
+  for (const path of paths(productId, owner, count)) {
     await db.query(`INSERT INTO storage.objects(bucket_id,name,metadata) VALUES ('product-images',$1,'{"mimetype":"image/jpeg","size":200}')`, [path]);
   }
 }
@@ -52,8 +53,10 @@ before(async () => {
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       product_id uuid NOT NULL REFERENCES public.products ON DELETE CASCADE,
       user_id uuid NOT NULL REFERENCES public.users, image_url text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now(),
       UNIQUE(product_id, image_url)
     );
+    CREATE TABLE public.admin_users(user_id uuid PRIMARY KEY, is_active boolean NOT NULL DEFAULT true);
     CREATE TABLE storage.objects(bucket_id text, name text, metadata jsonb, PRIMARY KEY(bucket_id,name));
     ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
     CREATE POLICY users_own ON public.users FOR SELECT TO authenticated USING (id=auth.uid());
@@ -80,6 +83,9 @@ before(async () => {
   assert.ok(canonicalFunction);
   await db.exec(canonicalFunction + categoryTrigger);
   await db.exec(readFileSync('../supabase/migrations/20260902090000_atomic_web_product_publication.sql', 'utf8'));
+  await db.exec(readFileSync('../supabase/migrations/20260910000011_product_image_positions.sql', 'utf8'));
+  await db.exec(readFileSync('../supabase/migrations/20260910000013_fix_publish_web_product_image_positions.sql', 'utf8'));
+  await db.exec(readFileSync('../supabase/migrations/20260910000014_legacy_product_image_position_compat.sql', 'utf8'));
   await db.exec(`SET ROLE authenticated; SET request.jwt.claim.sub = '${user}';`);
 });
 after(async () => { await db.close(); });
@@ -95,6 +101,9 @@ test('atomic success derives seller identity, ignores privileged fields and reta
   assert.equal(specs.category_id, 'phones');
   assert.equal(await count(productId), 1);
   assert.equal(await count(productId, 'product_images'), 2);
+  const positions = (await db.query<{ position: number }>(
+    'SELECT position FROM public.product_images WHERE product_id=$1 ORDER BY position', [productId])).rows;
+  assert.deepEqual(positions.map(row => row.position), [0, 1]);
   const row = (await db.query<{ seller_id: string; seller_name: string; is_hidden: boolean; views_count: number; ad_number: number }>(
     'SELECT seller_id,seller_name,is_hidden,views_count,ad_number FROM public.products WHERE id=$1', [productId])).rows[0];
   assert.equal(row.seller_id, user);
@@ -104,6 +113,68 @@ test('atomic success derives seller identity, ignores privileged fields and reta
   assert.ok(Number(row.ad_number) > 0);
   const url = (await db.query<{ image_url: string }>('SELECT image_url FROM public.product_images WHERE product_id=$1 LIMIT 1', [productId])).rows[0].image_url;
   assert.ok(url.startsWith(`${origin}/storage/v1/object/public/product-images/products/${user}/`));
+});
+test('owner can reorder product images atomically', async () => {
+  const productId = id(); await upload(productId); await publish(productId);
+  const images = (await db.query<{ id: string; position: number }>(
+    'SELECT id,position FROM public.product_images WHERE product_id=$1 ORDER BY position', [productId])).rows;
+  await db.query('SELECT public.reorder_product_images($1::uuid,$2::uuid[])',
+    [productId, [images[1].id, images[0].id]]);
+  const reordered = (await db.query<{ id: string }>(
+    'SELECT id FROM public.product_images WHERE product_id=$1 ORDER BY position', [productId])).rows;
+  assert.deepEqual(reordered.map(row => row.id), [images[1].id, images[0].id]);
+});
+test('web publication stores one image at position 0', async () => {
+  const productId = id(); await upload(productId, user, 1);
+  await publish(productId, product, paths(productId, user, 1));
+  const positions = (await db.query<{ position: number }>(
+    'SELECT position FROM public.product_images WHERE product_id=$1 ORDER BY position', [productId])).rows;
+  assert.deepEqual(positions.map(row => row.position), [0]);
+});
+test('web publication stores four images at dense positions 0..3', async () => {
+  const productId = id(); await upload(productId, user, 4);
+  await publish(productId, product, paths(productId, user, 4));
+  const positions = (await db.query<{ position: number }>(
+    'SELECT position FROM public.product_images WHERE product_id=$1 ORDER BY position', [productId])).rows;
+  assert.deepEqual(positions.map(row => row.position), [0, 1, 2, 3]);
+});
+test('legacy client can publish four images without sending position', async () => {
+  const productId = id(); await upload(productId, user, 1);
+  await publish(productId, product, paths(productId, user, 1));
+  await db.query('DELETE FROM public.product_images WHERE product_id=$1', [productId]);
+
+  await db.query(`
+    INSERT INTO public.product_images(product_id,user_id,image_url)
+    SELECT $1::uuid, $2::uuid, 'https://images.souqphone.com/legacy-' || n || '.webp'
+    FROM generate_series(1, 4) AS n
+  `, [productId, user]);
+
+  const positions = (await db.query<{ position: number }>(
+    'SELECT position FROM public.product_images WHERE product_id=$1 ORDER BY position', [productId])).rows;
+  assert.deepEqual(positions.map(row => row.position), [0, 1, 2, 3]);
+});
+test('edit deletion and append can be compacted without nulls or duplicates', async () => {
+  const productId = id(); await upload(productId, user, 4);
+  await publish(productId, product, paths(productId, user, 4));
+  const original = (await db.query<{ id: string; position: number }>(
+    'SELECT id,position FROM public.product_images WHERE product_id=$1 ORDER BY position', [productId])).rows;
+
+  await db.query('DELETE FROM public.product_images WHERE id=$1', [original[1].id]);
+  await db.query('SELECT public.reorder_product_images($1::uuid,$2::uuid[])',
+    [productId, [original[0].id, original[2].id, original[3].id]]);
+  let positions = (await db.query<{ position: number }>(
+    'SELECT position FROM public.product_images WHERE product_id=$1 ORDER BY position', [productId])).rows;
+  assert.deepEqual(positions.map(row => row.position), [0, 1, 2]);
+
+  const newId = id();
+  await db.query(
+    'INSERT INTO public.product_images(id,product_id,user_id,image_url,position) VALUES($1,$2,$3,$4,3)',
+    [newId, productId, user, 'https://images.souqphone.com/products/new.webp']);
+  await db.query('SELECT public.reorder_product_images($1::uuid,$2::uuid[])',
+    [productId, [original[0].id, original[2].id, original[3].id, newId]]);
+  positions = (await db.query<{ position: number }>(
+    'SELECT position FROM public.product_images WHERE product_id=$1 ORDER BY position', [productId])).rows;
+  assert.deepEqual(positions.map(row => row.position), [0, 1, 2, 3]);
 });
 test('repeated and queued calls with same ID create only one product and image set', async () => {
   const productId = id(); await upload(productId);

@@ -18,9 +18,10 @@ import {
 } from '@/lib/phone-data';
 import { compressImage } from '@/lib/image-compress';
 import {
-  commitPublication, preparePublication, readPendingPublication, PublicationError,
+  commitPublication, preparePublication, preparePublicationR2, readPendingPublication, PublicationError,
   type PendingPublication,
 } from '@/lib/product-publication';
+import { isR2UploadEnabled, R2UploadError } from '@/lib/r2-upload';
 
 // Same limit as the Flutter app (regular user: max 4 images)
 const MAX_IMAGES = 4;
@@ -365,7 +366,10 @@ export default function AddProductPage() {
         : name.trim();
 
       // Upload all images first, then atomically save the product AND image links.
-      const pending = await preparePublication(supabase, sessionStorage, user.id, {
+      // New web uploads go to Cloudflare R2 (presigned PUT, no credentials in
+      // the browser); if R2 is unreachable, fall back to the legacy Supabase
+      // Storage path so publishing never breaks.
+      const publicationInput = {
           name: finalTitle,
           description: description.trim(),
           price: price ? parseFloat(price) : 0,
@@ -374,7 +378,19 @@ export default function AddProductPage() {
           is_negotiable: isNegotiable,
           condition,
           location: center.trim() ? `${location} - ${center.trim()}` : location
-      }, imageFiles);
+      };
+      let pending: PendingPublication;
+      if (isR2UploadEnabled()) {
+        try {
+          pending = await preparePublicationR2(supabase, sessionStorage, user.id, publicationInput, imageFiles);
+        } catch (err) {
+          if (!(err instanceof R2UploadError)) throw err;
+          console.warn('R2 upload unavailable, falling back to Supabase Storage');
+          pending = await preparePublication(supabase, sessionStorage, user.id, publicationInput, imageFiles);
+        }
+      } else {
+        pending = await preparePublication(supabase, sessionStorage, user.id, publicationInput, imageFiles);
+      }
       setPendingPublication(pending);
       await completePublication(pending);
     } catch (err: unknown) {

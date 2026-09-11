@@ -19,6 +19,9 @@ import {
   Users,
 } from 'lucide-react';
 import { compressImage } from '@/lib/image-compress';
+import { getR2ObjectKeyFromUrl } from '@/lib/media';
+import { firstProductImageUrl } from '@/lib/product-images';
+import { deleteR2Keys } from '@/lib/r2-upload';
 
 type ProfileRow = {
   id: string;
@@ -56,7 +59,7 @@ type MyProduct = {
   views_count: number;
   likes_count: number;
   created_at: string;
-  product_images: { image_url: string }[];
+  product_images: { image_url: string; position?: number | null }[];
 };
 
 const PLANS_AR: Record<string, string> = {
@@ -127,9 +130,10 @@ export default function ProfilePage() {
       supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', resolvedId),
       supabase
         .from('products')
-        .select('id, name, price, condition, location, slug, is_sold, views_count, likes_count, created_at, product_images(image_url)')
+        .select('id, name, price, condition, location, slug, is_sold, views_count, likes_count, created_at, product_images(image_url,position)')
         .eq('seller_id', resolvedId)
         .order('created_at', { ascending: false })
+        .order('position', { referencedTable: 'product_images', ascending: true })
         .limit(100),
     ]);
 
@@ -280,6 +284,11 @@ export default function ProfilePage() {
   const deleteProduct = async (product: MyProduct) => {
     if (!window.confirm(`حذف "${product.name}" نهائياً؟ لا يمكن التراجع.`)) return;
     setBusyId(product.id);
+    // R2 object keys for best-effort storage cleanup after the DB delete.
+    // Supabase-hosted images are intentionally left untouched by this task.
+    const r2Keys = (product.product_images ?? [])
+      .map((img) => getR2ObjectKeyFromUrl(img.image_url))
+      .filter((k): k is string => k !== null);
     try {
       await supabase.from('product_images').delete().eq('product_id', product.id);
       const { error } = await supabase
@@ -289,6 +298,11 @@ export default function ProfilePage() {
         .eq('seller_id', user.id);
       if (error) throw error;
       setProducts((prev) => prev.filter((p) => p.id !== product.id));
+      // Storage cleanup must never block or break the delete UX: a failed
+      // object delete leaves an orphan (sweepable later), not a stuck ad.
+      if (r2Keys.length > 0) {
+        deleteR2Keys(supabase, r2Keys).catch(() => undefined);
+      }
     } catch (err: any) {
       window.alert(err.message || 'تعذر حذف الإعلان.');
       await loadAll(user.id);
@@ -451,7 +465,9 @@ export default function ProfilePage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-            {products.map((p) => (
+            {products.map((p) => {
+              const mainImage = firstProductImageUrl(p.product_images);
+              return (
               <div
                 key={p.id}
                 className={`overflow-hidden rounded-2xl border bg-white shadow-sm transition dark:bg-[#1a1a1a] ${
@@ -459,9 +475,9 @@ export default function ProfilePage() {
                 }`}
               >
                 <Link href={`/mobiles/${p.slug}`} className="block aspect-square overflow-hidden bg-slate-100 dark:bg-[#222]">
-                  {p.product_images?.[0]?.image_url ? (
+                  {mainImage ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
-                    <img src={p.product_images[0].image_url} alt={p.name} className="h-full w-full object-cover" />
+                    <img src={mainImage} alt={p.name} className="h-full w-full object-cover" />
                   ) : (
                     <span className="flex h-full items-center justify-center text-3xl">📱</span>
                   )}
@@ -500,7 +516,8 @@ export default function ProfilePage() {
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

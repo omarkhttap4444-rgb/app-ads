@@ -30,7 +30,7 @@ import ProductGallery from '@/components/ProductGallery';
 import ProductLikeButton from '@/components/ProductLikeButton';
 import ProductViewCounter from '@/components/ProductViewCounter';
 import ShareProductButton from '@/components/ShareProductButton';
-import { isRemoteMediaUrl } from '@/lib/media';
+import { productImageUrls } from '@/lib/product-images';
 import { isSaudiMarketLocation, SAUDI_MARKET_ENABLED } from '@/lib/market-config';
 import { absoluteUrl, productConditionUrl } from '@/lib/seo';
 import { buildMobilesLandingPath, EGYPT_GOVERNORATES, isKnownSeoBrand, isKnownSeoLocation } from '@/lib/seo-content';
@@ -43,16 +43,16 @@ type Props = { params: Promise<{ slug: string }> };
 
 const isSaudiLocation = isSaudiMarketLocation;
 
-const getImages = (rows: Array<{ image_url?: string | null }> | null | undefined) =>
-  (rows ?? []).map((image) => image.image_url).filter(isRemoteMediaUrl);
+const getImages = productImageUrls;
 
 const getProduct = cache((slug: string) =>
   supabase
     .from('products')
     .select(
-      'id, name, price, location, condition, slug, created_at, last_updated, views_count, likes_count, comments_count, is_negotiable, is_sold, seller_id, seller_name, description, category, specifications, product_images(image_url)',
+      'id, name, price, location, condition, slug, created_at, last_updated, views_count, likes_count, comments_count, is_negotiable, is_sold, seller_id, seller_name, description, category, specifications, product_images(image_url,position)',
     )
     .eq('slug', slug)
+    .order('position', { referencedTable: 'product_images', ascending: true })
     .single(),
 );
 
@@ -134,10 +134,11 @@ export default async function ProductPage({ params }: Props) {
       .single(),
     supabase
       .from('products')
-      .select('id,name,price,location,condition,slug,created_at,views_count,likes_count,comments_count,is_negotiable,is_sold,product_images(image_url),specifications')
+      .select('id,name,price,location,condition,slug,created_at,views_count,likes_count,comments_count,is_negotiable,is_sold,product_images(image_url,position),specifications')
       .neq('id', product.id)
       .eq('category', product.category)
       .order('created_at', { ascending: false })
+      .order('position', { referencedTable: 'product_images', ascending: true })
       .limit(5),
   ]);
 

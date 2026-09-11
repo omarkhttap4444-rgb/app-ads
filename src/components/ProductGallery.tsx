@@ -58,7 +58,11 @@ export default function ProductGallery({ images, productName }: ProductGalleryPr
           alt={`${productName} - صورة ${safeActiveIndex + 1}`}
           fill
           priority={safeActiveIndex === 0}
-          sizes="(max-width: 768px) 100vw, 50vw"
+          // Detail viewport: full width on mobile, ~5/12 column of
+          // max-w-6xl on desktop (caps ~560px). Full quality kept here —
+          // the card thumbnail budget must not apply to this view.
+          sizes="(max-width: 768px) 100vw, (max-width: 1280px) 45vw, 560px"
+          quality={80}
           onError={() => setFailedImages((current) => [...new Set([...current, availableImages[safeActiveIndex]])])}
           className="object-contain p-2 sm:p-4 select-none transition-all duration-300"
           style={{ objectFit: 'contain' }}
@@ -108,7 +112,7 @@ export default function ProductGallery({ images, productName }: ProductGalleryPr
                   : 'border-slate-150 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
               }`}
             >
-              <Image src={img} alt={`${productName} - مصغرة ${idx + 1}`} fill sizes="80px" className="object-cover" style={{ objectFit: 'cover' }} />
+              <Image src={img} alt={`${productName} - مصغرة ${idx + 1}`} fill sizes="80px" quality={60} loading="lazy" className="object-cover" style={{ objectFit: 'cover' }} />
             </button>
           ))}
         </div>

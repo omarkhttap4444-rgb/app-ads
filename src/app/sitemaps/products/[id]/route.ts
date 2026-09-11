@@ -1,6 +1,6 @@
 import { SITE_URL } from '@/lib/seo';
 import { supabase } from '@/lib/supabase';
-import { isRemoteMediaUrl } from '@/lib/media';
+import { productImageUrls } from '@/lib/product-images';
 import { escapeXml, PRODUCT_SITEMAP_BATCH_SIZE, PRODUCT_SITEMAP_MARKET_FILTER } from '@/lib/sitemap';
 
 export const revalidate = 3600;
@@ -21,12 +21,13 @@ export async function GET(
 
   const { data, error } = await supabase
     .from('products')
-    .select('id,slug,last_updated,created_at,product_images(image_url)')
+    .select('id,slug,last_updated,created_at,product_images(image_url,position)')
     .eq('is_sold', false)
     .not('slug', 'is', null)
     .neq('slug', '')
     .or(PRODUCT_SITEMAP_MARKET_FILTER)
     .order('id', { ascending: true })
+    .order('position', { referencedTable: 'product_images', ascending: true })
     .range(from, to);
 
   if (error) {
@@ -47,8 +48,7 @@ export async function GET(
     const timestamp = modified ? Date.parse(modified) : NaN;
     const lastmod = Number.isFinite(timestamp)
       ? `\n    <lastmod>${new Date(timestamp).toISOString()}</lastmod>` : '';
-    const images = [...new Set((row.product_images ?? [])
-      .map((image) => image.image_url).filter(isRemoteMediaUrl).map((url) => url.trim()))]
+    const images = [...new Set(productImageUrls(row.product_images).map((url) => url.trim()))]
       .slice(0, 1000);
     const imageTags = images.map((url) =>
       `\n    <image:image><image:loc>${escapeXml(url)}</image:loc></image:image>`).join('');
