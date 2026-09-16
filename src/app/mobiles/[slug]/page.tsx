@@ -65,6 +65,18 @@ const textValue = (value: unknown, fallback = 'غير محدد') => {
 const truthy = (value: unknown) =>
   value === true || ['true', '1', 'yes', 'نعم'].includes(String(value ?? '').toLowerCase());
 
+// Placeholder brand values are classification-only (the listing form appends
+// 'أخرى' after the DB catalog — see phone-data.ts OTHER + mobiles/add page)
+// and 'غير محدد' is the generic fallback. Neither is a real schema.org Brand,
+// so they must be omitted from Product JSON-LD instead of being sent as-is.
+// Returns the trimmed real brand name, or '' when there is none.
+const normalizeBrandName = (value: unknown) => {
+  if (value === null || value === undefined) return '';
+  const text = String(value).trim();
+  if (!text || text === 'أخرى' || text === 'غير محدد') return '';
+  return text;
+};
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const decodedSlug = decodeURIComponent(slug);
@@ -143,7 +155,7 @@ export default async function ProductPage({ params }: Props) {
   ]);
 
   const specs = (product.specifications ?? {}) as Record<string, unknown>;
-  const brand = textValue(specs.brand, '');
+  const brand = normalizeBrandName(specs.brand);
   const model = textValue(specs.model, '');
   const displayName = [brand, model].filter(Boolean).join(' ').trim() || product.name;
   const images = getImages(product.product_images);
