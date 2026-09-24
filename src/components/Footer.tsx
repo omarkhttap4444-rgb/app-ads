@@ -99,6 +99,7 @@ export default function Footer() {
                 { label: 'كيف تفحص الموبايل', href: '/help/check-used-phone' },
                 { label: 'نصائح الأمان', href: '/help/phone-safety' },
                 { label: 'عن سوق فون', href: '/about' },
+                { label: 'سياسة الخصوصية', href: '/privacy' },
               ].map((link) => (
                 <li key={link.label}>
                   <Link href={link.href} className="text-xs text-slate-500 dark:text-slate-400 hover:text-ocean-600 dark:hover:text-ocean-400 transition-colors font-medium flex items-center gap-1">
