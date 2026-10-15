@@ -72,7 +72,6 @@ async function verify() {
     'حق الحذف النهائي',
     'الامتثال لسياسات Google OAuth والتحقق',
     'معلومات التواصل',
-    'suoqphone@gmail.com',
     '24 سبتمبر 2026'
   ];
 

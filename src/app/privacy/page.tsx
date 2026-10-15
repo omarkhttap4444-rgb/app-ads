@@ -113,7 +113,7 @@ export default function PrivacyPolicyPage() {
             </h1>
             <p className="mt-2 text-xs text-[#7c858a] dark:text-[#9ea3a7]">
               تنطبق هذه السياسة على تطبيق الهواتف الذكية{' '}
-              <strong className="text-[#242628] dark:text-white">"سوق فون: بيع وشراء الموبايلات"</strong> (المعرف:{' '}
+              <strong className="text-[#242628] dark:text-white">&quot;سوق فون: بيع وشراء الموبايلات&quot;</strong> (المعرف:{' '}
               <code className="rounded bg-[#f0f2f4] px-1.5 py-0.5 text-[11px] font-mono dark:bg-[#282828]">
                 com.souqphone.app
               </code>
@@ -128,7 +128,7 @@ export default function PrivacyPolicyPage() {
               مقدمة
             </h2>
             <p className="mt-3 text-sm leading-7 text-[#565c60] dark:text-[#c7c7c7]">
-              توضح هذه الوثيقة أنواع البيانات التي نجمعها من مستخدمي تطبيق وموقع "سوق فون" وخدمات تسجيل الدخول
+              توضح هذه الوثيقة أنواع البيانات التي نجمعها من مستخدمي تطبيق وموقع &quot;سوق فون&quot; وخدمات تسجيل الدخول
               عبر Google، والغرض من جمعها، والطريقة التي نحمي بها هذه البيانات، وحقوق المستخدمين في الوصول إلى بياناتهم
               وتعديلها وحذفها.
             </p>
@@ -185,7 +185,7 @@ export default function PrivacyPolicyPage() {
               أذونات Google OAuth المطلوبة
             </h2>
             <p className="mt-2 text-sm leading-7 text-[#565c60] dark:text-[#c7c7c7]">
-              يطلب تطبيق "سوق فون" وموقع souqphone.com حصرياً الأذونات القياسية الأساسية التالية عبر Google OAuth:
+              يطلب تطبيق &quot;سوق فون&quot; وموقع souqphone.com حصرياً الأذونات القياسية الأساسية التالية عبر Google OAuth:
             </p>
             <div className="mt-3 grid gap-3 sm:grid-cols-3">
               <div className="rounded-xl border border-[#e7e9ec] bg-white p-3 text-center dark:border-[#343434] dark:bg-[#1a1a1a]">
@@ -274,7 +274,7 @@ export default function PrivacyPolicyPage() {
               مجتمع سوق فون والمحتوى الذي ينشئه المستخدمون (UGC)
             </h2>
             <p className="mt-2 text-sm leading-7 text-[#565c60] dark:text-[#c7c7c7]">
-              يتضمن تطبيق "سوق فون" مساحة "مجتمع سوق فون"، وهي مساحة تفاعلية مخصصة للنقاشات ومشاركة التجارب والتفاعل
+              يتضمن تطبيق &quot;سوق فون&quot; مساحة &quot;مجتمع سوق فون&quot;، وهي مساحة تفاعلية مخصصة للنقاشات ومشاركة التجارب والتفاعل
               بين المهتمين بسوق الهواتف.
             </p>
 
@@ -347,7 +347,7 @@ export default function PrivacyPolicyPage() {
               استخدام الكاميرا والصور
             </h2>
             <p className="mt-2 text-sm leading-7 text-[#565c60] dark:text-[#c7c7c7]">
-              يستخدم تطبيق "سوق فون" الكاميرا ومكتبة الصور فقط عندما يختار المستخدم التقاط أو رفع صور لإرفاقها بإعلاناته
+              يستخدم تطبيق &quot;سوق فون&quot; الكاميرا ومكتبة الصور فقط عندما يختار المستخدم التقاط أو رفع صور لإرفاقها بإعلاناته
               أو منشوراته في المجتمع.
             </p>
             <ul className="mt-2 list-disc pr-5 text-sm leading-7 text-[#565c60] dark:text-[#c7c7c7]">
@@ -470,17 +470,23 @@ export default function PrivacyPolicyPage() {
                 </p>
               </div>
               <div className="rounded-xl border border-[#eceeed] p-3.5 dark:border-[#2f2f2f]">
-                <strong className="text-xs font-black text-[#242628] dark:text-white">Google AdMob</strong>
+                <strong className="text-xs font-black text-[#242628] dark:text-white">Start.io (StartApp)</strong>
                 <p className="mt-1 text-[11px] leading-5 text-[#6b7175] dark:text-[#aeb4b7]">
-                  لعرض الإعلانات وقياس أدائها وفق معايير الخصوصية، مع إمكانية إدارة وسحب الموافقة من إعدادات التطبيق.
+                  بعد الموافقة وتأكيد بلوغ 18 سنة، لعرض وقياس إعلانات مخصصة. قد تجمع وتشارك عنوان IP ومعرّف الإعلانات
+                  ومعلومات الجهاز والموقع التقريبي والموقع الدقيق عند منح إذن الموقع، وتجمع بيانات تشخيص الأعطال.
+                  يمكنك الرفض دون فقد وظائف التطبيق وتغيير اختيارك من الإعدادات ← خصوصية الإعلانات.
+                  عند الرفض أو سحب الموافقة، تُعرض إعلانات عامة غير مخصصة (Non-Personalized Ads) مع إرسال عدم الموافقة إلى SDK دون تتبع شخصي.
                 </p>
               </div>
               <div className="rounded-xl border border-[#eceeed] p-3.5 dark:border-[#2f2f2f]">
                 <strong className="text-xs font-black text-[#242628] dark:text-white">
-                  Google User Messaging Platform (UMP)
+                  خصوصية إعلانات Start.io
                 </strong>
                 <p className="mt-1 text-[11px] leading-5 text-[#6b7175] dark:text-[#aeb4b7]">
-                  لإدارة وعرض رسائل الموافقة والخيارات الإعلانية وتخزين تفضيلات الخصوصية.
+                  نحفظ اختيار الإعلانات وتوقيته على جهازك، ولا نعتبر تثبيت التطبيق موافقة.
+                  هذه الموافقة لا تشمل خدمات التحليلات الأخرى. راجع{' '}
+                  <a href="https://www.start.io/policy/privacy-policy/" target="_blank" rel="noopener noreferrer"
+                    className="underline">سياسة خصوصية Start.io</a>.
                 </p>
               </div>
               <div className="rounded-xl border border-[#eceeed] p-3.5 dark:border-[#2f2f2f]">
@@ -573,14 +579,8 @@ export default function PrivacyPolicyPage() {
                 كيفية تقديم طلب الحذف أو ممارسة حقوقك:
               </p>
               <p className="mt-1 text-xs leading-6 text-[#355c45] dark:text-[#c2eed6]">
-                لممارسة أي من حقوقك أو لطلب حذف حسابك وبياناتك فوراً، يرجى مراسلتنا عبر البريد الإلكتروني الرسمي:{' '}
-                <a
-                  href="mailto:suoqphone@gmail.com"
-                  className="font-bold text-[#078b43] underline dark:text-[#52d688]"
-                >
-                  suoqphone@gmail.com
-                </a>
-                . سنقوم بتأكيد استلام طلبك وشرح خطوات وإطار التنفيذ الزمني لإتمام عملية الحذف بأسرع وقت.
+                لممارسة أي من حقوقك أو لطلب حذف حسابك وبياناتك فوراً، استخدم خيار حذف الحساب من داخل التطبيق
+                (الإعدادات ← حذف الحساب). سنقوم بتنفيذ طلبك وإتمام عملية الحذف بأسرع وقت.
               </p>
             </div>
           </section>
@@ -591,7 +591,7 @@ export default function PrivacyPolicyPage() {
               الامتثال لسياسات Google OAuth والتحقق
             </h2>
             <p className="mt-2 text-sm leading-7 text-[#565c60] dark:text-[#c7c7c7]">
-              نؤكد أن تطبيق "سوق فون" وموقع souqphone.com يلتزمان بطلب الحد الأدنى من الأذونات والصلاحيات اللازمة لتشغيل
+              نؤكد أن تطبيق &quot;سوق فون&quot; وموقع souqphone.com يلتزمان بطلب الحد الأدنى من الأذونات والصلاحيات اللازمة لتشغيل
               خدمة تسجيل الدخول الآمن، وأن استخدام أي بيانات يتم الحصول عليها من Google يقتصر بدقة على الأغراض المصرح
               بها والموضحة في هذه السياسة.
             </p>
@@ -608,16 +608,10 @@ export default function PrivacyPolicyPage() {
               معلومات التواصل
             </h2>
             <p className="mt-2 text-sm leading-7 text-[#565c60] dark:text-[#c7c7c7]">
-              لأي استفسارات بخصوص سياسة الخصوصية، أو ممارسة حقوقك في البيانات، أو أي استفسار يتعلق بالامتثال والأمان:
+              لأي استفسارات بخصوص سياسة الخصوصية، أو ممارسة حقوقك في البيانات، أو أي استفسار يتعلق بالامتثال والأمان،
+              يمكنك استخدام قنوات الدعم المتاحة داخل التطبيق.
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-4 text-xs font-bold">
-              <a
-                href="mailto:suoqphone@gmail.com"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#f0faf4] px-4 py-2.5 text-[#078b43] transition-colors hover:bg-[#e2f6eb] dark:bg-[#142c1f] dark:text-[#52d688] dark:hover:bg-[#1a3828]"
-              >
-                <Mail className="h-4 w-4" />
-                <span>suoqphone@gmail.com</span>
-              </a>
               <Link
                 href="/"
                 className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6e2] bg-white px-4 py-2.5 text-[#4f555a] transition-colors hover:bg-[#f5f7f6] dark:border-[#353535] dark:bg-[#202020] dark:text-[#d0d0d0] dark:hover:bg-[#272727]"
