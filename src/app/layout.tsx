@@ -4,6 +4,8 @@ import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
+import GoogleAdSense from "@/components/GoogleAdSense";
+import { AdSenseProvider } from "@/lib/ads-context";
 import JsonLd from "@/components/JsonLd";
 import { INDEXABLE_ROBOTS, SITE_NAME, SITE_URL } from "@/lib/seo";
 
@@ -138,7 +140,8 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="min-h-full flex flex-col bg-[#f7f8f8] dark:bg-[#0d0d0d] text-[#202124] dark:text-[#f1f1f1] pb-20 md:pb-0 transition-colors duration-200 font-[var(--font-cairo)]" style={{ fontFamily: "var(--font-cairo), var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
-        <GoogleAnalytics />
+        <AdSenseProvider>
+          <GoogleAnalytics />
         <JsonLd data={websiteJsonLd} />
         <Header />
         <div className="flex-1">
@@ -147,6 +150,8 @@ export default function RootLayout({
         <div className="hidden md:block">
           <Footer />
         </div>
+        <GoogleAdSense />
+      </AdSenseProvider>
       </body>
     </html>
   );

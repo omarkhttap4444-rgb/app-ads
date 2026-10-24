@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { cache } from 'react';
 import MobilesFiltersWrapper from '@/components/MobilesFiltersWrapper';
 import ProductCard, { type ProductCardProps } from '@/components/ProductCard';
+import SuppressAds from '@/components/SuppressAds';
 import JsonLd from '@/components/JsonLd';
 import { absoluteUrl } from '@/lib/seo';
 import { getRequestCountry } from '@/lib/request-country';
@@ -485,11 +486,14 @@ export default async function MobilesPage(props: Props) {
         </div>
 
         {(!products || products.length === 0) && (
-          <div className="mt-4 rounded-[26px] border border-[#e7e9ec] bg-white py-20 text-center dark:border-[#343434] dark:bg-[#1f1f1f]">
+          <>
+            <SuppressAds />
+            <div className="mt-4 rounded-[26px] border border-[#e7e9ec] bg-white py-20 text-center dark:border-[#343434] dark:bg-[#1f1f1f]">
             <span className="text-5xl mb-4 block">🔍</span>
             <p className="text-base font-bold text-slate-600 dark:text-slate-300 mb-1">لم نجد أي نتائج</p>
             <p className="text-xs text-slate-400">حاول استخدام كلمات بحث أخرى أو إعادة تعيين الفلاتر</p>
-          </div>
+            </div>
+          </>
         )}
 
         {totalPages > 1 && (

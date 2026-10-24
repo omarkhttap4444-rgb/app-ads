@@ -4,6 +4,7 @@ import { Metadata } from 'next';
 import { cache } from 'react';
 import ProfileHeader from '@/components/ProfileHeader';
 import ProductCard from '@/components/ProductCard';
+import SuppressAds from '@/components/SuppressAds';
 import JsonLd from '@/components/JsonLd';
 import { absoluteUrl } from '@/lib/seo';
 
@@ -139,10 +140,13 @@ export default async function StoreProfilePage(props: Props) {
           </div>
 
           {(!products || products.length === 0) && (
+            <>
+              <SuppressAds />
             <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
               <span className="text-4xl mb-3 block">📭</span>
               <p className="text-base font-bold text-slate-600 dark:text-slate-300">لا توجد إعلانات نشطة حالياً</p>
             </div>
+            </>
           )}
         </div>
       </div>
