@@ -100,6 +100,8 @@ export default function Footer() {
                 { label: 'نصائح الأمان', href: '/help/phone-safety' },
                 { label: 'عن سوق فون', href: '/about' },
                 { label: 'سياسة الخصوصية', href: '/privacy' },
+                { label: 'الشروط والأحكام', href: '/terms' },
+                { label: 'اتصل بنا', href: '/contact' },
               ].map((link) => (
                 <li key={link.label}>
                   <Link href={link.href} className="text-xs text-slate-500 dark:text-slate-400 hover:text-ocean-600 dark:hover:text-ocean-400 transition-colors font-medium flex items-center gap-1">

@@ -24,6 +24,8 @@ export async function GET() {
     '/help/phone-safety',
     '/about',
     '/privacy',
+    '/terms',
+    '/contact',
   ];
 
   const urls = staticPaths.map((path) => ({

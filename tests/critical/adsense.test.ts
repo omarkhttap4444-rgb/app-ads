@@ -64,6 +64,8 @@ test('isAdExcludedPath allows public pages', () => {
     '/mobiles/samsung-galaxy-s24-ultra',
     '/about',
     '/privacy',
+    '/terms',
+    '/contact',
     '/help/buying-used-phone',
     '/help/selling-used-phone',
     '/help/check-used-phone',
@@ -177,6 +179,8 @@ test('build HTML contains AdSense script on public pages and omits it on private
     'index.html',
     'about.html',
     'privacy.html',
+    'terms.html',
+    'contact.html',
     'help/buying-used-phone.html',
   ];
 

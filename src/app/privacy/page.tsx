@@ -509,6 +509,12 @@ export default function PrivacyPolicyPage() {
                   لمعالجة العمليات السحابية الخلفية المشفرة بأمان ودون تخزين بيانات إضافية.
                 </p>
               </div>
+              <div className="rounded-xl border border-[#eceeed] p-3.5 dark:border-[#2f2f2f]">
+                <strong className="text-xs font-black text-[#242628] dark:text-white">Google AdSense</strong>
+                <p className="mt-1 text-[11px] leading-5 text-[#6b7175] dark:text-[#aeb4b7]">
+                  لعرض الإعلانات التلقائية وقياس فعاليتها على الموقع وفق معايير الخصوصية وملفات تعريف الارتباط لشركة Google.
+                </p>
+              </div>
             </div>
             <p className="mt-4 text-xs leading-6 text-[#565c60] dark:text-[#c7c7c7]">
               تصل هذه الخدمات فقط إلى البيانات الضرورية اللازمة لأداء مهامها وبموجب التزامات حماية بيانات مشددة. لمعرفة
@@ -526,7 +532,63 @@ export default function PrivacyPolicyPage() {
             </p>
           </section>
 
-          {/* 11. مشاركة البيانات */}
+          {/* 11. إعلانات Google AdSense وملفات تعريف الارتباط */}
+          <section className="mt-8 rounded-2xl border border-[#e7e9ec] bg-[#fafbfb] p-5 dark:border-[#343434] dark:bg-[#202020] sm:p-6">
+            <h2 className="text-base font-black text-[#242628] dark:text-white sm:text-lg">
+              إعلانات Google AdSense وملفات تعريف الارتباط (Cookies)
+            </h2>
+            <div className="mt-3 space-y-4 text-xs leading-6 text-[#565c60] dark:text-[#c7c7c7]">
+              <div>
+                <h3 className="font-bold text-[#242628] dark:text-white mb-1">إشعار الخصوصية للإعلانات (بالعربية):</h3>
+                <p>
+                  يستخدم موقع سوق فون خدمة Google AdSense لعرض الإعلانات. تستخدم شركة Google وشركاؤها ملفات تعريف الارتباط (Cookies) لخدمة الإعلانات للمستخدمين استناداً إلى زياراتهم السابقة لموقعنا أو لمواقع أخرى على شبكة الإنترنت. يمكن للمستخدمين اختيار تعطيل الإعلانات المخصصة عن طريق زيارة{' '}
+                  <a
+                    href="https://adssettings.google.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-bold text-[#078b43] underline dark:text-[#52d688]"
+                  >
+                    إعدادات إعلانات Google
+                  </a>{' '}
+                  أو عبر{' '}
+                  <a
+                    href="https://www.aboutads.info"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-bold text-[#078b43] underline dark:text-[#52d688]"
+                  >
+                    AboutAds.info
+                  </a>.
+                </p>
+              </div>
+
+              <div dir="ltr" className="border-t border-[#eceeed] pt-3 text-left dark:border-[#2f2f2f]">
+                <h3 className="font-bold text-[#242628] dark:text-white mb-1">Google AdSense and Cookies Notice (English):</h3>
+                <p>
+                  Souq Phone uses Google AdSense to serve advertisements. Google and its third-party partners use cookies to serve ads based on a user&apos;s prior visits to this website or other websites on the Internet. Users may opt out of personalized advertising by visiting{' '}
+                  <a
+                    href="https://adssettings.google.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-bold text-[#078b43] underline dark:text-[#52d688]"
+                  >
+                    Google Ads Settings
+                  </a>{' '}
+                  or{' '}
+                  <a
+                    href="https://www.aboutads.info"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-bold text-[#078b43] underline dark:text-[#52d688]"
+                  >
+                    AboutAds.info
+                  </a>.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* 12. مشاركة البيانات */}
           <section className="mt-8">
             <h2 className="text-base font-black text-[#242628] dark:text-white sm:text-lg">مشاركة البيانات</h2>
             <p className="mt-2 text-sm leading-7 text-[#565c60] dark:text-[#c7c7c7]">
