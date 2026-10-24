@@ -63,7 +63,7 @@ export default async function StoreProfilePage(props: Props) {
     supabase.rpc('get_seller_public_stats', { p_user_id: params.id }),
   ]);
 
-  const stats = (statsRaw ?? {}) as Record<string, any>;
+  const stats = (statsRaw ?? {}) as Record<string, unknown>;
   const sellerStats = {
     products: Number(stats.products ?? 0),
     sold_products: Number(stats.sold_products ?? 0),
@@ -111,7 +111,7 @@ export default async function StoreProfilePage(props: Props) {
     <main className="min-h-screen bg-slate-50 dark:bg-[#0a0e17] pb-20 transition-colors">
       <JsonLd data={profileJsonLd} />
       <JsonLd data={listingsJsonLd} />
-      <ProfileHeader store={{ ...store, followers_count: sellerStats.followers, seller_rating: sellerStats.seller_rating, seller_ratings_count: sellerStats.seller_ratings_count } as any} productsCount={sellerStats.products} />
+      <ProfileHeader store={{ ...store, followers_count: sellerStats.followers, seller_rating: sellerStats.seller_rating, seller_ratings_count: sellerStats.seller_ratings_count } as Parameters<typeof ProfileHeader>[0]['store']} productsCount={sellerStats.products} />
       {/* Seller public stats — same definitions as Flutter get_seller_public_stats */}
       <div className="container mx-auto px-4 max-w-7xl -mt-4 relative z-10">
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 grid grid-cols-3 md:grid-cols-5 gap-3 text-center">

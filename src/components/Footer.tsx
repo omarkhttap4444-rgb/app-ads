@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Smartphone, Shield, Headphones, CreditCard, MapPin, Mail, Phone, ChevronLeft } from 'lucide-react';
+import { Smartphone, Shield, Headphones, CreditCard, ChevronLeft } from 'lucide-react';
 import PlayStoreLink from './PlayStoreLink';
 import { SAUDI_MARKET_ENABLED } from '@/lib/market-config';
 
@@ -12,6 +12,7 @@ export default function Footer() {
 
   useEffect(() => {
     const country = document.cookie.match(/(^|;)\s*selected_country\s*=\s*([^;]+)/)?.[2] || localStorage.getItem('selected_country') || 'EG';
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedCountry(SAUDI_MARKET_ENABLED && country === 'SA' ? 'SA' : 'EG');
   }, []);
 
