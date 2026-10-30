@@ -161,10 +161,12 @@ export default async function Home() {
     latestResult,
     trendingResult,
     categoriesResult,
+    pinnedAdsResult,
   ] = await Promise.all([
     latestQuery.eq('is_sold', false).order('created_at', { ascending: false }).order('position', { referencedTable: 'product_images', ascending: true }).limit(20),
     trendingQuery.eq('is_sold', false).order('views_count', { ascending: false }).order('position', { referencedTable: 'product_images', ascending: true }).limit(10),
     getCachedCategories(),
+    supabase.rpc('get_active_pinned_ads', { p_limit: 10 }),
   ]);
 
   if (latestResult.error) {
@@ -176,9 +178,66 @@ export default async function Home() {
   if (categoriesResult.error) {
     console.error('[home] Could not load categories:', categoriesResult.error.message);
   }
+  if (pinnedAdsResult.error) {
+    console.error('[home] Could not load pinned ads:', pinnedAdsResult.error.message);
+  }
 
   const latestProducts = latestResult.data ?? [];
   const trendingProducts = trendingResult.data ?? [];
+  const rawPinnedAds =
+    (pinnedAdsResult.data as Array<{
+      pinned_id: string;
+      product_id: string;
+      title: string;
+      price: number;
+      location: string | null;
+      condition?: string | null;
+      image_url: string | null;
+      seller_name: string;
+      seller_avatar?: string | null;
+      seller_is_verified?: boolean | null;
+      seller_is_store?: boolean | null;
+      created_at?: string | null;
+    }> | null) ?? [];
+
+  const pinnedFullProductsMap = new Map<string, (typeof latestProducts)[number]>();
+  if (rawPinnedAds.length > 0) {
+    const pinnedProductIds = Array.from(
+      new Set(rawPinnedAds.map((a) => a.product_id).filter(Boolean)),
+    );
+    const { data: pinnedProductRows } = await supabase
+      .from('products')
+      .select(productSelection)
+      .in('id', pinnedProductIds);
+    for (const row of pinnedProductRows ?? []) {
+      if (row?.id) {
+        pinnedFullProductsMap.set(row.id, row);
+      }
+    }
+  }
+
+  const pinnedAds = rawPinnedAds.map((ad) => {
+    const full = pinnedFullProductsMap.get(ad.product_id);
+    return {
+      ...ad,
+      product: full ?? {
+        id: ad.product_id,
+        name: ad.title,
+        price: ad.price,
+        location: ad.location ?? '',
+        condition: ad.condition ?? 'مستعمل',
+        slug: ad.product_id,
+        created_at: ad.created_at ?? undefined,
+        views_count: 0,
+        likes_count: 0,
+        comments_count: 0,
+        is_negotiable: false,
+        is_sold: false,
+        product_images: ad.image_url ? [{ image_url: ad.image_url, position: 0 }] : [],
+        specifications: {},
+      },
+    };
+  });
   const categories =
     categoriesResult.data && categoriesResult.data.length > 0
       ? categoriesResult.data
@@ -265,6 +324,66 @@ export default async function Home() {
             ))}
           </div>
         </section>
+
+        {pinnedAds.length > 0 && (
+          <section className="mt-6 overflow-hidden rounded-[26px] border border-amber-500/20 bg-gradient-to-br from-[#f6fbf8] via-white to-[#fcfbf5] p-4 shadow-[0_12px_28px_-20px_rgba(16,24,40,0.16)] dark:border-amber-400/20 dark:from-[#0e2019] dark:via-[#13261e] dark:to-[#192016] md:p-6">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#ffd700] via-[#ffa000] to-[#00a86b] text-xl text-white shadow-[0_6px_14px_rgba(255,179,0,0.28)]">
+                  👑
+                </span>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-base font-black text-[#0e291b] dark:text-white md:text-xl">
+                      إعلانات مثبتة VIP
+                    </h2>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#ffd54f] to-[#ff8f00] px-2.5 py-0.5 text-[10px] font-black text-[#1f1600] shadow-sm">
+                      📌 صدارة السوق
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-[11px] font-bold text-[#066940] dark:text-[#ffe082] md:text-xs">
+                    عروض موثقة ومختارة بعناية في قمة سوق فون
+                  </p>
+                </div>
+              </div>
+
+              <span className="shrink-0 rounded-2xl border border-amber-500/25 bg-emerald-600/10 px-3 py-1.5 text-[11px] font-black text-[#047857] dark:bg-white/10 dark:text-[#ffd54f]">
+                {pinnedAds.length} مميز
+              </span>
+            </div>
+
+            <div className="scroll-hide flex snap-x snap-mandatory gap-3.5 overflow-x-auto pb-2">
+              {pinnedAds.map((ad, index) => (
+                <div
+                  key={ad.pinned_id}
+                  className="relative flex w-[calc(50%-7px)] min-w-[168px] shrink-0 snap-start flex-col rounded-[24px] border border-amber-400/30 bg-white p-[1px] shadow-[0_8px_22px_-14px_rgba(16,24,40,0.18)] transition duration-300 hover:-translate-y-1 hover:border-amber-400/50 dark:border-amber-400/25 dark:bg-[#1f1f1f] sm:w-[215px] md:w-[235px]"
+                >
+                  <div className="flex flex-1 flex-col overflow-hidden rounded-[23px] bg-white dark:bg-[#1f1f1f]">
+                    <div className="flex-1 [&_.app-product-card]:!rounded-b-none [&_.app-product-card]:!border-0 [&_.app-product-card]:hover:!translate-y-0">
+                      <ProductCard product={ad.product} priority={index < 4} />
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 border-t border-amber-500/20 bg-gradient-to-l from-[#f6fbf8] to-[#fffbf0] px-3 py-2 dark:from-[#1b2a22] dark:to-[#232015]">
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <span className="truncate text-[11px] font-black text-[#1f2937] dark:text-[#f5e6b8]">
+                          {ad.seller_name}
+                        </span>
+                        {(ad.seller_is_verified || ad.seller_is_store) && (
+                          <span className="text-xs text-[#1da1f2]" title="موثق">
+                            ✓
+                          </span>
+                        )}
+                      </div>
+                      <span className="shrink-0 rounded-md bg-amber-500/15 px-2 py-0.5 text-[9px] font-black text-[#8b6508] dark:text-[#ffd54f]">
+                        {ad.seller_is_store ? 'متجر مميز' : 'إعلان موثق'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="mt-6">
           <div className="mb-3 flex items-end justify-between px-1">
