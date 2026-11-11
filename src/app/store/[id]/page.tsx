@@ -7,6 +7,7 @@ import ProductCard from '@/components/ProductCard';
 import SuppressAds from '@/components/SuppressAds';
 import JsonLd from '@/components/JsonLd';
 import { absoluteUrl } from '@/lib/seo';
+import { cleanBio } from '@/lib/store-metadata';
 
 export const revalidate = 60;
 
@@ -29,7 +30,8 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   if (!store) return { title: 'البائع غير موجود', robots: { index: false, follow: false } };
 
   const title = `إعلانات ${store.name}`;
-  const description = store.bio || `تصفح الهواتف المعروضة للبيع من ${store.name} في ${store.governorate || 'مصر'}.`;
+  const cleanBioText = cleanBio(store.bio);
+  const description = cleanBioText || `تصفح الهواتف المعروضة للبيع من ${store.name} في ${store.governorate || 'مصر'}.`;
   const canonicalPath = `/store/${params.id}`;
   return {
     title,
@@ -81,13 +83,13 @@ export default async function StoreProfilePage(props: Props) {
     '@id': `${storeUrl}#profile`,
     url: storeUrl,
     name: `إعلانات ${store.name}`,
-    description: store.bio || `صفحة البائع ${store.name} على سوق فون.`,
+    description: cleanBio(store.bio) || `صفحة البائع ${store.name} على سوق فون.`,
     inLanguage: 'ar',
     mainEntity: {
       '@type': 'Person',
       '@id': `${storeUrl}#seller`,
       name: store.name,
-      description: store.bio || undefined,
+      description: cleanBio(store.bio) || undefined,
       image: store.profile_image_url || undefined,
       address: store.governorate
         ? { '@type': 'PostalAddress', addressRegion: store.governorate }

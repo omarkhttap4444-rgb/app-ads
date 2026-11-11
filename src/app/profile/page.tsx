@@ -12,6 +12,8 @@ import {
   LogOut,
   Package,
   Pencil,
+  Share2,
+  ExternalLink,
   ShoppingBag,
   Star,
   Trash2,
@@ -20,6 +22,7 @@ import {
 } from 'lucide-react';
 import { compressImage } from '@/lib/image-compress';
 import { firstProductImageUrl } from '@/lib/product-images';
+import { cleanBio, extractStoreMetadata, mergeBio } from '@/lib/store-metadata';
 
 type ProfileRow = {
   id: string;
@@ -243,12 +246,14 @@ export default function ProfilePage() {
     if (!user) return;
     setSavingBio(true);
     try {
+      const meta = extractStoreMetadata(profile?.bio);
+      const merged = mergeBio(bioDraft.trim(), meta);
       const { error } = await supabase
         .from('users')
-        .update({ bio: bioDraft.trim(), updated_at: new Date().toISOString() })
+        .update({ bio: merged || null, updated_at: new Date().toISOString() })
         .eq('id', user.id);
       if (error) throw error;
-      setProfile((prev) => (prev ? { ...prev, bio: bioDraft.trim() } : prev));
+      setProfile((prev) => (prev ? { ...prev, bio: merged || null } : prev));
       setEditingBio(false);
     } catch (err: any) {
       window.alert(err.message || 'تعذر حفظ النبذة.');
@@ -402,16 +407,30 @@ export default function ProfilePage() {
             </button>
           </div>
 
+          {/* Public Store Profile Link */}
+          {profile && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link
+                href={`/store/${profile.id}`}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-l from-emerald-600 to-teal-600 px-3.5 py-1.5 text-xs font-black text-white shadow-sm transition hover:brightness-110"
+              >
+                <Share2 className="h-3.5 w-3.5" />
+                <span>صفحة متجري العامة والمشاركة</span>
+                <ExternalLink className="h-3 w-3 opacity-80" />
+              </Link>
+            </div>
+          )}
+
           {/* Bio pill */}
           <button
             onClick={() => {
-              setBioDraft(profile?.bio ?? '');
+              setBioDraft(cleanBio(profile?.bio));
               setEditingBio(true);
             }}
             className="mt-3 w-full rounded-2xl border border-dashed border-[#bcd9c8] bg-white/70 p-3 text-right text-xs font-semibold leading-6 text-[#4f555a] transition hover:border-[#10ad58] dark:border-[#2e4a3a] dark:bg-[#152019] dark:text-[#c9d4cd]"
           >
-            {profile?.bio?.trim()
-              ? profile.bio
+            {cleanBio(profile?.bio)
+              ? cleanBio(profile?.bio)
               : '+ اكتب نبذة تعريفية عنك تظهر للمشترين'}
           </button>
         </div>

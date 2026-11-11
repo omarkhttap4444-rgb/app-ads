@@ -6,6 +6,8 @@ export type PlayStorePlacement =
   | 'products_banner'
   | 'footer'
   | 'product_details'
+  | 'stores_hero'
+  | 'pinned_ad_empty'
   | 'unknown';
 
 export function getTrackedPlayStoreUrl(placement: PlayStorePlacement): string {

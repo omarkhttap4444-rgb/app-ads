@@ -3,6 +3,7 @@ import { Cairo, Inter } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import AutoCountryDetector from "@/components/AutoCountryDetector";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import GoogleAdSense from "@/components/GoogleAdSense";
 import { AdSenseProvider } from "@/lib/ads-context";
@@ -141,6 +142,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col bg-[#f7f8f8] dark:bg-[#0d0d0d] text-[#202124] dark:text-[#f1f1f1] pb-20 md:pb-0 transition-colors duration-200 font-[var(--font-cairo)]" style={{ fontFamily: "var(--font-cairo), var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
         <AdSenseProvider>
+          <AutoCountryDetector />
           <GoogleAnalytics />
         <JsonLd data={websiteJsonLd} />
         <Header />

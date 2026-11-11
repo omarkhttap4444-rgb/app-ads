@@ -48,6 +48,38 @@ export default function Header() {
   const [favoritesCount, setFavoritesCount] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [currentCountry, setCurrentCountry] = useState<'EG' | 'SA'>('EG');
+  const [countryMenuOpen, setCountryMenuOpen] = useState(false);
+
+  useEffect(() => {
+    // Read current country from cookie or searchParams
+    const match = document.cookie.match(/user_country=(EG|SA)/i);
+    if (match) {
+      setCurrentCountry(match[1].toUpperCase() as 'EG' | 'SA');
+    } else {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('country')?.toUpperCase() === 'SA') {
+        setCurrentCountry('SA');
+      }
+    }
+  }, [pathname]);
+
+  const handleCountryChange = (c: 'EG' | 'SA') => {
+    document.cookie = `user_country=${c}; path=/; max-age=31536000; SameSite=Lax`;
+    setCurrentCountry(c);
+    setCountryMenuOpen(false);
+    setDrawerOpen(false);
+    const currentParams = new URLSearchParams(window.location.search);
+    if (c === 'SA') {
+      currentParams.set('country', 'SA');
+    } else {
+      currentParams.delete('country');
+    }
+    const newQuery = currentParams.toString();
+    const targetPath = `${pathname}${newQuery ? `?${newQuery}` : ''}`;
+    router.push(targetPath);
+    router.refresh();
+  };
 
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
@@ -227,8 +259,43 @@ export default function Header() {
           </form>
 
           <div className="flex shrink-0 items-center gap-2" dir="ltr">
+            {/* Country Switcher Dropdown */}
+            <div className="relative" dir="rtl">
+              <button
+                type="button"
+                onClick={() => setCountryMenuOpen((prev) => !prev)}
+                className="flex h-10 items-center gap-2 rounded-full border border-white/25 bg-black/15 px-3.5 text-xs font-black backdrop-blur-sm transition hover:bg-black/25 shadow-xs"
+                title="تغيير الدولة"
+              >
+                <span className="text-sm">{currentCountry === 'SA' ? '🇸🇦' : '🇪🇬'}</span>
+                <span>{currentCountry === 'SA' ? 'السعودية' : 'مصر'}</span>
+                <ChevronDown className="h-3.5 w-3.5 opacity-80" />
+              </button>
+              {countryMenuOpen && (
+                <div className="absolute left-0 top-12 z-50 w-48 overflow-hidden rounded-2xl border border-[#e7e9ec] bg-white p-2 text-[#202124] shadow-2xl dark:border-[#353535] dark:bg-[#202020] dark:text-white">
+                  <div className="px-2.5 py-1 text-[10px] font-bold text-[#8b95a1]">اختر سوق الدولة:</div>
+                  <button
+                    type="button"
+                    onClick={() => handleCountryChange('EG')}
+                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-black transition ${currentCountry === 'EG' ? 'bg-[#ecfdf3] text-[#078b43] dark:bg-[#173323] dark:text-[#54db8d]' : 'hover:bg-[#f3f5f4] dark:hover:bg-[#292929]'}`}
+                  >
+                    <span className="flex items-center gap-2"><span className="text-base">🇪🇬</span> مصر (ج.م)</span>
+                    {currentCountry === 'EG' && <span className="text-[#078b43] font-bold">✓</span>}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleCountryChange('SA')}
+                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-black transition ${currentCountry === 'SA' ? 'bg-[#ecfdf3] text-[#078b43] dark:bg-[#173323] dark:text-[#54db8d]' : 'hover:bg-[#f3f5f4] dark:hover:bg-[#292929]'}`}
+                  >
+                    <span className="flex items-center gap-2"><span className="text-base">🇸🇦</span> السعودية (ر.س)</span>
+                    {currentCountry === 'SA' && <span className="text-[#078b43] font-bold">✓</span>}
+                  </button>
+                </div>
+              )}
+            </div>
+
             <ThemeToggle />
-            <Link href="/mobiles" className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/10 backdrop-blur-sm transition hover:bg-black/20" aria-label="المتجر">
+            <Link href="/stores" className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/10 backdrop-blur-sm transition hover:bg-black/20" aria-label="المتاجر المعتمدة" title="المتاجر المعتمدة">
               <Store className="h-5 w-5" />
             </Link>
             <Link href={user ? '/notifications' : '/login'} className="relative flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/10 backdrop-blur-sm transition hover:bg-black/20" aria-label="الإشعارات">
@@ -280,12 +347,22 @@ export default function Header() {
           <button onClick={() => setDrawerOpen(true)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/10 backdrop-blur-sm" aria-label="فتح القائمة">
             <Menu className="h-7 w-7" strokeWidth={2.8} />
           </button>
+          <button
+            type="button"
+            onClick={() => setCountryMenuOpen(true)}
+            className="flex h-10 px-2.5 shrink-0 items-center justify-center rounded-full bg-black/15 backdrop-blur-sm text-[11px] font-black gap-1 border border-white/20 text-white transition active:scale-95 shadow-xs"
+            title="تغيير الدولة"
+          >
+            <span>{currentCountry === 'SA' ? '🇸🇦' : '🇪🇬'}</span>
+            <span className="hidden min-[380px]:inline">{currentCountry === 'SA' ? 'السعودية' : 'مصر'}</span>
+            <ChevronDown className="h-3 w-3 opacity-80" />
+          </button>
           <ThemeToggle />
           <form action="/mobiles" className="app-search-pill flex h-11 min-w-0 flex-1 items-center rounded-full bg-white px-3 text-[#202124]">
             <Search className="h-5 w-5 shrink-0 text-[#48b765]" strokeWidth={2.8} />
             <input name="q" dir="rtl" aria-label="ابحث عن منتج" placeholder={searchPlaceholder} className="h-full min-w-0 flex-1 bg-transparent px-2 text-[11px] font-bold outline-none placeholder:text-[#8b95a1]" />
           </form>
-          <Link href="/mobiles" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/10 backdrop-blur-sm max-[340px]:hidden" aria-label="المتجر">
+          <Link href="/stores" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/10 backdrop-blur-sm max-[340px]:hidden" aria-label="المتاجر المعتمدة" title="المتاجر المعتمدة">
             <Store className="h-7 w-7 fill-white/20" strokeWidth={2.4} />
           </Link>
           <Link href={user ? '/notifications' : '/login'} className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/10 backdrop-blur-sm" aria-label="الإشعارات">
@@ -341,12 +418,43 @@ export default function Header() {
                 <img src="/logo.png" alt="سوق فون" width={44} height={44} className="h-11 w-11 rounded-2xl object-contain" />
                 <div>
                   <p className="font-black text-[#087d3d] dark:text-[#53d889]">سوق فون</p>
-                  <p className="text-[10px] text-[#7a8086]">كل السوق في إيدك</p>
+                  <p className="text-[10px] text-[#7a8086]">
+                    {currentCountry === 'SA' ? 'السعودية 🇸🇦' : 'مصر 🇪🇬'}
+                  </p>
                 </div>
               </div>
               <button onClick={() => setDrawerOpen(false)} className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f2f4f3] dark:bg-[#292929]" aria-label="إغلاق">
                 <X className="h-5 w-5" />
               </button>
+            </div>
+
+            {/* Country Selector in Drawer */}
+            <div className="mt-4 rounded-2xl border border-[#eceeed] bg-[#f8faf9] p-2 dark:border-[#343434] dark:bg-[#252525]">
+              <p className="px-2 pb-1.5 text-[10px] font-bold text-[#7a8086]">الدولة الحالية</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleCountryChange('EG')}
+                  className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-black transition ${
+                    currentCountry === 'EG'
+                      ? 'bg-[#079447] text-white shadow-sm'
+                      : 'bg-white text-[#50555a] dark:bg-[#1f1f1f] dark:text-[#d3d3d3]'
+                  }`}
+                >
+                  <span>🇪🇬</span> مصر
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleCountryChange('SA')}
+                  className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-black transition ${
+                    currentCountry === 'SA'
+                      ? 'bg-[#079447] text-white shadow-sm'
+                      : 'bg-white text-[#50555a] dark:bg-[#1f1f1f] dark:text-[#d3d3d3]'
+                  }`}
+                >
+                  <span>🇸🇦</span> السعودية
+                </button>
+              </div>
             </div>
 
             {!user && (
@@ -359,6 +467,7 @@ export default function Header() {
             <div className="mt-5 space-y-1.5">
               {[
                 { href: '/', label: 'الرئيسية', icon: Home },
+                { href: '/stores', label: 'المتاجر المعتمدة', icon: Store },
                 { href: '/mobiles', label: 'تصفح المنتجات', icon: Search },
                 { href: '/mobiles/add', label: 'أضف إعلانك', icon: Plus },
                 { href: user ? '/favorites' : '/login', label: 'المفضلة', icon: Heart },
@@ -379,6 +488,60 @@ export default function Header() {
               </button>
             )}
           </aside>
+        </div>
+      )}
+
+      {/* Mobile Country Selector Modal */}
+      {countryMenuOpen && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 md:hidden" dir="rtl">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-xs" onClick={() => setCountryMenuOpen(false)} />
+          <div className="relative z-10 w-full max-w-xs overflow-hidden rounded-3xl border border-[#e7e9ec] bg-white p-5 text-[#202124] shadow-2xl dark:border-[#353535] dark:bg-[#1f1f1f] dark:text-white animate-scaleIn">
+            <div className="flex items-center justify-between pb-3 border-b border-[#edf0ee] dark:border-[#303030]">
+              <h3 className="text-sm font-black">اختر سوق الدولة</h3>
+              <button onClick={() => setCountryMenuOpen(false)} className="rounded-full p-1 text-[#8b95a1] hover:bg-[#f3f5f4] dark:hover:bg-[#282828]">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-4 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => handleCountryChange('EG')}
+                className={`flex w-full items-center justify-between rounded-2xl p-3 text-xs font-black transition ${
+                  currentCountry === 'EG'
+                    ? 'bg-[#ecfdf3] text-[#078b43] border border-[#a6f4c5] dark:bg-[#173323] dark:text-[#54db8d] dark:border-[#027a48]'
+                    : 'bg-[#f8faf9] text-[#50555a] border border-[#edf0ee] hover:bg-[#eff7f2] dark:bg-[#252525] dark:border-[#353535] dark:text-[#d3d3d3]'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="text-2xl">🇪🇬</span>
+                  <div className="text-right">
+                    <p className="font-black text-sm">مصر (EGP)</p>
+                    <p className="text-[10px] font-bold text-[#71787d] dark:text-[#a5acaf]">العملة: الجنيه المصري (ج.م)</p>
+                  </div>
+                </div>
+                {currentCountry === 'EG' && <span className="text-[#078b43] font-black text-base">✓</span>}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleCountryChange('SA')}
+                className={`flex w-full items-center justify-between rounded-2xl p-3 text-xs font-black transition ${
+                  currentCountry === 'SA'
+                    ? 'bg-[#ecfdf3] text-[#078b43] border border-[#a6f4c5] dark:bg-[#173323] dark:text-[#54db8d] dark:border-[#027a48]'
+                    : 'bg-[#f8faf9] text-[#50555a] border border-[#edf0ee] hover:bg-[#eff7f2] dark:bg-[#252525] dark:border-[#353535] dark:text-[#d3d3d3]'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="text-2xl">🇸🇦</span>
+                  <div className="text-right">
+                    <p className="font-black text-sm">السعودية (SAR)</p>
+                    <p className="text-[10px] font-bold text-[#71787d] dark:text-[#a5acaf]">العملة: الريال السعودي (ر.س)</p>
+                  </div>
+                </div>
+                {currentCountry === 'SA' && <span className="text-[#078b43] font-black text-base">✓</span>}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>

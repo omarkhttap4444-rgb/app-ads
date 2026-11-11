@@ -7,16 +7,21 @@ import {
   Grid2X2,
   History,
   Plus,
+  ShieldCheck,
   Sparkles,
+  Store,
 } from 'lucide-react';
 
 import BrandSlider from '@/components/BrandSlider';
 import HomeAccountPrompt from '@/components/HomeAccountPrompt';
+import CountryBanner from '@/components/CountryBanner';
 import PlayStoreLink from '@/components/PlayStoreLink';
 import ProductCard from '@/components/ProductCard';
+import CinematicAdCard, { type CinematicAd } from '@/components/CinematicAdCard';
 import { cache } from 'react';
 import { getCategoryImageUrl } from '@/lib/category-images';
 import { getRequestCountry } from '@/lib/request-country';
+import { isSaudiMarketLocation } from '@/lib/market-config';
 import { supabase } from '@/lib/supabase';
 import { INDEXABLE_ROBOTS } from '@/lib/seo';
 import { buildMobilesLandingPath, EGYPT_GOVERNORATES } from '@/lib/seo-content';
@@ -28,7 +33,6 @@ const getCachedCategories = cache(() =>
     .eq('is_active', true)
     .order('display_order', { ascending: true }),
 );
-
 
 const productSelection = `
   id,
@@ -57,6 +61,8 @@ const filterByCountry = <T,>(
 ): T => {
   if (country === 'SA') {
     const regions = [
+      'السعودية',
+      'المملكة العربية السعودية',
       'الرياض',
       'مكة المكرمة',
       'المدينة المنورة',
@@ -70,13 +76,24 @@ const filterByCountry = <T,>(
       'نجران',
       'الباحة',
       'الجوف',
+      'جدة',
+      'الدمام',
+      'الخبر',
+      'الظهران',
+      'الجبيل',
+      'الطائف',
+      'خميس مشيط',
+      'ينبع',
+      'أبها',
+      'الهفوف',
     ];
     return query.or(
-      regions.map((region) => `location.ilike.${region}%`).join(','),
+      regions.map((region) => `location.ilike.%${region}%`).join(','),
     );
   }
 
   const governorates = [
+    'مصر',
     'القاهرة',
     'الجيزة',
     'الإسكندرية',
@@ -108,20 +125,20 @@ const filterByCountry = <T,>(
 
   return query.or(
     governorates
-      .map((governorate) => `location.ilike.${governorate}%`)
+      .map((governorate) => `location.ilike.%${governorate}%`)
       .join(','),
   );
 };
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: { absolute: 'سوق فون مصر | بيع وشراء الموبايلات والإلكترونيات' },
-    description: 'بيع واشتري الموبايلات والإلكترونيات الجديدة والمستعملة في مصر. إعلانات حقيقية، بحث ذكي وتواصل مباشر مع البائع بدون عمولة.',
+    title: { absolute: 'سوق فون | بيع وشراء الموبايلات والإلكترونيات' },
+    description: 'بيع واشتري الموبايلات والإلكترونيات الجديدة والمستعملة في مصر والسعودية. إعلانات حقيقية، بحث ذكي وتواصل مباشر مع البائع بدون عمولة.',
     alternates: { canonical: 'https://souqphone.com/' },
     robots: INDEXABLE_ROBOTS,
     openGraph: {
       title: `سوق فون | كل السوق في إيدك`,
-      description: 'بيع واشتري الموبايلات والإلكترونيات مباشرة وبدون عمولة في مصر.',
+      description: 'بيع واشتري الموبايلات والإلكترونيات مباشرة وبدون عمولة في مصر والسعودية.',
       url: 'https://souqphone.com/',
       siteName: 'سوق فون',
       locale: 'ar_EG',
@@ -133,7 +150,7 @@ export async function generateMetadata(): Promise<Metadata> {
     twitter: {
       card: 'summary_large_image',
       title: 'سوق فون | كل السوق في إيدك',
-      description: 'بيع واشتري الموبايلات والإلكترونيات في مصر.',
+      description: 'بيع واشتري الموبايلات والإلكترونيات.',
       images: ['/og.png'],
     },
   };
@@ -143,9 +160,10 @@ export const revalidate = 60;
 
 export default async function Home() {
   const country = await getRequestCountry();
+  const isSaudi = country === 'SA';
   const mobilesHref = (filters: Record<string, string> = {}) => {
     const params = new URLSearchParams();
-    if (country === 'SA') params.set('country', 'SA');
+    if (isSaudi) params.set('country', 'SA');
     for (const [key, value] of Object.entries(filters)) params.set(key, value);
     const query = params.toString();
     return `/mobiles${query ? `?${query}` : ''}`;
@@ -157,16 +175,32 @@ export default async function Home() {
   let trendingQuery = supabase.from('products').select(productSelection);
   trendingQuery = filterByCountry(trendingQuery, country);
 
+  let storeProductsQuery = supabase
+    .from('products')
+    .select(productSelection)
+    .eq('is_sold', false)
+    .or('specifications->>is_store_product.eq.true,specifications->>seller_is_store.eq.true,specifications->>enable_cart.eq.true,category.eq.متاجر');
+  storeProductsQuery = filterByCountry(storeProductsQuery, country);
+
   const [
     latestResult,
     trendingResult,
     categoriesResult,
     pinnedAdsResult,
+    cinematicAdsResult,
+    storeProductsResult,
   ] = await Promise.all([
     latestQuery.eq('is_sold', false).order('created_at', { ascending: false }).order('position', { referencedTable: 'product_images', ascending: true }).limit(20),
     trendingQuery.eq('is_sold', false).order('views_count', { ascending: false }).order('position', { referencedTable: 'product_images', ascending: true }).limit(10),
     getCachedCategories(),
     supabase.rpc('get_active_pinned_ads', { p_limit: 10 }),
+    supabase
+      .from('v_public_feed_cinematic_ads')
+      .select('id, title, subtitle, image_url, action_type, action_data, advertiser_name, frequency_interval, sort_order, country_code')
+      .or(`country_code.eq.${country},country_code.eq.ALL`)
+      .order('sort_order', { ascending: true })
+      .limit(6),
+    storeProductsQuery.order('created_at', { ascending: false }).limit(10),
   ]);
 
   if (latestResult.error) {
@@ -182,8 +216,20 @@ export default async function Home() {
     console.error('[home] Could not load pinned ads:', pinnedAdsResult.error.message);
   }
 
-  const latestProducts = latestResult.data ?? [];
-  const trendingProducts = trendingResult.data ?? [];
+  const latestProducts = (latestResult.data ?? []).filter((p) => {
+    const isSaudiLoc = isSaudiMarketLocation(p.location);
+    return isSaudi ? isSaudiLoc : !isSaudiLoc;
+  });
+  const trendingProducts = (trendingResult.data ?? []).filter((p) => {
+    const isSaudiLoc = isSaudiMarketLocation(p.location);
+    return isSaudi ? isSaudiLoc : !isSaudiLoc;
+  });
+  const storeProducts = (storeProductsResult.data ?? []).filter((p) => {
+    const isSaudiLoc = isSaudiMarketLocation(p.location);
+    return isSaudi ? isSaudiLoc : !isSaudiLoc;
+  });
+  const cinematicAds = (cinematicAdsResult.data as CinematicAd[] | null) ?? [];
+
   const rawPinnedAds =
     (pinnedAdsResult.data as Array<{
       pinned_id: string;
@@ -200,10 +246,17 @@ export default async function Home() {
       created_at?: string | null;
     }> | null) ?? [];
 
+  // Filter pinned ads by country matching app logic
+  const countryFilteredPinnedAds = rawPinnedAds.filter((ad) => {
+    if (!ad.location) return true;
+    const isSaudiLoc = isSaudiMarketLocation(ad.location);
+    return isSaudi ? isSaudiLoc : !isSaudiLoc;
+  });
+
   const pinnedFullProductsMap = new Map<string, (typeof latestProducts)[number]>();
-  if (rawPinnedAds.length > 0) {
+  if (countryFilteredPinnedAds.length > 0) {
     const pinnedProductIds = Array.from(
-      new Set(rawPinnedAds.map((a) => a.product_id).filter(Boolean)),
+      new Set(countryFilteredPinnedAds.map((a) => a.product_id).filter(Boolean)),
     );
     const { data: pinnedProductRows } = await supabase
       .from('products')
@@ -216,7 +269,7 @@ export default async function Home() {
     }
   }
 
-  const pinnedAds = rawPinnedAds.map((ad) => {
+  const pinnedAds = countryFilteredPinnedAds.map((ad) => {
     const full = pinnedFullProductsMap.get(ad.product_id);
     return {
       ...ad,
@@ -234,10 +287,14 @@ export default async function Home() {
         is_negotiable: false,
         is_sold: false,
         product_images: ad.image_url ? [{ image_url: ad.image_url, position: 0 }] : [],
-        specifications: {},
+        specifications: {
+          seller_is_store: ad.seller_is_store,
+          is_store_product: ad.seller_is_store,
+        },
       },
     };
   });
+
   const categories =
     categoriesResult.data && categoriesResult.data.length > 0
       ? categoriesResult.data
@@ -250,13 +307,13 @@ export default async function Home() {
         ];
 
   return (
-    <main className="min-h-screen bg-[#f7f8f8] pb-6 dark:bg-[#0d0d0d]">
+    <main className="min-h-screen bg-[#f7f8f8] pb-8 dark:bg-[#0d0d0d]">
       <h1 className="sr-only">
         سوق فون لبيع وشراء الهواتف والأجهزة التقنية بدون عمولة
       </h1>
 
       <div className="mx-auto max-w-7xl px-3 sm:px-5 lg:px-6">
-        {/* Download app CTA */}
+        {/* Download app CTA Banner */}
         <div className="pt-3 md:pt-5">
           <PlayStoreLink
             placement="home_banner"
@@ -279,6 +336,91 @@ export default async function Home() {
 
         <HomeAccountPrompt />
 
+        <CountryBanner country={country as 'EG' | 'SA'} />
+
+        {/* 👑 VIP PINNED ADS CAROUSEL (أعلى الرئيسية - صدارة السوق) */}
+        {pinnedAds.length > 0 ? (
+          <section className="mt-4 overflow-hidden rounded-[26px] border border-amber-500/30 bg-gradient-to-br from-[#f6fbf8] via-white to-[#fcfbf5] p-4 shadow-[0_14px_30px_-18px_rgba(217,119,6,0.22)] dark:border-amber-400/25 dark:from-[#0e2019] dark:via-[#13261e] dark:to-[#192016] md:p-6">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#ffd700] via-[#ffa000] to-[#00a86b] text-xl text-white shadow-[0_6px_14px_rgba(255,179,0,0.28)]">
+                  👑
+                </span>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-base font-black text-[#0e291b] dark:text-white md:text-xl">
+                      إعلانات مثبتة VIP
+                    </h2>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#ffd54f] to-[#ff8f00] px-2.5 py-0.5 text-[10px] font-black text-[#1f1600] shadow-sm">
+                      📌 صدارة السوق
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-[11px] font-bold text-[#066940] dark:text-[#ffe082] md:text-xs">
+                    عروض موثقة ومختارة بعناية في قمة سوق فون
+                  </p>
+                </div>
+              </div>
+
+              <span className="shrink-0 rounded-2xl border border-amber-500/25 bg-emerald-600/10 px-3 py-1.5 text-[11px] font-black text-[#047857] dark:bg-white/10 dark:text-[#ffd54f]">
+                {pinnedAds.length} مميز
+              </span>
+            </div>
+
+            <div className="scroll-hide flex snap-x snap-mandatory gap-3.5 overflow-x-auto pb-2">
+              {pinnedAds.map((ad, index) => (
+                <div
+                  key={ad.pinned_id}
+                  className="relative flex w-[calc(50%-7px)] min-w-[168px] shrink-0 snap-start flex-col rounded-[24px] border border-amber-400/35 bg-white p-[1px] shadow-[0_8px_22px_-14px_rgba(16,24,40,0.18)] transition duration-300 hover:-translate-y-1 hover:border-amber-400/60 dark:border-amber-400/30 dark:bg-[#1f1f1f] sm:w-[215px] md:w-[235px]"
+                >
+                  <div className="flex flex-1 flex-col overflow-hidden rounded-[23px] bg-white dark:bg-[#1f1f1f]">
+                    <div className="flex-1 [&_.app-product-card]:!rounded-b-none [&_.app-product-card]:!border-0 [&_.app-product-card]:hover:!translate-y-0">
+                      <ProductCard product={ad.product} priority={index < 4} />
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 border-t border-amber-500/20 bg-gradient-to-l from-[#f6fbf8] to-[#fffbf0] px-3 py-2 dark:from-[#1b2a22] dark:to-[#232015]">
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <span className="truncate text-[11px] font-black text-[#1f2937] dark:text-[#f5e6b8]">
+                          {ad.seller_name}
+                        </span>
+                        {(ad.seller_is_verified || ad.seller_is_store) && (
+                          <span className="text-xs text-[#1da1f2]" title="موثق">
+                            ✓
+                          </span>
+                        )}
+                      </div>
+                      <span className="shrink-0 rounded-md bg-amber-500/15 px-2 py-0.5 text-[9px] font-black text-[#8b6508] dark:text-[#ffd54f]">
+                        {ad.seller_is_store ? 'متجر مميز' : 'إعلان موثق'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : (
+          /* VIP Pinning Invitation Prompt Banner */
+          <div className="mt-4 flex flex-col justify-between gap-3 rounded-2xl border border-amber-400/35 bg-gradient-to-r from-[#fffbf0] via-[#fdf8e6] to-[#fff] p-3.5 shadow-sm dark:border-amber-400/20 dark:from-[#211a0c] dark:to-[#17140e] sm:flex-row sm:items-center">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#ffd700] via-[#ffa000] to-[#ff6f00] text-lg text-white shadow-sm">
+                👑
+              </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black text-[#1f2937] dark:text-[#ffd54f]">صدارة السوق VIP</span>
+                  <span className="rounded bg-amber-500/20 px-1.5 py-0.2 text-[8.5px] font-bold text-[#8b6508] dark:text-amber-300">موصى به</span>
+                </div>
+                <p className="mt-0.5 text-[10.5px] font-bold text-[#6b7280] dark:text-[#e5e7eb]">
+                  ثبّت إعلانك الآن عبر تطبيق سوق فون ليصل لآلاف المشترين فوراً في قمة الصفحة
+                </p>
+              </div>
+            </div>
+            <PlayStoreLink placement="pinned_ad_empty" className="self-end shrink-0 rounded-xl bg-gradient-to-l from-[#d97706] to-[#b45309] px-4 py-2 text-[10.5px] font-black text-white shadow-sm transition hover:brightness-110 sm:self-center">
+              ثبّت إعلانك الآن عبر التطبيق
+            </PlayStoreLink>
+          </div>
+        )}
+
+        {/* Quick Filter Navigation */}
         <nav className="mt-4 grid grid-cols-[1fr_1fr_1.55fr] gap-2.5 md:mx-auto md:max-w-3xl md:gap-4" aria-label="تصفية سريعة">
           <Link href={mobilesHref({ condition: 'مستعمل' })} className="flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#eef0ef] px-3 text-xs font-black text-[#5f6368] transition hover:bg-[#e6e9e7] dark:bg-[#252525] dark:text-[#d3d3d3] dark:hover:bg-[#2d2d2d] md:text-sm">
             <History className="h-5 w-5" />
@@ -295,6 +437,7 @@ export default async function Home() {
           </Link>
         </nav>
 
+        {/* Categories Section */}
         <section className="mt-5 overflow-hidden rounded-[24px] bg-white px-3 py-4 shadow-[0_10px_30px_-26px_rgba(16,24,40,0.32)] dark:bg-[#1a1a1a] md:px-5">
           <div className="mb-3 flex items-center justify-between">
             <div>
@@ -325,66 +468,59 @@ export default async function Home() {
           </div>
         </section>
 
-        {pinnedAds.length > 0 && (
-          <section className="mt-6 overflow-hidden rounded-[26px] border border-amber-500/20 bg-gradient-to-br from-[#f6fbf8] via-white to-[#fcfbf5] p-4 shadow-[0_12px_28px_-20px_rgba(16,24,40,0.16)] dark:border-amber-400/20 dark:from-[#0e2019] dark:via-[#13261e] dark:to-[#192016] md:p-6">
-            <div className="mb-5 flex items-center justify-between gap-3">
+        {/* 🏪 STORE PRODUCTS SHOWCASE (أجهزة معتمدة من المتاجر) */}
+        {storeProducts.length > 0 && (
+          <section className="mt-6 overflow-hidden rounded-[26px] border border-emerald-500/20 bg-gradient-to-br from-[#f2fbf6] via-white to-[#f7fcf9] p-4 shadow-[0_12px_28px_-20px_rgba(0,168,107,0.18)] dark:border-emerald-500/25 dark:from-[#0c1f17] dark:via-[#11261d] dark:to-[#16291e] md:p-6">
+            <div className="mb-4 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#ffd700] via-[#ffa000] to-[#00a86b] text-xl text-white shadow-[0_6px_14px_rgba(255,179,0,0.28)]">
-                  👑
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#00a86b] to-[#047857] text-xl text-white shadow-md">
+                  <Store className="h-6 w-6" />
                 </span>
                 <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-base font-black text-[#0e291b] dark:text-white md:text-xl">
-                      إعلانات مثبتة VIP
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-black text-[#0a2718] dark:text-white md:text-xl">
+                      أجهزة معتمدة من المتاجر
                     </h2>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#ffd54f] to-[#ff8f00] px-2.5 py-0.5 text-[10px] font-black text-[#1f1600] shadow-sm">
-                      📌 صدارة السوق
+                    <span className="rounded-full bg-emerald-600/15 px-2.5 py-0.5 text-[9.5px] font-black text-[#065f46] dark:text-[#6ee7b7]">
+                      ضمان معتمد 🛡️
                     </span>
                   </div>
-                  <p className="mt-0.5 text-[11px] font-bold text-[#066940] dark:text-[#ffe082] md:text-xs">
-                    عروض موثقة ومختارة بعناية في قمة سوق فون
+                  <p className="mt-0.5 text-[11px] font-bold text-[#059669] dark:text-[#a7f3d0] md:text-xs">
+                    عروض حصرية وضمانات من متاجر سوق فون الموثوقة
                   </p>
                 </div>
               </div>
 
-              <span className="shrink-0 rounded-2xl border border-amber-500/25 bg-emerald-600/10 px-3 py-1.5 text-[11px] font-black text-[#047857] dark:bg-white/10 dark:text-[#ffd54f]">
-                {pinnedAds.length} مميز
-              </span>
+              <Link
+                href="/stores"
+                className="flex items-center gap-1 rounded-xl bg-white px-3 py-1.5 text-xs font-black text-[#079447] shadow-sm transition hover:bg-[#eaf6ef] dark:bg-[#1a3326] dark:text-[#6ee7b7]"
+              >
+                دليل المتاجر
+                <ChevronLeft className="h-4 w-4" />
+              </Link>
             </div>
 
             <div className="scroll-hide flex snap-x snap-mandatory gap-3.5 overflow-x-auto pb-2">
-              {pinnedAds.map((ad, index) => (
+              {storeProducts.map((product) => (
                 <div
-                  key={ad.pinned_id}
-                  className="relative flex w-[calc(50%-7px)] min-w-[168px] shrink-0 snap-start flex-col rounded-[24px] border border-amber-400/30 bg-white p-[1px] shadow-[0_8px_22px_-14px_rgba(16,24,40,0.18)] transition duration-300 hover:-translate-y-1 hover:border-amber-400/50 dark:border-amber-400/25 dark:bg-[#1f1f1f] sm:w-[215px] md:w-[235px]"
+                  key={`store-${product.id}`}
+                  className="w-[calc(50%-7px)] min-w-[168px] shrink-0 snap-start sm:w-[215px] md:w-[235px]"
                 >
-                  <div className="flex flex-1 flex-col overflow-hidden rounded-[23px] bg-white dark:bg-[#1f1f1f]">
-                    <div className="flex-1 [&_.app-product-card]:!rounded-b-none [&_.app-product-card]:!border-0 [&_.app-product-card]:hover:!translate-y-0">
-                      <ProductCard product={ad.product} priority={index < 4} />
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2 border-t border-amber-500/20 bg-gradient-to-l from-[#f6fbf8] to-[#fffbf0] px-3 py-2 dark:from-[#1b2a22] dark:to-[#232015]">
-                      <div className="flex min-w-0 items-center gap-1.5">
-                        <span className="truncate text-[11px] font-black text-[#1f2937] dark:text-[#f5e6b8]">
-                          {ad.seller_name}
-                        </span>
-                        {(ad.seller_is_verified || ad.seller_is_store) && (
-                          <span className="text-xs text-[#1da1f2]" title="موثق">
-                            ✓
-                          </span>
-                        )}
-                      </div>
-                      <span className="shrink-0 rounded-md bg-amber-500/15 px-2 py-0.5 text-[9px] font-black text-[#8b6508] dark:text-[#ffd54f]">
-                        {ad.seller_is_store ? 'متجر مميز' : 'إعلان موثق'}
-                      </span>
-                    </div>
-                  </div>
+                  <ProductCard product={product} />
                 </div>
               ))}
             </div>
           </section>
         )}
 
+        {/* 🎬 1st CINEMATIC AD BANNER (الإعلانات السينمائية) */}
+        {cinematicAds.length > 0 && (
+          <div className="mt-6">
+            <CinematicAdCard ad={cinematicAds[0]} isSaudi={isSaudi} />
+          </div>
+        )}
+
+        {/* Latest Ads */}
         <section className="mt-6">
           <div className="mb-3 flex items-end justify-between px-1">
             <div>
@@ -420,8 +556,16 @@ export default async function Home() {
           )}
         </section>
 
+        {/* 🎬 2nd CINEMATIC AD BANNER (إذا وجد إعلان سينمائي ثانٍ) */}
+        {cinematicAds.length > 1 && (
+          <div className="mt-6">
+            <CinematicAdCard ad={cinematicAds[1]} isSaudi={isSaudi} />
+          </div>
+        )}
+
         <BrandSlider />
 
+        {/* Trending Section */}
         {trendingProducts.length > 0 && (
           <section className="mt-6 rounded-[28px] bg-gradient-to-b from-[#f0fff5] to-transparent p-3 dark:from-[#12271b] md:p-5">
             <div className="mb-4 flex items-center justify-between">
@@ -451,27 +595,34 @@ export default async function Home() {
           </section>
         )}
 
+        {/* SEO Guide Section */}
         <section className="mt-7 rounded-[28px] border border-[#e3e8e5] bg-white p-5 shadow-[0_14px_34px_-30px_rgba(16,24,40,0.4)] dark:border-[#343434] dark:bg-[#1a1a1a] md:p-7" aria-labelledby="seo-guide-title">
           <h2 id="seo-guide-title" className="text-base font-black text-[#242628] dark:text-white md:text-xl">
-            سوق الموبايلات الجديدة والمستعملة في مصر
+            سوق الموبايلات الجديدة والمستعملة {isSaudi ? 'في السعودية' : 'في مصر'}
           </h2>
           <p className="mt-2 max-w-4xl text-xs font-medium leading-7 text-[#697075] dark:text-[#b7babc] md:text-sm">
             يساعدك سوق فون على مقارنة إعلانات الهواتف والإلكترونيات حسب الماركة والحالة والمحافظة. راجع صور الجهاز ومواصفاته وسعره، ثم تواصل مباشرة مع البائع لإتمام الاتفاق بدون عمولة من المنصة.
           </p>
-          <h3 className="mt-5 text-sm font-black text-[#303532] dark:text-white">موبايلات للبيع حسب المحافظة</h3>
+          <h3 className="mt-5 text-sm font-black text-[#303532] dark:text-white">
+            {isSaudi ? 'موبايلات للبيع حسب المنطقة' : 'موبايلات للبيع حسب المحافظة'}
+          </h3>
           <div className="mt-3 flex flex-wrap gap-2">
-            {EGYPT_GOVERNORATES.slice(0, 14).map((governorate) => (
+            {(isSaudi
+              ? ['الرياض', 'جدة', 'مكة المكرمة', 'المدينة المنورة', 'الدمام', 'الخبر', 'القصيم', 'عسير', 'تبوك']
+              : EGYPT_GOVERNORATES.slice(0, 14)
+            ).map((region) => (
               <Link
-                key={governorate}
-                href={buildMobilesLandingPath({ location: governorate })}
+                key={region}
+                href={buildMobilesLandingPath({ location: region, country: isSaudi ? 'SA' : 'EG' })}
                 className="rounded-full border border-[#dfe6e2] bg-[#f8faf9] px-3 py-2 text-[10px] font-black text-[#56605b] transition hover:border-[#8dd9ac] hover:bg-[#effcf4] hover:text-[#078b43] dark:border-[#3a3a3a] dark:bg-[#242424] dark:text-[#d0d0d0]"
               >
-                موبايلات في {governorate}
+                موبايلات في {region}
               </Link>
             ))}
           </div>
         </section>
 
+        {/* Post Ad CTA Banner */}
         <section className="mt-7 overflow-hidden rounded-[28px] bg-gradient-to-l from-[#087d3d] to-[#10ad58] p-6 text-white shadow-[0_18px_36px_-22px_rgba(3,152,85,0.8)] md:flex md:items-center md:justify-between md:px-9">
           <div>
             <p className="text-lg font-black md:text-2xl">عندك منتج عايز تبيعه؟</p>

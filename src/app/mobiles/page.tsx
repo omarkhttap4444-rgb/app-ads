@@ -6,11 +6,12 @@ import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { cache } from 'react';
 import MobilesFiltersWrapper from '@/components/MobilesFiltersWrapper';
 import ProductCard, { type ProductCardProps } from '@/components/ProductCard';
+import CinematicAdCard, { type CinematicAd } from '@/components/CinematicAdCard';
 import SuppressAds from '@/components/SuppressAds';
 import JsonLd from '@/components/JsonLd';
 import { absoluteUrl } from '@/lib/seo';
 import { getRequestCountry } from '@/lib/request-country';
-import { SAUDI_MARKET_ENABLED } from '@/lib/market-config';
+import { isSaudiMarketLocation, SAUDI_MARKET_ENABLED } from '@/lib/market-config';
 import {
   buildMobilesLandingPath,
   EGYPT_GOVERNORATES,
@@ -48,18 +49,67 @@ const getPageNumber = (value: string | string[] | undefined) => {
 
 const filterByCountry = <T,>(query: CountryFilterable<T>, country: string): T => {
   if (country === 'SA') {
-    const saudiRegions = ['الرياض', 'مكة المكرمة', 'المدينة المنورة', 'المنطقة الشرقية', 'القصيم', 'عسير', 'تبوك', 'حائل', 'الحدود الشمالية', 'جازان', 'نجران', 'الباحة', 'الجوف'];
-    const orConditions = saudiRegions.map(region => `location.ilike.${region}%`).join(',');
+    const saudiRegions = [
+      'السعودية',
+      'المملكة العربية السعودية',
+      'الرياض',
+      'مكة المكرمة',
+      'المدينة المنورة',
+      'المنطقة الشرقية',
+      'القصيم',
+      'عسير',
+      'تبوك',
+      'حائل',
+      'الحدود الشمالية',
+      'جازان',
+      'نجران',
+      'الباحة',
+      'الجوف',
+      'جدة',
+      'الدمام',
+      'الخبر',
+      'الظهران',
+      'الجبيل',
+      'الطائف',
+      'خميس مشيط',
+      'ينبع',
+      'أبها',
+      'الهفوف',
+    ];
+    const orConditions = saudiRegions.map((region) => `location.ilike.%${region}%`).join(',');
     return query.or(orConditions);
   } else {
     const egyptGovernorates = [
-      'القاهرة', 'الجيزة', 'الإسكندرية', 'القليوبية', 'الشرقية', 'الدقهلية',
-      'الغربية', 'المنوفية', 'البحيرة', 'كفر الشيخ', 'دمياط', 'بورسعيد',
-      'الإسماعيلية', 'السويس', 'الفيوم', 'بني سويف', 'المنيا', 'أسيوط',
-      'سوهاج', 'قنا', 'الأقصر', 'أسوان', 'البحر الأحمر', 'الوادي الجديد',
-      'مطروح', 'شمال سيناء', 'جنوب سيناء'
+      'مصر',
+      'القاهرة',
+      'الجيزة',
+      'الإسكندرية',
+      'القليوبية',
+      'الشرقية',
+      'الدقهلية',
+      'الغربية',
+      'المنوفية',
+      'البحيرة',
+      'كفر الشيخ',
+      'دمياط',
+      'بورسعيد',
+      'الإسماعيلية',
+      'السويس',
+      'الفيوم',
+      'بني سويف',
+      'المنيا',
+      'أسيوط',
+      'سوهاج',
+      'قنا',
+      'الأقصر',
+      'أسوان',
+      'البحر الأحمر',
+      'الوادي الجديد',
+      'مطروح',
+      'شمال سيناء',
+      'جنوب سيناء',
     ];
-    const orConditions = egyptGovernorates.map(gov => `location.ilike.${gov}%`).join(',');
+    const orConditions = egyptGovernorates.map((gov) => `location.ilike.%${gov}%`).join(',');
     return query.or(orConditions);
   }
 };
@@ -266,6 +316,20 @@ export default async function MobilesPage(props: Props) {
     products = (data || []) as Product[];
     totalProducts = count ?? from + products.length;
   }
+
+  const isSaudi = selectedCountry === 'SA';
+  products = products.filter((p) => {
+    const isSaudiLoc = isSaudiMarketLocation(p.location);
+    return isSaudi ? isSaudiLoc : !isSaudiLoc;
+  });
+
+  const { data: feedCinematicAdsRaw } = await supabase
+    .from('v_public_feed_cinematic_ads')
+    .select('id, title, subtitle, image_url, action_type, action_data, advertiser_name, frequency_interval, sort_order, country_code')
+    .or(`country_code.eq.${selectedCountry},country_code.eq.ALL`)
+    .order('sort_order', { ascending: true })
+    .limit(3);
+  const feedCinematicAds = (feedCinematicAdsRaw as CinematicAd[] | null) ?? [];
 
   const hasFilters = q || condition || location || sort || category || brand;
   const countryName = selectedCountry === 'SA' ? 'السعودية' : 'مصر';
@@ -478,12 +542,26 @@ export default async function MobilesPage(props: Props) {
           </nav>
         )}
 
-        {/* Products Grid */}
+        {/* Products Grid with In-Feed Cinematic Ad */}
         <div className="product-card-grid">
-          {products.map((product, index) => (
+          {products.slice(0, 8).map((product, index) => (
             <ProductCard key={product.id} product={product} priority={index < 4} />
           ))}
         </div>
+
+        {feedCinematicAds.length > 0 && products.length >= 6 && (
+          <div className="my-6">
+            <CinematicAdCard ad={feedCinematicAds[0]} isSaudi={selectedCountry === 'SA'} />
+          </div>
+        )}
+
+        {products.length > 8 && (
+          <div className="product-card-grid mt-6">
+            {products.slice(8).map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        )}
 
         {(!products || products.length === 0) && (
           <>

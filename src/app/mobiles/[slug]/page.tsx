@@ -148,9 +148,10 @@ export default async function ProductPage({ params }: Props) {
   const displayName = [brand, model].filter(Boolean).join(' ').trim() || product.name;
   const images = getImages(product.product_images);
   const isSaudi = isSaudiLocation(product.location);
-  const visibleSimilarProducts = SAUDI_MARKET_ENABLED
-    ? similarProducts
-    : similarProducts?.filter((item) => !isSaudiLocation(item.location));
+  const visibleSimilarProducts = (similarProducts ?? []).filter((item) => {
+    const isSaudiItem = isSaudiLocation(item.location);
+    return isSaudi ? isSaudiItem : !isSaudiItem;
+  });
   const currency = isSaudi ? 'ر.س' : 'ج.م';
   const locale = isSaudi ? 'ar-SA' : 'ar-EG';
   const sellerName = seller?.name || product.seller_name || 'بائع سوق فون';
