@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isValidPublicIp } from '@/lib/password-policy';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,20 +17,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ country: cdnCountry, source: 'cdn-header' });
   }
 
-  // 2. Fallback: extract client IP from proxy headers
+  // 2. Fallback: extract & strictly validate client IP from proxy headers
   const forwardedFor = request.headers.get('x-forwarded-for');
   const realIp = request.headers.get('x-real-ip');
   const clientIp = forwardedFor ? forwardedFor.split(',')[0].trim() : realIp?.trim();
 
-  // If local / private IP, default to EG
-  if (
-    !clientIp ||
-    clientIp === '127.0.0.1' ||
-    clientIp === '::1' ||
-    clientIp.startsWith('192.168.') ||
-    clientIp.startsWith('10.') ||
-    clientIp.startsWith('172.16.')
-  ) {
+  if (!clientIp || !isValidPublicIp(clientIp)) {
     return NextResponse.json({ country: 'EG', source: 'local-default' });
   }
 
@@ -37,7 +30,7 @@ export async function GET(request: NextRequest) {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 2500);
-    const res = await fetch(`https://freeipapi.com/api/json/${clientIp}`, {
+    const res = await fetch(`https://freeipapi.com/api/json/${encodeURIComponent(clientIp)}`, {
       signal: controller.signal,
     });
     clearTimeout(timeout);
@@ -58,4 +51,3 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({ country: 'EG', source: 'default-egypt' });
 }
-

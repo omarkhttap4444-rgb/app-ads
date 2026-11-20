@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { safeInternalRedirect } from '@/lib/safe-redirect';
+import { mapStorefrontAuthError } from '@/lib/password-policy';
 import { Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 // Google Icon SVG
@@ -60,14 +61,13 @@ function LoginForm() {
     setError(null);
     setSuccess(null);
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
 
     if (error) {
-      const msg =
-        error.message === 'Invalid login credentials'
-          ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة'
-          : error.message;
-      setError(msg);
+      setError(mapStorefrontAuthError(error, 'login'));
     } else {
       setSuccess('تم تسجيل الدخول بنجاح! جاري توجيهك...');
       setTimeout(() => { window.location.href = redirectTo; }, 1200);
@@ -148,7 +148,15 @@ function LoginForm() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-slate-600 dark:text-slate-400">كلمة المرور</label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-slate-600 dark:text-slate-400">كلمة المرور</label>
+              <Link
+                href="/forgot-password"
+                className="text-xs font-bold text-teal-600 dark:text-teal-400 hover:underline"
+              >
+                نسيت كلمة المرور؟
+              </Link>
+            </div>
             <div className="relative">
               <Lock className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
               <input

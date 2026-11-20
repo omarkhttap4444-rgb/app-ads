@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { mapStorefrontAuthError, validateStrongPassword } from '@/lib/password-policy';
 import { 
   Eye, 
   EyeOff, 
@@ -157,9 +158,9 @@ export default function SignupPage() {
     setError(null);
     setSuccess(null);
 
-    // Validate password length manually
-    if (password.length < 6) {
-      setError('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+    const passwordError = validateStrongPassword(password);
+    if (passwordError) {
+      setError(passwordError);
       setLoading(false);
       return;
     }
@@ -172,38 +173,43 @@ export default function SignupPage() {
     }
 
     try {
-      // يعتمد فقط على Supabase Auth لمعرفة هل البريد مسجل — بلا قراءة public.users
-      // Register user using Supabase Auth (which automatically sends an OTP code if email confirmation is enabled)
+      const cleanEmail = email.trim().toLowerCase();
       const { data, error: signupError } = await supabase.auth.signUp({
-        email: email.trim().toLowerCase(),
+        email: cleanEmail,
         password,
         options: { data: { name: name.trim() } },
       });
 
       if (signupError) {
         const msg = signupError.message.toLowerCase();
+        // Anti-enumeration: if the email is already registered, proceed to the OTP screen
+        // with a neutral notice rather than revealing account existence.
         if (msg.includes('already') || msg.includes('exists') || msg.includes('registered')) {
-          setError('البريد الإلكتروني مسجل بالفعل في النظام. يرجى تسجيل الدخول');
-        } else {
-          setError(signupError.message);
+          setStep('verify');
+          setSuccess('إذا لم يكن هذا البريد مسجلاً من قبل، فقد تم إرسال رمز التحقق إلى بريدك الإلكتروني.');
+          startCountdown();
+          setLoading(false);
+          return;
         }
+        setError(mapStorefrontAuthError(signupError, 'signup'));
         setLoading(false);
         return;
       }
 
-      // Check if user already exists (Supabase returns a fake user with empty identities for security)
-      if (data?.user?.identities && data.user.identities.length === 0) {
-        setError('البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول أو استخدام بريد آخر.');
-        setLoading(false);
-        return;
-      }
+      // If Supabase returned an obfuscated user (identities === []), do not reveal it:
+      // transition to the verification step with the same neutral banner.
+      const isObfuscatedExisting =
+        Array.isArray(data?.user?.identities) && data.user.identities.length === 0;
 
-      // 3. Set OTP verification step
       setStep('verify');
-      setSuccess('تم إرسال رمز التحقق إلى بريدك الإلكتروني');
+      setSuccess(
+        isObfuscatedExisting
+          ? 'إذا لم يكن هذا البريد مسجلاً من قبل، فقد تم إرسال رمز التحقق إلى بريدك الإلكتروني.'
+          : 'تم إرسال رمز التحقق إلى بريدك الإلكتروني',
+      );
       startCountdown();
-    } catch (err: any) {
-      setError(err.message || 'حدث خطأ غير متوقع أثناء إنشاء الحساب');
+    } catch (err: unknown) {
+      setError(mapStorefrontAuthError(err, 'signup'));
     } finally {
       setLoading(false);
     }
@@ -230,22 +236,17 @@ export default function SignupPage() {
       });
 
       if (verifyError) {
-        const msg = verifyError.message.toLowerCase();
-        if (msg.includes('expired') || msg.includes('otp_expired')) {
-          setError('رمز التحقق منتهي الصلاحية - يرجى طلب رمز جديد');
-        } else if (msg.includes('invalid') || msg.includes('wrong') || msg.includes('incorrect')) {
-          setError('رمز التحقق غير صحيح - يرجى التأكد من الرمز');
-        } else if (msg.includes('too many')) {
-          setError('محاولات كثيرة - يرجى الانتظار قليلاً ثم المحاولة مرة أخرى');
-        } else {
-          setError('رمز التحقق غير صحيح أو منتهي الصلاحية');
-        }
+        setError(mapStorefrontAuthError(verifyError, 'otp'));
         setLoading(false);
         return;
       }
 
       if (data?.user) {
-        // Just in case, update the profile name in public.users to match
+        try {
+          await supabase.rpc('ensure_user_row');
+        } catch {
+          // Best-effort row initialization
+        }
         const { error: dbError } = await supabase
           .from('users')
           .update({ name: name.trim() })
@@ -263,8 +264,8 @@ export default function SignupPage() {
       } else {
         setError('حدث خطأ غير متوقع أثناء تفعيل الحساب.');
       }
-    } catch (err: any) {
-      setError(err.message || 'حدث خطأ أثناء عملية التحقق');
+    } catch (err: unknown) {
+      setError(mapStorefrontAuthError(err, 'otp'));
     } finally {
       setLoading(false);
     }
@@ -284,16 +285,19 @@ export default function SignupPage() {
       });
 
       if (resendError) {
-        setError(resendError.message);
-        setLoading(false);
-        return;
+        const mapped = mapStorefrontAuthError(resendError, 'otp');
+        if (mapped.includes('محاولات كثيرة') || mapped.includes('تعذر الاتصال')) {
+          setError(mapped);
+          setLoading(false);
+          return;
+        }
       }
 
       setSuccess('تم إعادة إرسال رمز التحقق بنجاح');
       setOtp(Array(6).fill(''));
       startCountdown();
-    } catch (err: any) {
-      setError(err.message || 'حدث خطأ أثناء إعادة إرسال رمز التحقق');
+    } catch (err: unknown) {
+      setError(mapStorefrontAuthError(err, 'otp'));
     } finally {
       setLoading(false);
     }
@@ -410,7 +414,7 @@ export default function SignupPage() {
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="•••••••• (6 أحرف على الأقل)"
+                      placeholder="•••••••• (8 أحرف على الأقل — حروف وأرقام/رموز)"
                       required
                       dir="ltr"
                       className="w-full pr-10 pl-10 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:border-teal-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-sm text-slate-800 dark:text-white placeholder:text-slate-400"
