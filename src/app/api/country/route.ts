@@ -1,9 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { checkEdgeRateLimit } from '@/lib/edge-security';
 import { isValidPublicIp } from '@/lib/password-policy';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  const rateIp =
+    request.headers.get('cf-connecting-ip') ||
+    request.headers.get('x-real-ip') ||
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    'unknown';
+  const rl = checkEdgeRateLimit(`country:${rateIp}`, 60, 60_000);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } },
+    );
+  }
+
   // 1. Check CDN Geolocation headers
   const cdnCountry = (
     request.headers.get('cf-ipcountry') ||

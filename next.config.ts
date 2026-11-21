@@ -67,10 +67,10 @@ const authNoStoreHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   images: {
-    formats: ['image/avif', 'image/webp'],
-    minimumCacheTTL: 2592000,
-    deviceSizes: [640, 750, 828, 1080, 1200, 1600],
-    imageSizes: [64, 96, 128, 256, 384],
+    // All R2 media (images.souqphone.com) is pre-compressed WebP at upload time.
+    // Serving directly from Cloudflare R2 CDN avoids proxying 50+ /_next/image
+    // requests per page through the OpenNext Cloudflare Worker isolate.
+    unoptimized: true,
     remotePatterns: [
       { protocol: 'https', hostname: '**.supabase.co' },
       { protocol: 'https', hostname: '**.supabase.in' },
