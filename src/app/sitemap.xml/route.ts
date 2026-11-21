@@ -25,6 +25,7 @@ export async function GET() {
   const sitemaps = [
     `${SITE_URL}/sitemaps/static.xml`,
     `${SITE_URL}/sitemaps/collections.xml`,
+    `${SITE_URL}/sitemaps/maintenance.xml`,
     ...Array.from({ length: Math.ceil(count / PRODUCT_SITEMAP_BATCH_SIZE) },
       (_, i) => `${SITE_URL}/sitemaps/products/${i}.xml`),
   ];

@@ -7,20 +7,21 @@ import AutoCountryDetector from "@/components/AutoCountryDetector";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import GoogleAdSense from "@/components/GoogleAdSense";
 import { AdSenseProvider } from "@/lib/ads-context";
+import { UserInteractionsProvider } from "@/lib/user-interactions-context";
 import JsonLd from "@/components/JsonLd";
 import { INDEXABLE_ROBOTS, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 const cairo = Cairo({
   subsets: ["arabic", "latin"],
   display: "swap",
-  weight: ["400", "500", "600", "700", "800", "900"],
+  weight: ["500", "700", "800"],
   variable: "--font-cairo",
 });
 
 const inter = Inter({
   subsets: ["latin"],
   display: "swap",
-  weight: ["400", "500", "600", "700", "800", "900"],
+  weight: ["600", "700"],
   variable: "--font-inter",
 });
 
@@ -90,7 +91,17 @@ const websiteJsonLd = {
       url: SITE_URL,
       logo: { "@type": "ImageObject", url: `${SITE_URL}/icon-512.png`, width: 512, height: 512 },
       image: `${SITE_URL}/og.png`,
-      description: "منصة عربية لبيع وشراء الموبايلات والإلكترونيات الجديدة والمستعملة.",
+      description: "منصة عربية لبيع وشراء الموبايلات والإلكترونيات الجديدة والمستعملة بدون عمولة.",
+      sameAs: [
+        "https://play.google.com/store/apps/details?id=com.souqphone.app",
+      ],
+      contactPoint: {
+        "@type": "ContactPoint",
+        contactType: "customer support",
+        areaServed: ["EG", "SA"],
+        availableLanguage: ["Arabic"],
+        url: `${SITE_URL}/contact`,
+      },
     },
     {
       "@type": "WebSite",
@@ -138,22 +149,26 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        <link rel="preconnect" href="https://images.souqphone.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://images.souqphone.com" />
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="min-h-full flex flex-col bg-[#f7f8f8] dark:bg-[#0d0d0d] text-[#202124] dark:text-[#f1f1f1] pb-20 md:pb-0 transition-colors duration-200 font-[var(--font-cairo)]" style={{ fontFamily: "var(--font-cairo), var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
         <AdSenseProvider>
-          <AutoCountryDetector />
-          <GoogleAnalytics />
-        <JsonLd data={websiteJsonLd} />
-        <Header />
-        <div className="flex-1">
-          {children}
-        </div>
-        <div className="hidden md:block">
-          <Footer />
-        </div>
-        <GoogleAdSense />
-      </AdSenseProvider>
+          <UserInteractionsProvider>
+            <AutoCountryDetector />
+            <GoogleAnalytics />
+            <JsonLd data={websiteJsonLd} />
+            <Header />
+            <div className="flex-1">
+              {children}
+            </div>
+            <div className="hidden md:block">
+              <Footer />
+            </div>
+            <GoogleAdSense />
+          </UserInteractionsProvider>
+        </AdSenseProvider>
       </body>
     </html>
   );

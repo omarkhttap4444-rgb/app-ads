@@ -16,6 +16,7 @@ import {
   Search,
   Store,
   User,
+  Wrench,
   X,
 } from 'lucide-react';
 
@@ -468,6 +469,7 @@ export default function Header() {
               {[
                 { href: '/', label: 'الرئيسية', icon: Home },
                 { href: '/stores', label: 'المتاجر المعتمدة', icon: Store },
+                { href: '/maintenance', label: 'دليل مراكز الصيانة', icon: Wrench },
                 { href: '/mobiles', label: 'تصفح المنتجات', icon: Search },
                 { href: '/mobiles/add', label: 'أضف إعلانك', icon: Plus },
                 { href: user ? '/favorites' : '/login', label: 'المفضلة', icon: Heart },

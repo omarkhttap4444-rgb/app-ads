@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, ThumbsUp } from 'lucide-react';
 
 import { supabase } from '@/lib/supabase';
+import { useUserInteractions } from '@/lib/user-interactions-context';
 
 type Props = {
   productId: string;
@@ -20,38 +21,18 @@ export default function ProductLikeButton({
   className = '',
 }: Props) {
   const router = useRouter();
+  const { user, isLiked: checkLiked, setLikedLocal } = useUserInteractions();
+  const isLiked = checkLiked(productId);
+
   const [count, setCount] = useState(Math.max(0, initialCount));
-  const [isLiked, setIsLiked] = useState(false);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-
-    const loadState = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!active || !session?.user) return;
-
-      const { data } = await supabase
-        .from('likes')
-        .select('product_id')
-        .eq('product_id', productId)
-        .eq('user_id', session.user.id)
-        .maybeSingle();
-
-      if (active) setIsLiked(Boolean(data));
-    };
-
-    void loadState();
-    return () => { active = false; };
-  }, [productId]);
 
   const handleToggle = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
     if (loading) return;
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) {
+    if (!user) {
       const returnTo = `${window.location.pathname}${window.location.search}`;
       router.push(`/login?redirectTo=${encodeURIComponent(returnTo)}`);
       return;
@@ -59,7 +40,7 @@ export default function ProductLikeButton({
 
     const nextLiked = !isLiked;
     const previousCount = count;
-    setIsLiked(nextLiked);
+    setLikedLocal(productId, nextLiked);
     setCount(Math.max(0, previousCount + (nextLiked ? 1 : -1)));
     setLoading(true);
 
@@ -70,15 +51,14 @@ export default function ProductLikeButton({
 
     if (error) {
       console.error('[likes] Could not toggle product like:', error.message);
-      setIsLiked(!nextLiked);
+      setLikedLocal(productId, !nextLiked);
       setCount(previousCount);
     } else {
       const result = data as { is_liked?: boolean; likes_count?: number } | null;
-      if (typeof result?.is_liked === 'boolean') setIsLiked(result.is_liked);
+      if (typeof result?.is_liked === 'boolean') setLikedLocal(productId, result.is_liked);
       if (typeof result?.likes_count === 'number') {
         setCount(result.likes_count);
       } else {
-        // Compatibility while an older database migration is still active.
         const { data: product } = await supabase
           .from('products')
           .select('likes_count')

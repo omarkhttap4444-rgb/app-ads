@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import {
   BadgeCheck,
@@ -7,128 +8,40 @@ import {
   Grid2X2,
   History,
   Plus,
-  ShieldCheck,
   Sparkles,
   Store,
 } from 'lucide-react';
 
 import BrandSlider from '@/components/BrandSlider';
 import HomeAccountPrompt from '@/components/HomeAccountPrompt';
+import HomeBannerCarousel from '@/components/HomeBannerCarousel';
+import HomeCustomSectionRail from '@/components/HomeCustomSectionRail';
+import HomeMaintenanceBanner from '@/components/HomeMaintenanceBanner';
 import CountryBanner from '@/components/CountryBanner';
+import JsonLd from '@/components/JsonLd';
 import PlayStoreLink from '@/components/PlayStoreLink';
 import ProductCard from '@/components/ProductCard';
-import CinematicAdCard, { type CinematicAd } from '@/components/CinematicAdCard';
-import { cache } from 'react';
+import CinematicAdCard from '@/components/CinematicAdCard';
 import { getCategoryImageUrl } from '@/lib/category-images';
+import { getCachedHomeData } from '@/lib/home-data';
 import { getRequestCountry } from '@/lib/request-country';
-import { isSaudiMarketLocation } from '@/lib/market-config';
-import { supabase } from '@/lib/supabase';
-import { INDEXABLE_ROBOTS } from '@/lib/seo';
+import { INDEXABLE_ROBOTS, SITE_URL } from '@/lib/seo';
 import { buildMobilesLandingPath, EGYPT_GOVERNORATES } from '@/lib/seo-content';
 
-const getCachedCategories = cache(() =>
-  supabase
-    .from('categories')
-    .select('id, name, icon_url, display_order')
-    .eq('is_active', true)
-    .order('display_order', { ascending: true }),
-);
-
-const productSelection = `
-  id,
-  name,
-  price,
-  location,
-  condition,
-  slug,
-  created_at,
-  views_count,
-  likes_count,
-  comments_count,
-  is_negotiable,
-  is_sold,
-  product_images(image_url,position),
-  specifications
-`;
-
-type CountryFilterable<T> = {
-  or: (filters: string) => T;
-};
-
-const filterByCountry = <T,>(
-  query: CountryFilterable<T>,
-  country: string,
-): T => {
-  if (country === 'SA') {
-    const regions = [
-      'السعودية',
-      'المملكة العربية السعودية',
-      'الرياض',
-      'مكة المكرمة',
-      'المدينة المنورة',
-      'المنطقة الشرقية',
-      'القصيم',
-      'عسير',
-      'تبوك',
-      'حائل',
-      'الحدود الشمالية',
-      'جازان',
-      'نجران',
-      'الباحة',
-      'الجوف',
-      'جدة',
-      'الدمام',
-      'الخبر',
-      'الظهران',
-      'الجبيل',
-      'الطائف',
-      'خميس مشيط',
-      'ينبع',
-      'أبها',
-      'الهفوف',
-    ];
-    return query.or(
-      regions.map((region) => `location.ilike.%${region}%`).join(','),
+function isNextImageSafeSrc(src: string): boolean {
+  if (src.startsWith('/')) return true;
+  try {
+    const parsed = new URL(src);
+    return (
+      parsed.protocol === 'https:' &&
+      (parsed.hostname === 'images.souqphone.com' ||
+        parsed.hostname.endsWith('.supabase.co') ||
+        parsed.hostname.endsWith('.supabase.in'))
     );
+  } catch {
+    return false;
   }
-
-  const governorates = [
-    'مصر',
-    'القاهرة',
-    'الجيزة',
-    'الإسكندرية',
-    'القليوبية',
-    'الشرقية',
-    'الدقهلية',
-    'الغربية',
-    'المنوفية',
-    'البحيرة',
-    'كفر الشيخ',
-    'دمياط',
-    'بورسعيد',
-    'الإسماعيلية',
-    'السويس',
-    'الفيوم',
-    'بني سويف',
-    'المنيا',
-    'أسيوط',
-    'سوهاج',
-    'قنا',
-    'الأقصر',
-    'أسوان',
-    'البحر الأحمر',
-    'الوادي الجديد',
-    'مطروح',
-    'شمال سيناء',
-    'جنوب سيناء',
-  ];
-
-  return query.or(
-    governorates
-      .map((governorate) => `location.ilike.%${governorate}%`)
-      .join(','),
-  );
-};
+}
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
@@ -156,7 +69,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export const revalidate = 60;
+export const revalidate = 120;
 
 export default async function Home() {
   const country = await getRequestCountry();
@@ -169,174 +82,136 @@ export default async function Home() {
     return `/mobiles${query ? `?${query}` : ''}`;
   };
 
-  let latestQuery = supabase.from('products').select(productSelection);
-  latestQuery = filterByCountry(latestQuery, country);
+  const {
+    banners,
+    customSections,
+    maintenanceCount,
+    latestProducts,
+    trendingProducts,
+    storeProducts,
+    categories,
+    pinnedAds,
+    cinematicAds,
+  } = await getCachedHomeData(country);
 
-  let trendingQuery = supabase.from('products').select(productSelection);
-  trendingQuery = filterByCountry(trendingQuery, country);
+  const topCustomSections = customSections.filter((s) => s.placementType === 'top');
+  const inFeedCustomSections = customSections.filter((s) => s.placementType !== 'top');
 
-  let storeProductsQuery = supabase
-    .from('products')
-    .select(productSelection)
-    .eq('is_sold', false)
-    .or('specifications->>is_store_product.eq.true,specifications->>seller_is_store.eq.true,specifications->>enable_cart.eq.true,category.eq.متاجر');
-  storeProductsQuery = filterByCountry(storeProductsQuery, country);
-
-  const [
-    latestResult,
-    trendingResult,
-    categoriesResult,
-    pinnedAdsResult,
-    cinematicAdsResult,
-    storeProductsResult,
-  ] = await Promise.all([
-    latestQuery.eq('is_sold', false).order('created_at', { ascending: false }).order('position', { referencedTable: 'product_images', ascending: true }).limit(20),
-    trendingQuery.eq('is_sold', false).order('views_count', { ascending: false }).order('position', { referencedTable: 'product_images', ascending: true }).limit(10),
-    getCachedCategories(),
-    supabase.rpc('get_active_pinned_ads', { p_limit: 10 }),
-    supabase
-      .from('v_public_feed_cinematic_ads')
-      .select('id, title, subtitle, image_url, action_type, action_data, advertiser_name, frequency_interval, sort_order, country_code')
-      .or(`country_code.eq.${country},country_code.eq.ALL`)
-      .order('sort_order', { ascending: true })
-      .limit(6),
-    storeProductsQuery.order('created_at', { ascending: false }).limit(10),
-  ]);
-
-  if (latestResult.error) {
-    console.error('[home] Could not load latest products:', latestResult.error.message);
-  }
-  if (trendingResult.error) {
-    console.error('[home] Could not load trending products:', trendingResult.error.message);
-  }
-  if (categoriesResult.error) {
-    console.error('[home] Could not load categories:', categoriesResult.error.message);
-  }
-  if (pinnedAdsResult.error) {
-    console.error('[home] Could not load pinned ads:', pinnedAdsResult.error.message);
-  }
-
-  const latestProducts = (latestResult.data ?? []).filter((p) => {
-    const isSaudiLoc = isSaudiMarketLocation(p.location);
-    return isSaudi ? isSaudiLoc : !isSaudiLoc;
-  });
-  const trendingProducts = (trendingResult.data ?? []).filter((p) => {
-    const isSaudiLoc = isSaudiMarketLocation(p.location);
-    return isSaudi ? isSaudiLoc : !isSaudiLoc;
-  });
-  const storeProducts = (storeProductsResult.data ?? []).filter((p) => {
-    const isSaudiLoc = isSaudiMarketLocation(p.location);
-    return isSaudi ? isSaudiLoc : !isSaudiLoc;
-  });
-  const cinematicAds = (cinematicAdsResult.data as CinematicAd[] | null) ?? [];
-
-  const rawPinnedAds =
-    (pinnedAdsResult.data as Array<{
-      pinned_id: string;
-      product_id: string;
-      title: string;
-      price: number;
-      location: string | null;
-      condition?: string | null;
-      image_url: string | null;
-      seller_name: string;
-      seller_avatar?: string | null;
-      seller_is_verified?: boolean | null;
-      seller_is_store?: boolean | null;
-      created_at?: string | null;
-    }> | null) ?? [];
-
-  // Filter pinned ads by country matching app logic
-  const countryFilteredPinnedAds = rawPinnedAds.filter((ad) => {
-    if (!ad.location) return true;
-    const isSaudiLoc = isSaudiMarketLocation(ad.location);
-    return isSaudi ? isSaudiLoc : !isSaudiLoc;
-  });
-
-  const pinnedFullProductsMap = new Map<string, (typeof latestProducts)[number]>();
-  if (countryFilteredPinnedAds.length > 0) {
-    const pinnedProductIds = Array.from(
-      new Set(countryFilteredPinnedAds.map((a) => a.product_id).filter(Boolean)),
-    );
-    const { data: pinnedProductRows } = await supabase
-      .from('products')
-      .select(productSelection)
-      .in('id', pinnedProductIds);
-    for (const row of pinnedProductRows ?? []) {
-      if (row?.id) {
-        pinnedFullProductsMap.set(row.id, row);
-      }
-    }
-  }
-
-  const pinnedAds = countryFilteredPinnedAds.map((ad) => {
-    const full = pinnedFullProductsMap.get(ad.product_id);
-    return {
-      ...ad,
-      product: full ?? {
-        id: ad.product_id,
-        name: ad.title,
-        price: ad.price,
-        location: ad.location ?? '',
-        condition: ad.condition ?? 'مستعمل',
-        slug: ad.product_id,
-        created_at: ad.created_at ?? undefined,
-        views_count: 0,
-        likes_count: 0,
-        comments_count: 0,
-        is_negotiable: false,
-        is_sold: false,
-        product_images: ad.image_url ? [{ image_url: ad.image_url, position: 0 }] : [],
-        specifications: {
-          seller_is_store: ad.seller_is_store,
-          is_store_product: ad.seller_is_store,
+  const homeFaqs = isSaudi
+    ? [
+        {
+          q: 'هل يفرض سوق فون عمولة على بيع أو شراء الموبايلات في السعودية؟',
+          a: 'لا، البيع والشراء والتواصل المباشر بين البائع والمشتري على سوق فون مجاني تماماً بدون أي عمولة وساطة.',
         },
-      },
-    };
-  });
+        {
+          q: 'كيف أتحقق من حالة الهاتف المستعمل قبل الشراء؟',
+          a: 'راجع الصور الحقيقية وصحة البطارية ومواصفات الجهاز المذكورة في الإعلان، ثم افحص الجهاز بنفسك عند المقابلة قبل الدفع.',
+        },
+        {
+          q: 'هل توجد متاجر معتمدة تقدم ضماناً على الأجهزة؟',
+          a: 'نعم، يعرض قسم أجهزة المتاجر المعتمدة إعلانات المحلات الموثقة مع تفاصيل الضمان والتوصيل المتاح.',
+        },
+      ]
+    : [
+        {
+          q: 'هل يفرض سوق فون عمولة على بيع أو شراء الموبايلات في مصر؟',
+          a: 'لا، النشر والتواصل المباشر مع البائع عبر الهاتف أو واتساب أو الشات داخل المنصة مجاني 100% بدون أي عمولة.',
+        },
+        {
+          q: 'كيف أجد مركز صيانة موبايلات موثوق في القاهرة؟',
+          a: 'يمكنك تصفح دليل مراكز الصيانة المعتمدة في القاهرة على سوق فون ومقارنة الضمان والتقييمات والتخصصات والتواصل مباشرة مع المركز.',
+        },
+        {
+          q: 'ما الفرق بين إعلانات الأفراد وأجهزة المتاجر المعتمدة؟',
+          a: 'أجهزة المتاجر المعتمدة تأتي من محلات موثقة على المنصة وغالباً تتضمن ضماناً واضحاً وألواناً متعددة وخيار التوصيل.',
+        },
+      ];
 
-  const categories =
-    categoriesResult.data && categoriesResult.data.length > 0
-      ? categoriesResult.data
-      : [
-          { id: 'all', name: 'الكل', icon_url: null, display_order: 0 },
-          { id: 'phones', name: 'هواتف', icon_url: null, display_order: 1 },
-          { id: 'accessories', name: 'إكسسوارات', icon_url: null, display_order: 2 },
-          { id: 'tablets', name: 'تابلت', icon_url: null, display_order: 3 },
-          { id: 'watches', name: 'ساعات ذكية', icon_url: null, display_order: 4 },
-        ];
+  const homeStructuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      ...(latestProducts.length > 0
+        ? [
+            {
+              '@type': 'ItemList',
+              name: isSaudi ? 'أحدث إعلانات الموبايلات في السعودية' : 'أحدث إعلانات الموبايلات في مصر',
+              numberOfItems: Math.min(12, latestProducts.length),
+              itemListElement: latestProducts.slice(0, 12).map((p, index) => ({
+                '@type': 'ListItem',
+                position: index + 1,
+                url: `${SITE_URL}/mobiles/${encodeURIComponent(p.slug)}`,
+                name: p.name,
+              })),
+            },
+          ]
+        : []),
+      {
+        '@type': 'FAQPage',
+        mainEntity: homeFaqs.map((item) => ({
+          '@type': 'Question',
+          name: item.q,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: item.a,
+          },
+        })),
+      },
+    ],
+  };
 
   return (
     <main className="min-h-screen bg-[#f7f8f8] pb-8 dark:bg-[#0d0d0d]">
-      <h1 className="sr-only">
-        سوق فون لبيع وشراء الهواتف والأجهزة التقنية بدون عمولة
-      </h1>
+      <JsonLd data={homeStructuredData} />
 
       <div className="mx-auto max-w-7xl px-3 sm:px-5 lg:px-6">
-        {/* Download app CTA Banner */}
-        <div className="pt-3 md:pt-5">
-          <PlayStoreLink
-            placement="home_banner"
-            className="group flex w-full items-center justify-between gap-3 rounded-[24px] bg-gradient-to-l from-[#087d3d] to-[#10ad58] px-5 py-4 text-white shadow-[0_14px_30px_-18px_rgba(3,152,85,0.9)] transition hover:brightness-105 md:py-5"
-          >
-            <span className="flex items-center gap-3">
-              <svg viewBox="0 0 24 24" className="h-8 w-8 shrink-0" fill="currentColor" aria-hidden="true">
-                <path d="M3.6 2.3c-.36.37-.6.95-.6 1.7v16c0 .75.24 1.33.62 1.68l.09.08L12.7 13v-.02L3.69 2.22l-.09.08Zm10.4 9.38L12.7 13l-8.98 8.98c.25.26.65.29 1.11.03l10.17-5.79-1.4-2.2Zm3.35-1.9-2.05-1.17-1.55 1.39 1.72 1.72 1.88-1.07c.6-.34.6-.9 0-1.24v-.63ZM3.72 2.02c.25-.13.58-.1.93.1l10.15 5.78-1.75 1.75L3.72 2.02Z"/>
-              </svg>
-              <span>
-                <span className="block text-[10px] font-bold text-white/85">حمّل تطبيق سوق فون</span>
-                <span className="block text-sm font-black md:text-base">متاح الآن على Google Play</span>
-              </span>
-            </span>
-            <span className="rounded-xl bg-white/15 px-3 py-2 text-[10px] font-black transition group-hover:bg-white/25 md:text-xs">
-              تحميل
-            </span>
-          </PlayStoreLink>
-        </div>
+        {/* Visible SEO Hero Strip */}
+        <section className="pt-3 md:pt-4">
+          <div className="flex flex-col justify-between gap-3 rounded-[22px] border border-[#e3eae6] bg-white px-4 py-3.5 shadow-[0_8px_24px_-18px_rgba(7,148,71,0.22)] dark:border-[#242a2f] dark:bg-[#161a1e] sm:flex-row sm:items-center sm:px-5">
+            <div className="min-w-0">
+              <h1 className="text-sm font-black leading-snug text-[#13241b] dark:text-white sm:text-base md:text-lg">
+                {isSaudi
+                  ? 'سوق فون السعودية — بيع واشتري الموبايلات والإلكترونيات بدون عمولة'
+                  : 'سوق فون مصر — بيع واشتري الموبايلات والإلكترونيات بدون عمولة'}
+              </h1>
+              <p className="mt-0.5 text-[11px] font-semibold text-[#5f6b65] dark:text-[#9ca3af] sm:text-xs">
+                إعلانات حقيقية، متاجر معتمدة، وتواصل مباشر مع البائع {isSaudi ? 'في جميع مناطق المملكة' : 'في جميع محافظات مصر'}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Link
+                href="/mobiles/add"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#079447] px-3.5 py-2 text-xs font-black text-white shadow-sm transition hover:bg-[#067c3b]"
+              >
+                <Plus className="h-4 w-4" />
+                أضف إعلانك
+              </Link>
+              <PlayStoreLink
+                placement="home_banner"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[#d6e4dc] bg-[#f4fbf7] px-3 py-2 text-xs font-black text-[#078b43] transition hover:bg-[#e8f7ee] dark:border-[#244333] dark:bg-[#12261b] dark:text-[#6ee7b7]"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="currentColor" aria-hidden="true">
+                  <path d="M3.6 2.3c-.36.37-.6.95-.6 1.7v16c0 .75.24 1.33.62 1.68l.09.08L12.7 13v-.02L3.69 2.22l-.09.08Zm10.4 9.38L12.7 13l-8.98 8.98c.25.26.65.29 1.11.03l10.17-5.79-1.4-2.2Zm3.35-1.9-2.05-1.17-1.55 1.39 1.72 1.72 1.88-1.07c.6-.34.6-.9 0-1.24v-.63ZM3.72 2.02c.25-.13.58-.1.93.1l10.15 5.78-1.75 1.75L3.72 2.02Z"/>
+                </svg>
+                التطبيق
+              </PlayStoreLink>
+            </div>
+          </div>
+        </section>
+
+        {/* Dynamic Top Hero Banners from Admin Dashboard (R2) */}
+        <HomeBannerCarousel banners={banners} />
 
         <HomeAccountPrompt />
 
         <CountryBanner country={country as 'EG' | 'SA'} />
+
+        {/* Cairo Maintenance Directory Banner (Egypt Market) */}
+        {!isSaudi && <HomeMaintenanceBanner centersCount={maintenanceCount} />}
+
+        {/* Top Dashboard Custom Sections */}
+        {topCustomSections.map((section) => (
+          <HomeCustomSectionRail key={section.id} section={section} />
+        ))}
 
         {/* 👑 VIP PINNED ADS CAROUSEL (أعلى الرئيسية - صدارة السوق) */}
         {pinnedAds.length > 0 ? (
@@ -374,7 +249,7 @@ export default async function Home() {
                 >
                   <div className="flex flex-1 flex-col overflow-hidden rounded-[23px] bg-white dark:bg-[#1f1f1f]">
                     <div className="flex-1 [&_.app-product-card]:!rounded-b-none [&_.app-product-card]:!border-0 [&_.app-product-card]:hover:!translate-y-0">
-                      <ProductCard product={ad.product} priority={index < 4} />
+                      <ProductCard product={ad.product} priority={index < 2} />
                     </div>
 
                     <div className="flex items-center justify-between gap-2 border-t border-amber-500/20 bg-gradient-to-l from-[#f6fbf8] to-[#fffbf0] px-3 py-2 dark:from-[#1b2a22] dark:to-[#232015]">
@@ -454,17 +329,27 @@ export default async function Home() {
             </Link>
           </div>
           <div className="scroll-hide flex gap-3 overflow-x-auto pb-1">
-            {categories.map((category) => (
-              <Link key={category.id} href={mobilesHref({ category: category.name })} className="group flex w-[76px] shrink-0 flex-col items-center gap-2 md:w-[92px]">
-                <span className="h-[66px] w-[66px] overflow-hidden rounded-full border-2 border-[#e7e9ec] bg-[#f3f5f4] p-1 transition group-hover:border-[#61cf8f] dark:border-[#343434] dark:bg-[#242424] md:h-[76px] md:w-[76px]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={getCategoryImageUrl(category.name, category.icon_url)} alt={category.name} className="h-full w-full rounded-full object-cover" />
-                </span>
-                <span className="line-clamp-1 text-center text-[9px] font-black text-[#50555a] dark:text-[#d3d3d3] md:text-[10px]">
-                  {category.name}
-                </span>
-              </Link>
-            ))}
+            {categories.map((category) => {
+              const rawSrc = getCategoryImageUrl(category.name, category.icon_url);
+              const safeSrc = isNextImageSafeSrc(rawSrc) ? rawSrc : '/categories/tf.jpg';
+              return (
+                <Link key={category.id} href={mobilesHref({ category: category.name })} className="group flex w-[76px] shrink-0 flex-col items-center gap-2 md:w-[92px]">
+                  <span className="h-[66px] w-[66px] overflow-hidden rounded-full border-2 border-[#e7e9ec] bg-[#f3f5f4] p-1 transition group-hover:border-[#61cf8f] dark:border-[#343434] dark:bg-[#242424] md:h-[76px] md:w-[76px]">
+                    <Image
+                      src={safeSrc}
+                      alt={category.name}
+                      width={76}
+                      height={76}
+                      sizes="76px"
+                      className="h-full w-full rounded-full object-cover"
+                    />
+                  </span>
+                  <span className="line-clamp-1 text-center text-[9px] font-black text-[#50555a] dark:text-[#d3d3d3] md:text-[10px]">
+                    {category.name}
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         </section>
 
@@ -542,7 +427,11 @@ export default async function Home() {
 
           <div className="product-card-grid">
             {latestProducts.map((product, index) => (
-              <ProductCard key={product.id} product={product} priority={index < 4} />
+              <ProductCard
+                key={product.id}
+                product={product}
+                priority={pinnedAds.length === 0 && index < 2}
+              />
             ))}
           </div>
 
@@ -562,6 +451,11 @@ export default async function Home() {
             <CinematicAdCard ad={cinematicAds[1]} isSaudi={isSaudi} />
           </div>
         )}
+
+        {/* In-Feed Dashboard Custom Sections */}
+        {inFeedCustomSections.map((section) => (
+          <HomeCustomSectionRail key={section.id} section={section} />
+        ))}
 
         <BrandSlider />
 
@@ -619,6 +513,28 @@ export default async function Home() {
                 موبايلات في {region}
               </Link>
             ))}
+          </div>
+
+          {/* Visible FAQ Accordion (matched 1:1 with FAQPage JSON-LD) */}
+          <div className="mt-6 border-t border-[#ebf0ed] pt-5 dark:border-[#2a2f34]">
+            <h3 className="text-sm font-black text-[#242628] dark:text-white">
+              أسئلة شائعة حول سوق فون
+            </h3>
+            <div className="mt-3 space-y-2">
+              {homeFaqs.map((faq) => (
+                <details
+                  key={faq.q}
+                  className="group rounded-2xl border border-[#e7ece9] bg-[#f9fbfa] px-4 py-3 dark:border-[#2d3339] dark:bg-[#20252a]"
+                >
+                  <summary className="cursor-pointer list-none text-xs font-black text-[#1f2937] dark:text-white sm:text-sm">
+                    {faq.q}
+                  </summary>
+                  <p className="mt-2 text-xs font-medium leading-6 text-[#5f6b65] dark:text-[#b7babc]">
+                    {faq.a}
+                  </p>
+                </details>
+              ))}
+            </div>
           </div>
         </section>
 
