@@ -31,6 +31,7 @@ import {
   isStoreOpenNow,
   type StoreProfileMetadata,
 } from '@/lib/store-metadata';
+import { purgeReplacedWebMedia, uploadImageToR2 } from '@/lib/r2-upload';
 
 const GOVERNORATES = [
   'القاهرة',
@@ -177,43 +178,45 @@ export default function ProfileHeader({ store: initialStore, productsCount }: Pr
     }
   };
 
-  // Profile Image Upload Handler
+  // Profile Image Upload Handler -> compressed WebP to Cloudflare R2 + old object purge
   const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
+    e.target.value = '';
 
-    if (file.size > 4 * 1024 * 1024) {
-      showToast('حجم الصورة كبير جداً. الحد الأقصى 4 ميجابايت.', 'error');
+    if (file.size > 15 * 1024 * 1024) {
+      showToast('حجم الصورة كبير جداً. الحد الأقصى 15 ميجابايت قبل الضغط.', 'error');
       return;
     }
 
+    const previousUrl = store.profile_image_url;
     setIsUploadingProfile(true);
     try {
-      const fileExt = file.name.split('.').pop() || 'jpg';
-      const fileName = `${store.id}-${Date.now()}.${fileExt}`;
-      const filePath = `avatars/${store.id}/${fileName}`;
+      const { publicUrl } = await uploadImageToR2(supabase, file, 'profile');
 
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, { upsert: true });
+      const { error: rpcError } = await supabase.rpc('sync_or_clear_user_media', {
+        p_kind: 'profile',
+        p_new_url: publicUrl,
+      });
 
-      if (uploadError) throw uploadError;
+      if (rpcError) {
+        const { error: dbError } = await supabase
+          .from('users')
+          .update({
+            profile_image_url: publicUrl,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', store.id);
+        if (dbError) throw dbError;
+        await supabase
+          .from('products')
+          .update({ seller_avatar: publicUrl })
+          .eq('seller_id', store.id);
+      }
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from('avatars').getPublicUrl(filePath);
-
-      if (!publicUrl) throw new Error('فشل الحصول على رابط الصورة العام');
-
-      const { error: dbError } = await supabase
-        .from('users')
-        .update({
-          profile_image_url: publicUrl,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', store.id);
-
-      if (dbError) throw dbError;
+      if (previousUrl && previousUrl !== publicUrl) {
+        await purgeReplacedWebMedia(supabase, previousUrl, 'profile');
+      }
 
       setStore((prev) => ({ ...prev, profile_image_url: publicUrl }));
       showToast('تم تحديث صورة الملف الشخصي بنجاح ✅', 'success');
@@ -226,43 +229,41 @@ export default function ProfileHeader({ store: initialStore, productsCount }: Pr
     }
   };
 
-  // Cover Image Upload Handler
+  // Cover Image Upload Handler -> compressed WebP to Cloudflare R2 + old object purge
   const handleCoverImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
+    e.target.value = '';
 
-    if (file.size > 5 * 1024 * 1024) {
-      showToast('حجم صورة الغلاف كبير جداً. الحد الأقصى 5 ميجابايت.', 'error');
+    if (file.size > 15 * 1024 * 1024) {
+      showToast('حجم صورة الغلاف كبير جداً. الحد الأقصى 15 ميجابايت قبل الضغط.', 'error');
       return;
     }
 
+    const previousUrl = store.cover_image_url;
     setIsUploadingCover(true);
     try {
-      const fileExt = file.name.split('.').pop() || 'jpg';
-      const fileName = `${store.id}-${Date.now()}.${fileExt}`;
-      const filePath = `covers/${store.id}/${fileName}`;
+      const { publicUrl } = await uploadImageToR2(supabase, file, 'cover');
 
-      const { error: uploadError } = await supabase.storage
-        .from('cover-images')
-        .upload(filePath, file, { upsert: true });
+      const { error: rpcError } = await supabase.rpc('sync_or_clear_user_media', {
+        p_kind: 'cover',
+        p_new_url: publicUrl,
+      });
 
-      if (uploadError) throw uploadError;
+      if (rpcError) {
+        const { error: dbError } = await supabase
+          .from('users')
+          .update({
+            cover_image_url: publicUrl,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', store.id);
+        if (dbError) throw dbError;
+      }
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from('cover-images').getPublicUrl(filePath);
-
-      if (!publicUrl) throw new Error('فشل الحصول على رابط الصورة العام');
-
-      const { error: dbError } = await supabase
-        .from('users')
-        .update({
-          cover_image_url: publicUrl,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', store.id);
-
-      if (dbError) throw dbError;
+      if (previousUrl && previousUrl !== publicUrl) {
+        await purgeReplacedWebMedia(supabase, previousUrl, 'cover');
+      }
 
       setStore((prev) => ({ ...prev, cover_image_url: publicUrl }));
       showToast('تم تحديث صورة الغلاف بنجاح ✅', 'success');

@@ -171,11 +171,11 @@ export default function AddProductPage() {
         setErrorMsg(null);
       }
 
-      // Compress before adding (resize + JPEG quality) to save storage
+      // Compress before adding (adaptive WebP) to minimize R2 storage & bandwidth
       preparingImagesRef.current = true;
       setPreparingImages(true);
       try {
-        const compressed = await Promise.all(accepted.map((f) => compressImage(f)));
+        const compressed = await Promise.all(accepted.map((f) => compressImage(f, 'product')));
         setImageFiles((prev) => [...prev, ...compressed]);
         const previews = compressed.map((file) => URL.createObjectURL(file));
         setImagePreviews((prev) => [...prev, ...previews]);

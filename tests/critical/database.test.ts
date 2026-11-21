@@ -52,6 +52,7 @@ before(async () => {
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       product_id uuid NOT NULL REFERENCES public.products ON DELETE CASCADE,
       user_id uuid NOT NULL REFERENCES public.users, image_url text NOT NULL,
+      position integer NOT NULL DEFAULT 0,
       UNIQUE(product_id, image_url)
     );
     CREATE TABLE storage.objects(bucket_id text, name text, metadata jsonb, PRIMARY KEY(bucket_id,name));
@@ -80,6 +81,7 @@ before(async () => {
   assert.ok(canonicalFunction);
   await db.exec(canonicalFunction + categoryTrigger);
   await db.exec(readFileSync('../supabase/migrations/20260902090000_atomic_web_product_publication.sql', 'utf8'));
+  await db.exec(readFileSync('../supabase/migrations/20261121180000_publish_web_product_r2.sql', 'utf8'));
   await db.exec(`SET ROLE authenticated; SET request.jwt.claim.sub = '${user}';`);
 });
 after(async () => { await db.close(); });
@@ -210,5 +212,30 @@ test('non-image or oversized storage metadata cannot become a listing image', as
   await db.query(`UPDATE storage.objects SET metadata='{"mimetype":"image/svg+xml","size":200}' WHERE name=$1`, [paths(productId)[0]]);
   await db.exec('SET ROLE authenticated;');
   await assert.rejects(publish(productId), /Uploaded image missing or invalid/);
+  assert.equal(await count(productId), 0);
+});
+test('R2 image keys publish atomically with images.souqphone.com URLs and dense positions', async () => {
+  const productId = id();
+  const r2Keys = [
+    `products/${user}/${crypto.randomUUID()}.webp`,
+    `products/${user}/${crypto.randomUUID()}.jpg`,
+  ];
+  const result = (await publish(productId, product, r2Keys)).rows[0].result;
+  assert.equal(result.id, productId);
+  assert.equal(result.image_count, 2);
+  const rows = (await db.query<{ image_url: string; position: number }>(
+    'SELECT image_url, position FROM public.product_images WHERE product_id=$1 ORDER BY position ASC',
+    [productId],
+  )).rows;
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].image_url, `https://images.souqphone.com/${r2Keys[0]}`);
+  assert.equal(rows[0].position, 0);
+  assert.equal(rows[1].image_url, `https://images.souqphone.com/${r2Keys[1]}`);
+  assert.equal(rows[1].position, 1);
+});
+test('foreign-user R2 image keys are rejected before product insert', async () => {
+  const productId = id();
+  const forged = [`products/${otherUser}/${crypto.randomUUID()}.webp`];
+  await assert.rejects(publish(productId, product, forged), /Invalid image ownership/);
   assert.equal(await count(productId), 0);
 });

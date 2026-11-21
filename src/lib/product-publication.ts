@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { deleteR2Image, extractR2Key, uploadImageToR2 } from './r2-upload';
 
 export type PublicationProduct = {
   name: string;
@@ -23,16 +24,22 @@ export type PendingPublication = {
 export type PublicationResult = { id: string; slug: string | null; image_count: number };
 type Journal = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 const key = (userId: string) => `souqphone:pending-publication:v1:${userId}`;
-const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const extensions: Record<string, string> = {
-  'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif',
-};
+const uuidPattern = '[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}';
+const uuid = new RegExp(`^${uuidPattern}$`, 'i');
+const allowedInputMimes = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
+const MAX_RAW_INPUT_BYTES = 15 * 1024 * 1024; // 15MB before WebP compression
 
 export class PublicationError extends Error {
   constructor(message: string, public readonly uncertain = false) {
     super(message);
     this.name = 'PublicationError';
   }
+}
+
+function isValidPendingImagePath(userId: string, productId: string, path: string): boolean {
+  const r2Re = new RegExp(`^products/${userId}/${uuidPattern}\\.(webp|jpg|jpeg|png)$`, 'i');
+  const legacyRe = new RegExp(`^products/${userId}/${productId}-[0-3]\\.(jpg|png|webp|gif)$`, 'i');
+  return r2Re.test(path) || legacyRe.test(path);
 }
 
 export function readPendingPublication(journal: Journal, userId: string): PendingPublication | null {
@@ -43,7 +50,7 @@ export function readPendingPublication(journal: Journal, userId: string): Pendin
       !item.product || !Array.isArray(item.imagePaths) ||
       item.imagePaths.length < 1 || item.imagePaths.length > 4 ||
       item.imagePaths.some((path) => typeof path !== 'string' ||
-        !new RegExp(`^products/${userId}/${item.productId}-[0-3]\\.(jpg|png|webp|gif)$`).test(path))) {
+        !isValidPendingImagePath(userId, item.productId, path))) {
     throw new PublicationError('تعذر قراءة محاولة النشر السابقة. راجع إعلاناتك قبل بدء إعلان آخر.', true);
   }
   return item;
@@ -52,45 +59,78 @@ export function readPendingPublication(journal: Journal, userId: string): Pendin
 async function cleanUploads(client: SupabaseClient, paths: string[]) {
   // Only called BEFORE a commit, or after an explicit database rejection.
   // Never delete images when the commit outcome is unknown.
-  try {
-    const { error } = await client.storage.from('product-images').remove(paths);
-    if (error) console.warn('Publication upload cleanup failed', error.name);
-  } catch {
-    console.warn('Publication upload cleanup unavailable');
+  if (paths.length === 0) return;
+
+  const r2Keys: string[] = [];
+  const legacyPaths: string[] = [];
+  for (const path of paths) {
+    if (extractR2Key(path, ['products'])) {
+      r2Keys.push(path);
+    } else {
+      legacyPaths.push(path);
+    }
+  }
+
+  for (const r2Key of r2Keys) {
+    try {
+      await deleteR2Image(client, r2Key);
+    } catch {
+      console.warn('Publication R2 upload cleanup unavailable');
+    }
+  }
+
+  if (legacyPaths.length > 0) {
+    try {
+      const { error } = await client.storage.from('product-images').remove(legacyPaths);
+      if (error) console.warn('Publication upload cleanup failed', error.name);
+    } catch {
+      console.warn('Publication upload cleanup unavailable');
+    }
   }
 }
 
 export async function preparePublication(
-  client: SupabaseClient, journal: Journal, userId: string,
-  product: PublicationProduct, files: File[],
+  client: SupabaseClient,
+  journal: Journal,
+  userId: string,
+  product: PublicationProduct,
+  files: File[],
+  fetchImpl: typeof fetch = fetch,
 ): Promise<PendingPublication> {
   if (!uuid.test(userId) || files.length < 1 || files.length > 4 ||
-      files.some((file) => !extensions[file.type] || file.size === 0 || file.size > 10 * 1024 * 1024)) {
-    throw new PublicationError('أضف من صورة إلى 4 صور بصيغة JPG أو PNG أو WebP أو GIF، بحد أقصى 10 ميجابايت للصورة.');
+      files.some((file) => !allowedInputMimes.has((file.type || '').toLowerCase()) ||
+        file.size === 0 || file.size > MAX_RAW_INPUT_BYTES)) {
+    throw new PublicationError('أضف من صورة إلى 4 صور بصيغة JPG أو PNG أو WebP، بحد أقصى 15 ميجابايت قبل الضغط.');
   }
   // Refuse to overwrite a receipt for a possibly committed publication.
   if (journal.getItem(key(userId))) {
     throw new PublicationError('توجد محاولة نشر سابقة. تحقق من نتيجتها أولًا.', true);
   }
   const productId = crypto.randomUUID();
-  const imagePaths = files.map((file, i) => `products/${userId}/${productId}-${i}.${extensions[file.type]}`);
-  const pending: PendingPublication = {
-    version: 1, userId, productId, product: structuredClone(product), imagePaths,
-  };
+  const uploadedKeys: string[] = [];
   try {
     for (let i = 0; i < files.length; i++) {
-      const { error } = await client.storage.from('product-images').upload(imagePaths[i], files[i], {
-        contentType: files[i].type, upsert: false,
-      });
-      if (error) throw error;
+      const uploaded = await uploadImageToR2(client, files[i], 'product', fetchImpl);
+      if (!uploaded.objectKey.startsWith(`products/${userId}/`)) {
+        await deleteR2Image(client, uploaded.objectKey);
+        throw new Error('Unexpected R2 object ownership');
+      }
+      uploadedKeys.push(uploaded.objectKey);
     }
+    const pending: PendingPublication = {
+      version: 1,
+      userId,
+      productId,
+      product: structuredClone(product),
+      imagePaths: [...uploadedKeys],
+    };
     // Persist BEFORE the RPC: a reload/disconnection must not lose its identity.
     journal.setItem(key(userId), JSON.stringify(pending));
     if (!journal.getItem(key(userId))) throw new Error('Receipt not persisted');
     return pending;
   } catch {
-    await cleanUploads(client, imagePaths);
-    throw new PublicationError('لم يُنشر الإعلان: تعذر تجهيز جميع الصور أو حفظ بيانات إعادة المحاولة. تحقق من الاتصال وسماح المتصفح بالتخزين ثم أعد المحاولة.');
+    await cleanUploads(client, uploadedKeys);
+    throw new PublicationError('لم يُنشر الإعلان: تعذر ضغط ورفع جميع الصور إلى R2 أو حفظ بيانات إعادة المحاولة. تحقق من الاتصال وسماح المتصفح بالتخزين ثم أعد المحاولة.');
   }
 }
 

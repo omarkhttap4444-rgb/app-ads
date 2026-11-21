@@ -20,7 +20,7 @@ import {
   UserPlus,
   Users,
 } from 'lucide-react';
-import { compressImage } from '@/lib/image-compress';
+import { purgeReplacedWebMedia, uploadImageToR2 } from '@/lib/r2-upload';
 import { firstProductImageUrl } from '@/lib/product-images';
 import { cleanBio, extractStoreMetadata, mergeBio } from '@/lib/store-metadata';
 
@@ -196,7 +196,7 @@ export default function ProfilePage() {
     } catch {}
   };
 
-  // Avatar / cover upload — same bucket & path scheme as the store page
+  // Avatar / cover upload -> compressed WebP directly to Cloudflare R2 + old object purge
   const handleImageUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
     kind: 'avatar' | 'cover',
@@ -204,34 +204,47 @@ export default function ProfilePage() {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file || !user) return;
-    if (file.size > 5 * 1024 * 1024) {
-      window.alert('حجم الصورة كبير جداً. الحد الأقصى 5 ميجابايت.');
+    if (file.size > 15 * 1024 * 1024) {
+      window.alert('حجم الصورة كبير جداً. الحد الأقصى 15 ميجابايت قبل الضغط.');
       return;
     }
+    const previousUrl =
+      kind === 'avatar' ? profile?.profile_image_url : profile?.cover_image_url;
+    const purpose = kind === 'avatar' ? 'profile' : 'cover';
+
     setUploading(kind);
     try {
-      const compressed = await compressImage(file);
-      const ext = compressed.name.split('.').pop() || 'jpg';
-      const filePath = `profiles/${user.id}/${user.id}-${Date.now()}-${kind}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from('profile-images')
-        .upload(filePath, compressed, { upsert: true, contentType: compressed.type });
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('profile-images')
-        .getPublicUrl(filePath);
-      if (!publicUrl) throw new Error('فشل الحصول على رابط الصورة');
+      const { publicUrl } = await uploadImageToR2(supabase, file, purpose);
 
       const patch =
         kind === 'avatar'
           ? { profile_image_url: publicUrl }
           : { cover_image_url: publicUrl };
-      const { error: dbError } = await supabase
-        .from('users')
-        .update({ ...patch, updated_at: new Date().toISOString() })
-        .eq('id', user.id);
-      if (dbError) throw dbError;
+
+      // Prefer atomic RPC that also syncs seller_avatar across products & reviews
+      const { error: rpcError } = await supabase.rpc('sync_or_clear_user_media', {
+        p_kind: purpose,
+        p_new_url: publicUrl,
+      });
+
+      if (rpcError) {
+        const targetId = profile?.id || user.id;
+        const { error: dbError } = await supabase
+          .from('users')
+          .update({ ...patch, updated_at: new Date().toISOString() })
+          .eq('id', targetId);
+        if (dbError) throw dbError;
+        if (kind === 'avatar') {
+          await supabase
+            .from('products')
+            .update({ seller_avatar: publicUrl })
+            .eq('seller_id', targetId);
+        }
+      }
+
+      if (previousUrl && previousUrl !== publicUrl) {
+        await purgeReplacedWebMedia(supabase, previousUrl, purpose);
+      }
 
       setProfile((prev) => (prev ? ({ ...prev, ...patch } as ProfileRow) : prev));
     } catch (err: any) {
