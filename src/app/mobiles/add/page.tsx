@@ -4,16 +4,11 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Image as ImageIcon, X, AlertCircle, Sparkles, ChevronDown, ChevronUp, ShieldAlert } from 'lucide-react';
+import { Plus, AlertCircle, Sparkles } from 'lucide-react';
 import { SAUDI_MARKET_ENABLED } from '@/lib/market-config';
 import { EGYPT_GOVERNORATES, EGYPT_CENTERS, SAUDI_REGIONS, SAUDI_CITIES } from '@/lib/locations';
 import {
   fetchPhoneCatalog,
-  getModelGroupsForBrand,
-  RAM_OPTIONS,
-  STORAGE_OPTIONS,
-  PHONE_COLORS,
-  ACCESSORIES_OPTIONS,
   type PhoneCatalog,
 } from '@/lib/phone-data';
 import { compressImage } from '@/lib/image-compress';
@@ -22,17 +17,19 @@ import {
   type PendingPublication,
 } from '@/lib/product-publication';
 import { checkDuplicateBeforePublish } from '@/lib/duplicate-listing-guard';
+import { PhoneSpecsSection } from './PhoneSpecsSection';
+import {
+  ImagesUploadSection,
+  FinanceLocationSection,
+  HonestyModal,
+} from './LocationAndHonestySections';
 
 // Same limit as the Flutter app (regular user: max 4 images)
 const MAX_IMAGES = 4;
 
-// App visual identity (lib/config/brand_colors.dart)
-const GREEN_PRIMARY = '#00C853';
-const GREEN_DARK = '#00A344';
-
 export default function AddProductPage() {
   const router = useRouter();
-  
+
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [categories, setCategories] = useState<any[]>([]);
@@ -59,7 +56,7 @@ export default function AddProductPage() {
     setLocation(list[0]);
     setCenter('');
   }, [selectedCountry]);
-  
+
   // Mobiles Specifications (catalog loaded from the same Supabase tables as the app)
   const [catalog, setCatalog] = useState<PhoneCatalog>({ brands: [], modelsByBrand: {} });
   const [brand, setBrand] = useState('');
@@ -72,7 +69,7 @@ export default function AddProductPage() {
   const [isDeviceOpened, setIsDeviceOpened] = useState('لا');
   const [ntraTax, setNtraTax] = useState('لا');
   const [selectedAccessory, setSelectedAccessory] = useState<string | null>(null);
-  
+
   // Optional Specifications (Accordion)
   const [showOptional, setShowOptional] = useState(false);
   const [cpu, setCpu] = useState('');
@@ -127,7 +124,7 @@ export default function AddProductPage() {
         .select('*')
         .eq('is_active', true)
         .order('display_order', { ascending: true });
-      
+
       if (!catErr && cats) {
         setCategories(cats);
         // Pre-select first category ID
@@ -223,7 +220,6 @@ export default function AddProductPage() {
     // Image check
     if (imageFiles.length === 0) {
       setErrorMsg('الرجاء إضافة صورة واحدة على الأقل لجهازك.');
-      // Scroll to top
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
@@ -288,7 +284,7 @@ export default function AddProductPage() {
       }
       const selectedCategory = categories.find((c) => c.id === categoryId);
       const isMobiles = selectedCategory?.name === 'هواتف';
-      
+
       const resolvedModelName = (brand === 'أخرى' || model === 'أخرى') ? customModel.trim() : model;
 
       // Subscribed stores daily limit: max 3 new products per rolling 24 hours
@@ -333,7 +329,7 @@ export default function AddProductPage() {
       // 72-hour duplicate model posting cooldown check for normal users
       if (!isSubscribed && isMobiles && resolvedModelName) {
         const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
-        
+
         const { data: recentProducts, error: recentErr } = await supabase
           .from('products')
           .select('id, created_at, specifications')
@@ -343,13 +339,13 @@ export default function AddProductPage() {
         if (recentErr) {
           throw new PublicationError('تعذر التحقق من الإعلانات السابقة. لم يتم النشر؛ تحقق من الاتصال وأعد المحاولة.');
         }
-          
+
         if (!recentErr && recentProducts) {
           const duplicate = recentProducts.find((p: any) => {
             const productModel = p.specifications?.model || '';
             return productModel.trim().toLowerCase() === resolvedModelName.trim().toLowerCase();
           });
-          
+
           if (duplicate) {
             const createdDate = new Date(duplicate.created_at);
             const hoursPassed = Math.floor((Date.now() - createdDate.getTime()) / (60 * 60 * 1000));
@@ -369,7 +365,7 @@ export default function AddProductPage() {
         classification: selectedCategory?.name || 'هواتف',
         category: selectedCategory?.name || 'هواتف',
         delivery: hasDelivery,
-        hasDelivery: hasDelivery
+        hasDelivery: hasDelivery,
       };
 
       if (isMobiles) {
@@ -399,7 +395,7 @@ export default function AddProductPage() {
 
       // Build automatic phone title - لا تستخدم 'أخرى' كجزء من العنوان (تصنيف فقط)
       const effectiveBrand = brand.trim() === 'أخرى' ? '' : brand;
-      const finalTitle = isMobiles 
+      const finalTitle = isMobiles
         ? [effectiveBrand, ram ? `رام ${ram}` : '', resolvedModelName].filter((s) => s && s.trim().length > 0).join(' ').trim()
         : name.trim();
 
@@ -434,14 +430,14 @@ export default function AddProductPage() {
 
       // Upload all images first, then atomically save the product AND image links.
       const pending = await preparePublication(supabase, sessionStorage, user.id, {
-          name: finalTitle,
-          description: description.trim(),
-          price: price ? parseFloat(price) : 0,
-          category_id: categoryId,
-          specifications,
-          is_negotiable: isNegotiable,
-          condition,
-          location: center.trim() ? `${location} - ${center.trim()}` : location
+        name: finalTitle,
+        description: description.trim(),
+        price: price ? parseFloat(price) : 0,
+        category_id: categoryId,
+        specifications,
+        is_negotiable: isNegotiable,
+        condition,
+        location: center.trim() ? `${location} - ${center.trim()}` : location,
       }, imageFiles);
       setPendingPublication(pending);
       await completePublication(pending);
@@ -469,7 +465,6 @@ export default function AddProductPage() {
   return (
     <main className="min-h-[calc(100vh-68px)] bg-slate-50 dark:bg-slate-950 py-8 md:py-12 transition-colors duration-200" dir="rtl">
       <div className="container mx-auto px-4 max-w-3xl">
-        
         {/* Header Title */}
         <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm mb-6 flex items-center justify-between transition-colors">
           <div>
@@ -482,7 +477,6 @@ export default function AddProductPage() {
         </div>
 
         <form onSubmit={onSubmitPress} className="space-y-6">
-          
           {errorMsg && (
             <div role="alert" className="bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-450 p-4 rounded-2xl text-sm border border-rose-100 dark:border-rose-900/50 font-semibold flex items-center gap-2">
               <AlertCircle className="w-5 h-5 shrink-0" />
@@ -513,551 +507,167 @@ export default function AddProductPage() {
           )}
           <fieldset disabled={loading || preparingImages || !!pendingPublication || recoveryBlocked || !!successMsg}
             className="space-y-6 min-w-0" aria-busy={loading || preparingImages}>
-          <legend className="sr-only">تفاصيل الإعلان وصوره</legend>
-          {/* Section 1: Images */}
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-4 transition-colors">
-            <h2 className="text-base font-extrabold text-slate-800 dark:text-white">صور الهاتف (4 صور كحد أقصى)</h2>
-            <p className="text-xs text-slate-400 dark:text-slate-400 mt-1">إضافة صور حقيقية واضحة تزيد من فرصة بيع موبايلك بسرعة</p>
-            
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-              {imagePreviews.map((preview, index) => (
-                <div key={index} className="aspect-square rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 relative overflow-hidden group transition-colors">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={preview} alt="معاينة" className="object-cover w-full h-full" />
-                  <button
-                    type="button"
-                    onClick={() => removeImage(index)}
-                    className="absolute top-1.5 left-1.5 p-1 rounded-lg bg-black/60 hover:bg-rose-600 text-white transition-all cursor-pointer"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-              
-              {imageFiles.length < MAX_IMAGES && (
-                <label className="aspect-square rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-[#00C853] dark:hover:border-[#00C853] bg-slate-50/50 dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-all flex flex-col items-center justify-center cursor-pointer text-slate-400 dark:text-slate-500 gap-1.5">
-                  <ImageIcon className="w-6 h-6 stroke-[1.5px]" />
-                  <span className="text-[10px] font-bold">أضف صورة</span>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    multiple
-                    onChange={handleImageChange}
-                    className="hidden"
-                  />
-                </label>
-              )}
-            </div>
-          </div>
+            <legend className="sr-only">تفاصيل الإعلان وصوره</legend>
 
-          {/* Section 2: General Details */}
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-4 transition-colors">
-            <h2 className="text-base font-extrabold text-slate-800 dark:text-white">تفاصيل الإعلان الأساسية</h2>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              
-              {/* Category */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">القسم / الفئة</label>
-                <select
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  required
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
-                >
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* Section 1: Images */}
+            <ImagesUploadSection
+              imagePreviews={imagePreviews}
+              imageCount={imageFiles.length}
+              maxImages={MAX_IMAGES}
+              onImageChange={handleImageChange}
+              onRemoveImage={removeImage}
+            />
 
-              {/* Condition */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">حالة الجهاز</label>
-                <select
-                  value={condition}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setCondition(val);
-                    if (val === 'جديد') {
-                      setIsDeviceOpened('لا');
-                    }
-                  }}
-                  required
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
-                >
-                  <option value="جديد">جديد</option>
-                  <option value="كسر زيرو">كسر زيرو</option>
-                  <option value="مستعمل">مستعمل</option>
-                </select>
-              </div>
-
-              {/* Title (Only shown for non-mobiles) */}
-              {!isMobiles && (
-                <div className="sm:col-span-2 space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">عنوان الإعلان (مثال: جراب آيفون 13 سيليكون)</label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="مثال: سماعات ايربودز الجيل الثالث"
-                    required={!isMobiles}
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600"
-                  />
-                </div>
-              )}
-
-            </div>
-          </div>
-
-          {/* Section 3: Technical Specifications (Only shown if Category is "هواتف") */}
-          {isMobiles && (
+            {/* Section 2: General Details */}
             <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-4 transition-colors">
-              <h2 className="text-base font-extrabold text-slate-800 dark:text-white">المواصفات الفنية للهاتف</h2>
-              
+              <h2 className="text-base font-extrabold text-slate-800 dark:text-white">تفاصيل الإعلان الأساسية</h2>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                
-                {/* Brand */}
+                {/* Category */}
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">الماركة (المصنع)</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">القسم / الفئة</label>
                   <select
-                    value={brand}
-                    onChange={(e) => setBrand(e.target.value)}
+                    value={categoryId}
+                    onChange={(e) => setCategoryId(e.target.value)}
                     required
                     className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
                   >
-                    {catalog.brands.map((b) => (
-                      <option key={b} value={b}>
-                        {b}
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
                       </option>
                     ))}
                   </select>
                 </div>
 
-                {/* Model - grouped by series, same grouping as the app */}
+                {/* Condition */}
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">الموديل</label>
-                  {brand !== 'أخرى' ? (
-                    <select
-                      value={model}
-                      onChange={(e) => setModel(e.target.value)}
-                      required
-                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
-                    >
-                      {getModelGroupsForBrand(brand, catalog.modelsByBrand[brand] ?? []).map((group) => (
-                        <optgroup key={group.title} label={group.title}>
-                          {group.models.map((m) => (
-                            <option key={m} value={m}>
-                              {m}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))}
-                      <option value="أخرى">أخرى</option>
-                    </select>
-                  ) : (
-                    <input
-                      type="text"
-                      value={customModel}
-                      onChange={(e) => setCustomModel(e.target.value)}
-                      placeholder="أدخل موديل الهاتف يدوياً"
-                      required
-                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600"
-                    />
-                  )}
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">حالة الجهاز</label>
+                  <select
+                    value={condition}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setCondition(val);
+                      if (val === 'جديد') {
+                        setIsDeviceOpened('لا');
+                      }
+                    }}
+                    required
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
+                  >
+                    <option value="جديد">جديد</option>
+                    <option value="كسر زيرو">كسر زيرو</option>
+                    <option value="مستعمل">مستعمل</option>
+                  </select>
                 </div>
 
-                {/* Show custom model input if 'أخرى' is chosen */}
-                {brand !== 'أخرى' && model === 'أخرى' && (
+                {/* Title (Only shown for non-mobiles) */}
+                {!isMobiles && (
                   <div className="sm:col-span-2 space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">اسم الموديل المخصص</label>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">عنوان الإعلان (مثال: جراب آيفون 13 سيليكون)</label>
                     <input
                       type="text"
-                      value={customModel}
-                      onChange={(e) => setCustomModel(e.target.value)}
-                      placeholder="مثال: جالاكسي نوت 10 بلس"
-                      required
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="مثال: سماعات ايربودز الجيل الثالث"
+                      required={!isMobiles}
                       className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600"
                     />
                   </div>
                 )}
-
-                {/* Storage */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">حجم الذاكرة (Storage)</label>
-                  <select
-                    value={storage}
-                    onChange={(e) => setStorage(e.target.value)}
-                    required
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
-                  >
-                    {STORAGE_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt === '1 تيرا' ? '1 تيرا' : `${opt} جيجا`}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* RAM */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">حجم الرام (RAM)</label>
-                  <select
-                    value={ram}
-                    onChange={(e) => setRam(e.target.value)}
-                    required
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
-                  >
-                    {RAM_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt} جيجا
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Color - swatches with the same fixed list as the app */}
-                <div className="sm:col-span-2 space-y-2">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">لون الهاتف</label>
-                  <div className="flex flex-wrap gap-2.5">
-                    {PHONE_COLORS.map((c) => {
-                      const isSelected = color === c.name;
-                      return (
-                        <button
-                          key={c.name}
-                          type="button"
-                          onClick={() => setColor(isSelected ? '' : c.name)}
-                          title={c.name}
-                          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-[#00C853]/10 border-[#00C853] text-[#00A344]'
-                              : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
-                          }`}
-                        >
-                          <span
-                            className="h-4 w-4 rounded-full border border-black/15"
-                            style={{ backgroundColor: c.hex }}
-                          />
-                          {c.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Battery Health (Shown only for Apple devices) */}
-                {brand === 'آبل' && (
-                  <div className="space-y-1.5 flex flex-col justify-center">
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 flex justify-between">
-                      <span>نسبة صحة البطارية</span>
-                      <span className="text-[#00A344] dark:text-[#2EE06F] font-extrabold">{batteryHealth}%</span>
-                    </label>
-                    <div className="flex items-center gap-3 mt-1.5">
-                      <input
-                        type="range"
-                        min="40"
-                        max="100"
-                        value={batteryHealth}
-                        onChange={(e) => setBatteryHealth(Number(e.target.value))}
-                        className="w-full accent-[#00C853] h-2 bg-slate-100 dark:bg-slate-850 rounded-lg cursor-pointer"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Device Opened? (Shown only for non-new condition) */}
-                {condition !== 'جديد' && (
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">هل الجهاز مفتوح أو تم صيانته؟</label>
-                    <select
-                      value={isDeviceOpened}
-                      onChange={(e) => setIsDeviceOpened(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
-                    >
-                      <option value="لا">لا (بحالة المصنع الأصلي)</option>
-                      <option value="نعم">نعم (تم فتحه أو عمل صيانة)</option>
-                    </select>
-                  </div>
-                )}
-
-                {/* NTRA Customs Tax Paid? */}
-                {selectedCountry === 'EG' && (
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">هل الهاتف مسجل / مدفوع ضريبة الجمارك NTRA؟</label>
-                    <select
-                      value={ntraTax}
-                      onChange={(e) => setNtraTax(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
-                    >
-                      <option value="لا">لا (غير مسجل بالشبكة المصرية / دولي)</option>
-                      <option value="نعم">نعم (مسجل / محلي مدفوع الضريبة)</option>
-                    </select>
-                  </div>
-                )}
-
-                {/* Accessories Checklist */}
-                <div className="sm:col-span-2 space-y-2 pt-2">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">الملحقات المتوفرة مع الهاتف</label>
-                  <div className="flex flex-wrap gap-2.5">
-                    {ACCESSORIES_OPTIONS.map((acc) => {
-                      const isSelected = selectedAccessory === acc;
-                      return (
-                        <button
-                          key={acc}
-                          type="button"
-                          onClick={() => handleAccessoryChange(acc)}
-                          className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-[#00C853]/10 border-[#00C853] text-[#00A344]'
-                              : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
-                          }`}
-                        >
-                          {acc}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Optional Tech Specs Accordion Toggle */}
-              <div className="pt-4 border-t border-slate-50 dark:border-slate-850">
-                <button
-                  type="button"
-                  onClick={() => setShowOptional(!showOptional)}
-                  className="flex items-center justify-between w-full py-2.5 text-xs font-extrabold text-slate-600 dark:text-slate-400 hover:text-[#00A344] dark:hover:text-[#2EE06F] transition-colors"
-                >
-                  <span>مواصفات إضافية اختيارية (المعالج، سعة البطارية، الضمان، البدل...)</span>
-                  {showOptional ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </button>
-
-                {showOptional && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-dashed border-slate-100 dark:border-slate-800 animate-fadeIn">
-                    {/* CPU */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">المعالج / CPU (اختياري)</label>
-                      <input
-                        type="text"
-                        value={cpu}
-                        onChange={(e) => setCpu(e.target.value)}
-                        placeholder="مثال: Apple A16 Bionic / Snapdragon 8 Gen 2"
-                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-650"
-                      />
-                    </div>
-
-                    {/* Battery Capacity */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">سعة البطارية (mAh) (اختياري)</label>
-                      <input
-                        type="number"
-                        value={batteryCapacity}
-                        onChange={(e) => setBatteryCapacity(e.target.value)}
-                        placeholder="مثال: 5000"
-                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-655"
-                      />
-                    </div>
-
-                    {/* Warranty */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">هل الهاتف في فترة الضمان؟</label>
-                      <select
-                        value={warranty}
-                        onChange={(e) => setWarranty(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
-                      >
-                        <option value="لا">لا</option>
-                        <option value="نعم">نعم (الضمان لا يزال ساري)</option>
-                      </select>
-                    </div>
-
-                    {/* Exchange Option */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">هل تقبل البدل بجهاز آخر؟</label>
-                      <select
-                        value={acceptsExchange}
-                        onChange={(e) => setAcceptsExchange(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
-                      >
-                        <option value="لا">لا (بيع فقط)</option>
-                        <option value="نعم">نعم (مستعد للمناقشة للبدل)</option>
-                      </select>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
-          )}
 
-          {/* Section 4: Finance, Location & Delivery */}
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-4 transition-colors">
-            <h2 className="text-base font-extrabold text-slate-800 dark:text-white">الموقع، السعر وتفاصيل الشحن</h2>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              
-              {/* Price */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">السعر المطلوب ({selectedCountry === 'SA' ? 'ريال' : 'جنيه'})</label>
-                <input
-                  type="number"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  placeholder="مثال: 12500"
-                  required
-                  min={1}
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-655"
-                />
-              </div>
-
-              {/* Location Governorate */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">{selectedCountry === 'SA' ? 'المنطقة' : 'المحافظة'}</label>
-                <select
-                  value={location}
-                  onChange={(e) => {
-                    setLocation(e.target.value);
-                    setCenter('');
-                  }}
-                  required
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
-                >
-                  {(selectedCountry === 'SA' ? SAUDI_REGIONS : EGYPT_GOVERNORATES).map((gov) => (
-                    <option key={gov} value={gov}>
-                      {gov}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Location Center/District - dropdown bound to the selected governorate (same lists as the app) */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">{selectedCountry === 'SA' ? 'المدينة / الحي' : 'المركز / الحي (المدينة)'}</label>
-                <select
-                  value={center}
-                  onChange={(e) => setCenter(e.target.value)}
-                  required
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white"
-                >
-                  <option value="" disabled>
-                    {selectedCountry === 'SA' ? 'اختر المدينة / الحي' : 'اختر المركز / الحي'}
-                  </option>
-                  {(selectedCountry === 'SA'
-                    ? (SAUDI_CITIES[location] ?? [])
-                    : (EGYPT_CENTERS[location] ?? [])
-                  ).map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Price Negotiable Option */}
-              <div className="flex items-center gap-2 py-3.5">
-                <input 
-                  type="checkbox" 
-                  id="negotiable"
-                  checked={isNegotiable}
-                  onChange={(e) => setIsNegotiable(e.target.checked)}
-                  className="w-4 h-4 text-[#00A344] focus:ring-[#00C853] dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded cursor-pointer"
-                />
-                <label htmlFor="negotiable" className="text-xs font-bold text-slate-650 dark:text-slate-350 cursor-pointer">
-                  السعر قابل للتفاوض البسيط
-                </label>
-              </div>
-
-              {/* Delivery Option */}
-              <div className="flex items-center gap-2 py-1 sm:col-span-2">
-                <input 
-                  type="checkbox" 
-                  id="delivery"
-                  checked={hasDelivery}
-                  onChange={(e) => setHasDelivery(e.target.checked)}
-                  className="w-4 h-4 text-[#00A344] focus:ring-[#00C853] dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded cursor-pointer"
-                />
-                <label htmlFor="delivery" className="text-xs font-bold text-slate-655 dark:text-slate-350 cursor-pointer">
-                  يتوفر الشحن أو التوصيل للمحافظات
-                </label>
-              </div>
-
-            </div>
-          </div>
-
-          {/* Section 5: Description */}
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-4 transition-colors">
-            <h2 className="text-base font-extrabold text-slate-800 dark:text-white">وصف الإعلان</h2>
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">تفاصيل إضافية (أذكر الملحقات، العيوب، الخدوش وحالة الجهاز بوضوح)</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="أذكر هنا تفاصيل إضافية للمشتري حول الهاتف، الملحقات المرفقة معه، أو حالة البطارية..."
-                required
-                rows={5}
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-655 resize-none"
+            {/* Section 3: Technical Specifications (Only shown if Category is "هواتف") */}
+            {isMobiles && (
+              <PhoneSpecsSection
+                catalog={catalog}
+                brand={brand}
+                setBrand={setBrand}
+                model={model}
+                setModel={setModel}
+                customModel={customModel}
+                setCustomModel={setCustomModel}
+                storage={storage}
+                setStorage={setStorage}
+                ram={ram}
+                setRam={setRam}
+                color={color}
+                setColor={setColor}
+                batteryHealth={batteryHealth}
+                setBatteryHealth={setBatteryHealth}
+                condition={condition}
+                isDeviceOpened={isDeviceOpened}
+                setIsDeviceOpened={setIsDeviceOpened}
+                selectedCountry={selectedCountry}
+                ntraTax={ntraTax}
+                setNtraTax={setNtraTax}
+                selectedAccessory={selectedAccessory}
+                onAccessoryChange={handleAccessoryChange}
+                showOptional={showOptional}
+                setShowOptional={setShowOptional}
+                cpu={cpu}
+                setCpu={setCpu}
+                batteryCapacity={batteryCapacity}
+                setBatteryCapacity={setBatteryCapacity}
+                warranty={warranty}
+                setWarranty={setWarranty}
+                acceptsExchange={acceptsExchange}
+                setAcceptsExchange={setAcceptsExchange}
               />
-            </div>
-          </div>
+            )}
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-gradient-to-r from-[#00C853] to-[#00A344] hover:from-[#00A344] hover:to-[#008C39] text-white font-bold py-4 rounded-2xl transition-all shadow-md shadow-[#00A344]/20 hover:shadow-lg text-sm disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer"
-          >
-            {loading ? 'جاري نشر إعلانك...' : preparingImages ? 'جاري تجهيز الصور...' : 'نشر الإعلان الآن'}
-          </button>
+            {/* Section 4: Finance, Location & Delivery */}
+            <FinanceLocationSection
+              selectedCountry={selectedCountry}
+              price={price}
+              setPrice={setPrice}
+              location={location}
+              setLocation={setLocation}
+              center={center}
+              setCenter={setCenter}
+              isNegotiable={isNegotiable}
+              setIsNegotiable={setIsNegotiable}
+              hasDelivery={hasDelivery}
+              setHasDelivery={setHasDelivery}
+            />
+
+            {/* Section 5: Description */}
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-4 transition-colors">
+              <h2 className="text-base font-extrabold text-slate-800 dark:text-white">وصف الإعلان</h2>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">تفاصيل إضافية (أذكر الملحقات، العيوب، الخدوش وحالة الجهاز بوضوح)</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="أذكر هنا تفاصيل إضافية للمشتري حول الهاتف، الملحقات المرفقة معه، أو حالة البطارية..."
+                  required
+                  rows={5}
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:border-[#00C853] focus:bg-white dark:focus:bg-slate-900 transition-all text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-655 resize-none"
+                />
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-[#00C853] to-[#00A344] hover:from-[#00A344] hover:to-[#008C39] text-white font-bold py-4 rounded-2xl transition-all shadow-md shadow-[#00A344]/20 hover:shadow-lg text-sm disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {loading ? 'جاري نشر إعلانك...' : preparingImages ? 'جاري تجهيز الصور...' : 'نشر الإعلان الآن'}
+            </button>
           </fieldset>
         </form>
-
       </div>
 
-      {/* ========================================================================= */}
       {/* Honesty Dialog Modal Overlay (كن صادقا في تجارتك تتيسر حياتك) */}
-      {/* ========================================================================= */}
       {showHonestyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl space-y-6 text-center transform scale-100 transition-all duration-300">
-            
-            {/* Flower icon and title */}
-            <div className="flex flex-col items-center gap-3">
-              <span className="text-5xl animate-pulse select-none">🌸</span>
-              <h3 className="text-xl font-black text-slate-800 dark:text-white pt-2">تذكير أخلاقي</h3>
-            </div>
-
-            {/* Honesty Sentence */}
-            <div className="py-2.5 px-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-2xl">
-              <p className="text-lg font-black text-amber-700 dark:text-amber-450 leading-relaxed">
-                كن صادقاً في تجارتك تتيسر حياتك
-              </p>
-            </div>
-
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-              يرجى التعهد التام بأن كافة المواصفات المذكورة، والصور المرفقة، وحالة المكونات حقيقية وتعبر بدقة عن حالة الهاتف المعروض للبيع دون تستر على أي عيوب.
-            </p>
-
-            <div className="flex gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowHonestyModal(false)}
-                className="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 font-bold py-3.5 rounded-2xl transition-all text-xs cursor-pointer"
-              >
-                تراجع
-              </button>
-              <button
-                type="button"
-                onClick={confirmAndPublish}
-                disabled={loading || preparingImages}
-                className="flex-1 bg-gradient-to-r from-[#00C853] to-[#00A344] hover:from-[#00A344] hover:to-[#008C39] text-white font-bold py-3.5 rounded-2xl transition-all text-xs shadow-md shadow-[#00A344]/20 hover:shadow-lg cursor-pointer"
-              >
-                أوافق وأنشر
-              </button>
-            </div>
-            
-          </div>
-        </div>
+        <HonestyModal
+          loading={loading}
+          preparingImages={preparingImages}
+          onCancel={() => setShowHonestyModal(false)}
+          onConfirm={confirmAndPublish}
+        />
       )}
     </main>
   );
