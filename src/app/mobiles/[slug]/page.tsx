@@ -219,6 +219,8 @@ export default async function ProductPage({ params }: Props) {
   const trustReport = analyzeListingTrust({
     title: displayName,
     description: product.description,
+    condition: product.condition,
+    category: product.category,
     price: Number(product.price ?? 0),
     isSaudi,
     imagesCount: images.length,

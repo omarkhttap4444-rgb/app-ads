@@ -21,6 +21,7 @@ import {
   commitPublication, preparePublication, readPendingPublication, PublicationError,
   type PendingPublication,
 } from '@/lib/product-publication';
+import { checkDuplicateBeforePublish } from '@/lib/duplicate-listing-guard';
 
 // Same limit as the Flutter app (regular user: max 4 images)
 const MAX_IMAGES = 4;
@@ -363,6 +364,35 @@ export default function AddProductPage() {
       const finalTitle = isMobiles 
         ? [effectiveBrand, ram ? `رام ${ram}` : '', resolvedModelName].filter((s) => s && s.trim().length > 0).join(' ').trim()
         : name.trim();
+
+      // Real pre-publish AI + perceptual image-fingerprint duplicate guard (before R2 upload)
+      const duplicateCheck = await checkDuplicateBeforePublish(supabase, {
+        title: finalTitle,
+        description: description.trim(),
+        category: selectedCategory?.name || 'هواتف',
+        subCategory: effectiveBrand || selectedCategory?.name || 'هواتف',
+        price: price ? parseFloat(price) : 0,
+        condition,
+        brand: effectiveBrand,
+        model: resolvedModelName,
+        storage,
+        location: center.trim() ? `${location} - ${center.trim()}` : location,
+        imageFiles,
+      });
+
+      if (duplicateCheck.isDuplicate) {
+        const matchedSuffix = duplicateCheck.matchedTitle
+          ? ` (الإعلان السابق: ${duplicateCheck.matchedTitle})`
+          : '';
+        setErrorMsg(`${duplicateCheck.reasonAr}${matchedSuffix}`);
+        setLoading(false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      if (duplicateCheck.imageFingerprints.length > 0) {
+        specifications._img_fps = duplicateCheck.imageFingerprints;
+      }
 
       // Upload all images first, then atomically save the product AND image links.
       const pending = await preparePublication(supabase, sessionStorage, user.id, {

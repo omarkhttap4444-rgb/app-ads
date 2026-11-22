@@ -16,6 +16,10 @@ import {
   scanIncomingMessagesForFraud,
   scanTextForFraud,
 } from '../../src/lib/trust-safety-analyzer';
+import {
+  computeDHashFromRgba9x8,
+  hammingDistanceHex64,
+} from '../../src/lib/duplicate-listing-guard';
 
 describe('Zero-Token Intelligence Engines (Web)', () => {
   it('System #1: normalizes Arabic/English models and extracts genuine Hot Deals while blocking scams', () => {
@@ -78,7 +82,8 @@ describe('Zero-Token Intelligence Engines (Web)', () => {
 
     const report = analyzeListingTrust({
       title: 'iPhone 15 Pro',
-      description: 'حالة ممتازة مع الكرتونة الأصلية وجميع المشتملات وفاتورة الشراء',
+      condition: 'مستعمل',
+      description: 'حالة ممتازة مع الكرتونة الأصلية وجميع المشتملات وفاتورة الشراء بدون آي كلاود',
       price: 42000,
       isSaudi: false,
       imagesCount: 4,
@@ -90,5 +95,51 @@ describe('Zero-Token Intelligence Engines (Web)', () => {
     });
     assert.equal(report.level, 'verified_high');
     assert.ok(report.score >= 85);
+    assert.equal(report.pillars.length, 4);
+    assert.equal(
+      report.warnings.some((w) => w.code === 'LOCKED_OR_BYPASS_DEVICE'),
+      false,
+    );
+
+    const risky = analyzeListingTrust({
+      title: 'iPhone 15 Pro Max هاي كوبي',
+      condition: 'جديد',
+      description: 'الجهاز تقليد فرست كوبي وفيه كسر شاشة وعليه ضريبة غير مدفوعة',
+      price: 9000,
+      isSaudi: false,
+      imagesCount: 1,
+      specifications: {},
+    });
+    assert.equal(risky.level, 'high_risk');
+    assert.ok(risky.score <= 42);
+    assert.ok(risky.warnings.some((w) => w.code === 'REPLICA_DEVICE'));
+    assert.ok(risky.warnings.some((w) => w.code === 'CONDITION_CONTRADICTION'));
+    assert.ok(risky.warnings.some((w) => w.code === 'UNPAID_CUSTOMS_TAX'));
+  });
+
+  it('System #4: computes cross-platform 64-bit perceptual dHash identical to Flutter', () => {
+    const grad = new Uint8Array(9 * 8 * 4);
+    const inv = new Uint8Array(9 * 8 * 4);
+    for (let y = 0; y < 8; y++) {
+      for (let x = 0; x < 9; x++) {
+        const idx = (y * 9 + x) * 4;
+        const lum = Math.max(0, Math.min(255, 240 - x * 25));
+        grad[idx] = lum;
+        grad[idx + 1] = lum;
+        grad[idx + 2] = lum;
+        grad[idx + 3] = 255;
+
+        const invLum = Math.max(0, Math.min(255, 20 + x * 25));
+        inv[idx] = invLum;
+        inv[idx + 1] = invLum;
+        inv[idx + 2] = invLum;
+        inv[idx + 3] = 255;
+      }
+    }
+    const hGrad = computeDHashFromRgba9x8(grad);
+    const hInv = computeDHashFromRgba9x8(inv);
+    assert.equal(hGrad, 'ffffffffffffffff');
+    assert.equal(hInv, '0000000000000000');
+    assert.equal(hammingDistanceHex64(hGrad, hInv), 64);
   });
 });
