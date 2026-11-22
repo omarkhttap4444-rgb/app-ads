@@ -115,6 +115,22 @@ describe('Zero-Token Intelligence Engines (Web)', () => {
     assert.ok(risky.warnings.some((w) => w.code === 'REPLICA_DEVICE'));
     assert.ok(risky.warnings.some((w) => w.code === 'CONDITION_CONTRADICTION'));
     assert.ok(risky.warnings.some((w) => w.code === 'UNPAID_CUSTOMS_TAX'));
+
+    // Score <= 80% must stay 'good', never 'verified_high'
+    const mid = analyzeListingTrust({
+      title: 'iPhone 13',
+      condition: 'مستعمل',
+      description: 'حالة ممتازة مع الكرتونة الأصلية وجميع المشتملات بدون عيوب',
+      price: 24000,
+      isSaudi: false,
+      imagesCount: 3,
+      specifications: { brand: 'آبل', model: 'iPhone 13', storage: '128' },
+      isStore: false,
+      sellerVerified: true,
+      sellerCreatedAt: new Date(Date.now() - 70 * 86_400_000).toISOString(),
+    });
+    assert.ok(mid.score <= 80);
+    assert.equal(mid.level, 'good');
   });
 
   it('System #4: computes cross-platform 64-bit perceptual dHash identical to Flutter', () => {

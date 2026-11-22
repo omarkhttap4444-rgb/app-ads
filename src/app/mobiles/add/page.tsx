@@ -291,8 +291,46 @@ export default function AddProductPage() {
       
       const resolvedModelName = (brand === 'أخرى' || model === 'أخرى') ? customModel.trim() : model;
 
+      // Subscribed stores daily limit: max 3 new products per rolling 24 hours
+      const subType = String(profile?.subscription_type ?? 'free').toLowerCase();
+      const subEndMs = profile?.subscription_end_date ? new Date(profile.subscription_end_date).getTime() : 0;
+      const isSubscribed =
+        Boolean(profile?.is_subscribed) ||
+        subType === 'commission' ||
+        (subType !== 'free' && subType !== '' && (!profile?.subscription_end_date || subEndMs > Date.now()));
+
+      if (isSubscribed) {
+        const since24hIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const { data: dailyEvents, error: dailyErr } = await supabase
+          .from('user_publish_events')
+          .select('created_at')
+          .eq('user_id', user.id)
+          .gte('created_at', since24hIso)
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        if (dailyErr) {
+          throw new PublicationError('تعذر التحقق من حد النشر اليومي للمتجر. تحقق من الاتصال وأعد المحاولة.');
+        }
+
+        if ((dailyEvents?.length ?? 0) >= 3) {
+          const oldestOfThree = dailyEvents![2]?.created_at
+            ? new Date(dailyEvents![2].created_at).getTime()
+            : Date.now();
+          const remainingHours = Math.max(
+            1,
+            Math.ceil((oldestOfThree + 24 * 60 * 60 * 1000 - Date.now()) / (60 * 60 * 1000)),
+          );
+          setErrorMsg(
+            `بلغت الحد اليومي المسموح للمتاجر المشتركة (3 منتجات يومياً فقط). يمكنك نشر منتج جديد بعد ${remainingHours} ساعة تقريباً.`,
+          );
+          setLoading(false);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          return;
+        }
+      }
+
       // 72-hour duplicate model posting cooldown check for normal users
-      const isSubscribed = profile?.is_subscribed || false;
       if (!isSubscribed && isMobiles && resolvedModelName) {
         const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
         

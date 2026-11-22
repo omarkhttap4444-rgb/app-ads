@@ -138,7 +138,7 @@ export function analyzeListingTrust(input: {
   sellerCreatedAt?: string | null;
   dealAssessment?: DealAssessment | null;
 }): ListingTrustReport {
-  let score = 46;
+  let score = 42;
   const positiveSignals: string[] = [];
   const warnings: SafetyWarningFlag[] = [];
 
@@ -428,7 +428,7 @@ export function analyzeListingTrust(input: {
   const level: TrustLevel =
     hasHigh || clampedScore < 45
       ? 'high_risk'
-      : clampedScore >= 80
+      : clampedScore > 80
         ? 'verified_high'
         : clampedScore >= 60
           ? 'good'

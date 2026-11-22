@@ -161,7 +161,7 @@ export default function ProductTrustShieldCard({
         <div className="mt-1 flex items-center justify-between text-[9.5px] font-bold text-[#64748b] dark:text-white/55">
           <span>حذر</span>
           <span>جيد</span>
-          <span className="font-black text-emerald-700 dark:text-emerald-300">موثوق جداً</span>
+          <span className="font-black text-emerald-700 dark:text-emerald-300">مرتفع</span>
         </div>
       </div>
 

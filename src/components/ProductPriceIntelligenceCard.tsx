@@ -1,4 +1,4 @@
-import { Flame, ShieldAlert, TrendingUp, BadgeCheck } from 'lucide-react';
+import { Flame, ShieldAlert, TrendingUp, BadgeCheck, Info } from 'lucide-react';
 import type { DealAssessment } from '@/lib/market-deal-intelligence';
 
 export default function ProductPriceIntelligenceCard({
@@ -56,7 +56,7 @@ export default function ProductPriceIntelligenceCard({
             };
 
   const Icon = config.icon;
-  const pinLeftPct = `${Math.round(assessment.meterPosition * 100)}%`;
+  const pinRightPct = `${Math.round(Math.min(96, Math.max(4, assessment.meterPosition * 100)))}%`;
 
   return (
     <section
@@ -79,12 +79,18 @@ export default function ProductPriceIntelligenceCard({
         </div>
       </div>
 
-      {/* Visual Market Gauge (LTR numeric axis) */}
-      <div dir="ltr" className="relative mt-4 flex h-5 items-center">
-        <div className="h-2 w-full rounded-full bg-gradient-to-r from-emerald-500 via-sky-400 via-60% to-rose-500" />
+      {/* Visual Market Gauge (RTL-aligned: Right = Lowest/Green, Left = Highest/Red) */}
+      <div className="relative mt-4 flex h-5 items-center">
+        <div
+          className="h-2 w-full rounded-full"
+          style={{
+            background:
+              'linear-gradient(to left, #10b981 0%, #38bdf8 45%, #f59e0b 75%, #ef4444 100%)',
+          }}
+        />
         <span
-          style={{ left: pinLeftPct }}
-          className={`absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] bg-white shadow-md ${config.pinBorder}`}
+          style={{ right: pinRightPct }}
+          className={`absolute top-1/2 h-4 w-4 translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] bg-white shadow-md ${config.pinBorder}`}
         />
       </div>
 
@@ -117,6 +123,13 @@ export default function ProductPriceIntelligenceCard({
           </strong>
         </p>
       )}
+
+      <div className="mt-3 flex items-center gap-1.5 border-t border-black/8 pt-2.5 text-[10px] font-semibold text-[#64748b] dark:border-white/10 dark:text-white/55">
+        <Info className="h-3.5 w-3.5 shrink-0" />
+        <p>
+          تقدير استرشادي تقريبي بالذكاء الاصطناعي بناءً على أسعار السوق — يختلف السعر الفعلي حسب الحالة والملحقات.
+        </p>
+      </div>
     </section>
   );
 }
