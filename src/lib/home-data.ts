@@ -1,7 +1,13 @@
 import 'server-only';
 import { unstable_cache } from 'next/cache';
 import type { CinematicAd } from '@/components/CinematicAdCard';
+import type { HotDealCardItem } from '@/components/HomeHotDealsSection';
 import type { ProductCardProps } from '@/components/ProductCard';
+import {
+  buildBenchmarksFromProducts,
+  extractHotDeals,
+  type MarketBenchmark,
+} from '@/lib/market-deal-intelligence';
 import { isSaudiMarketLocation } from '@/lib/market-config';
 import type { SupportedCountry } from '@/lib/request-country';
 import { supabase } from '@/lib/supabase';
@@ -58,6 +64,7 @@ export type HomeFeedData = {
   latestProducts: HomeProduct[];
   trendingProducts: HomeProduct[];
   storeProducts: HomeProduct[];
+  hotDeals: HotDealCardItem[];
   categories: HomeCategory[];
   pinnedAds: HomePinnedAd[];
   cinematicAds: CinematicAd[];
@@ -65,6 +72,7 @@ export type HomeFeedData = {
 
 export const HOME_PRODUCT_SELECT = `
   id,
+  seller_id,
   name,
   price,
   location,
@@ -392,6 +400,45 @@ async function fetchHomeFeedUncached(country: SupportedCountry): Promise<HomeFee
       ? (categoriesResult.data as HomeCategory[])
       : FALLBACK_CATEGORIES;
 
+  // Zero-token Hot Deals intelligence: prefer DB-wide RPC benchmarks when deployed,
+  // seamlessly falling back to the combined fetched pool.
+  const combinedPool = Array.from(knownProductsMap.values());
+  let benchmarks = buildBenchmarksFromProducts(combinedPool, isSaudi);
+  try {
+    const { data: rpcBenchmarks } = await supabase.rpc('get_market_price_benchmarks', {
+      p_country: country,
+    });
+    if (Array.isArray(rpcBenchmarks) && rpcBenchmarks.length > 0) {
+      const merged = new Map<string, MarketBenchmark>(benchmarks);
+      for (const row of rpcBenchmarks as Array<Record<string, unknown>>) {
+        const modelKey = String(row.model_key ?? '').trim();
+        const conditionBucket =
+          String(row.condition_bucket ?? 'used').trim() === 'new' ? 'new' : 'used';
+        const medianPrice = Number(row.median_price ?? 0);
+        const sampleCount = Number(row.sample_count ?? 0);
+        if (modelKey.length >= 3 && medianPrice > 0 && sampleCount >= 2) {
+          merged.set(`${modelKey}|${conditionBucket}`, {
+            modelKey,
+            conditionBucket,
+            sampleCount,
+            medianPrice,
+            minPrice: Number(row.min_price ?? medianPrice),
+            maxPrice: Number(row.max_price ?? medianPrice),
+            p25Price: row.p25_price != null ? Number(row.p25_price) : null,
+            p75Price: row.p75_price != null ? Number(row.p75_price) : null,
+            officialNewPrice:
+              row.official_new_price != null ? Number(row.official_new_price) : null,
+          });
+        }
+      }
+      benchmarks = merged;
+    }
+  } catch {
+    // Graceful fallback to local pool benchmarks if SQL migration not yet applied
+  }
+
+  const hotDeals = extractHotDeals(combinedPool, benchmarks, 10);
+
   return {
     banners,
     customSections,
@@ -399,6 +446,7 @@ async function fetchHomeFeedUncached(country: SupportedCountry): Promise<HomeFee
     latestProducts,
     trendingProducts,
     storeProducts,
+    hotDeals,
     categories,
     pinnedAds,
     cinematicAds,
@@ -412,6 +460,6 @@ async function fetchHomeFeedUncached(country: SupportedCountry): Promise<HomeFee
  */
 export const getCachedHomeData = unstable_cache(
   async (country: SupportedCountry) => fetchHomeFeedUncached(country),
-  ['souqphone-home-feed-v2'],
+  ['souqphone-home-feed-v3'],
   { revalidate: 120, tags: ['home-feed'] },
 );

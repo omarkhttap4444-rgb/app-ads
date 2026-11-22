@@ -18,6 +18,7 @@ import FavoriteButton from './FavoriteButton';
 import ProductLikeButton from './ProductLikeButton';
 import { productImageUrls } from '@/lib/product-images';
 import { isSaudiMarketLocation, SAUDI_MARKET_ENABLED } from '@/lib/market-config';
+import type { DealAssessment } from '@/lib/market-deal-intelligence';
 
 type ColorVariant = {
   name?: string;
@@ -29,6 +30,7 @@ type ColorVariant = {
 export type ProductCardProps = {
   product: {
     id: string;
+    seller_id?: string | null;
     name: string;
     price: number;
     location: string;
@@ -64,6 +66,7 @@ export type ProductCardProps = {
   };
   onFavoriteToggle?: (isFavorited: boolean) => void;
   priority?: boolean;
+  dealAssessment?: DealAssessment | null;
 };
 
 function getTimeAgo(dateValue?: string) {
@@ -117,6 +120,7 @@ export default function ProductCard({
   product,
   onFavoriteToggle,
   priority = false,
+  dealAssessment = null,
 }: ProductCardProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [failedImages, setFailedImages] = useState<string[]>([]);
@@ -229,6 +233,11 @@ export default function ProductCard({
         {discountPercent && (
           <span className="inline-flex items-center rounded-lg bg-rose-600 px-2 py-0.5 text-[9.5px] font-black text-white shadow-sm">
             -{discountPercent}%
+          </span>
+        )}
+        {dealAssessment?.tier === 'hot_deal' && (
+          <span className="inline-flex items-center gap-0.5 rounded-lg bg-gradient-to-l from-[#059669] to-[#10b981] px-2 py-0.5 text-[9.5px] font-black text-white shadow-sm">
+            🔥 لقطة -{dealAssessment.savingsPercent}%
           </span>
         )}
       </div>

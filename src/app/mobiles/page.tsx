@@ -13,6 +13,10 @@ import { absoluteUrl } from '@/lib/seo';
 import { getRequestCountry } from '@/lib/request-country';
 import { isSaudiMarketLocation, SAUDI_MARKET_ENABLED } from '@/lib/market-config';
 import {
+  buildSmartSearchChips,
+  parseSmartSearchQuery,
+} from '@/lib/smart-search-parser';
+import {
   buildMobilesLandingPath,
   EGYPT_GOVERNORATES,
   isKnownSeoBrand,
@@ -248,14 +252,26 @@ export default async function MobilesPage(props: Props) {
 
   const { data: categories } = await getActiveCategories();
 
+  const parsedSmart = q ? parseSmartSearchQuery(q) : null;
+  const effectiveQ = parsedSmart ? parsedSmart.coreQuery : '';
+  const effectiveCondition = condition || parsedSmart?.detectedCondition || '';
+  const effectiveLocation = location || parsedSmart?.detectedLocation || '';
+  const effectiveBrand = brand || '';
+  const effectiveMinPrice = parsedSmart?.minPrice ?? null;
+  const effectiveMaxPrice = parsedSmart?.maxPrice ?? null;
+  const smartChips =
+    parsedSmart && parsedSmart.hasStructuredFilters
+      ? buildSmartSearchChips(parsedSmart, selectedCountry === 'SA')
+      : [];
+
   let products: Product[] = [];
   let totalProducts = 0;
 
-  if (q) {
+  if (q && effectiveQ) {
     const { data: searchData, error: searchError } = await supabase.rpc('search_products_smart', {
-      p_query: q,
+      p_query: effectiveQ,
       p_category: category || null,
-      p_condition: condition || null,
+      p_condition: effectiveCondition || null,
       p_limit: 50
     });
 
@@ -267,8 +283,11 @@ export default async function MobilesPage(props: Props) {
         .select(productSelection)
         .in('id', productIds);
       dbQuery = filterByCountry(dbQuery, selectedCountry);
-      if (location) dbQuery = dbQuery.ilike('location', `%${location}%`);
-      if (brand) dbQuery = dbQuery.eq('specifications->>brand', brand);
+      if (effectiveLocation) dbQuery = dbQuery.ilike('location', `%${effectiveLocation}%`);
+      if (effectiveBrand) dbQuery = dbQuery.eq('specifications->>brand', effectiveBrand);
+      if (effectiveCondition) dbQuery = dbQuery.eq('condition', effectiveCondition);
+      if (effectiveMinPrice !== null) dbQuery = dbQuery.gte('price', effectiveMinPrice);
+      if (effectiveMaxPrice !== null) dbQuery = dbQuery.lte('price', effectiveMaxPrice);
       dbQuery = dbQuery.eq('is_sold', false);
       const { data: fullProducts } = await dbQuery;
       if (fullProducts) {
@@ -276,21 +295,24 @@ export default async function MobilesPage(props: Props) {
         products = rankedResults
           .map((item) => hydratedProducts.find((product) => product.id === item.id))
           .filter((product): product is Product => product !== undefined);
-        if (sort === 'price_asc') products.sort((a, b) => a.price - b.price);
+        if (sort === 'price_asc' || parsedSmart?.wantsHotDeals) products.sort((a, b) => a.price - b.price);
         else if (sort === 'price_desc') products.sort((a, b) => b.price - a.price);
       }
     } else {
-      const searchFields = `name.ilike.%${q}%,description.ilike.%${q}%,specifications->>brand.ilike.%${q}%,specifications->>model.ilike.%${q}%`;
+      const searchFields = `name.ilike.%${effectiveQ}%,description.ilike.%${effectiveQ}%,specifications->>brand.ilike.%${effectiveQ}%,specifications->>model.ilike.%${effectiveQ}%`;
       let fallbackQuery = supabase
         .from('products')
         .select(productSelection)
         .or(searchFields);
       fallbackQuery = filterByCountry(fallbackQuery, selectedCountry);
       if (category) fallbackQuery = fallbackQuery.ilike('category', `%${category}%`);
-      if (condition) fallbackQuery = fallbackQuery.eq('condition', condition);
-      if (location) fallbackQuery = fallbackQuery.ilike('location', `%${location}%`);
-      if (brand) fallbackQuery = fallbackQuery.eq('specifications->>brand', brand);
-      if (sort === 'price_asc') fallbackQuery = fallbackQuery.order('price', { ascending: true });
+      if (effectiveCondition) fallbackQuery = fallbackQuery.eq('condition', effectiveCondition);
+      if (effectiveLocation) fallbackQuery = fallbackQuery.ilike('location', `%${effectiveLocation}%`);
+      if (effectiveBrand) fallbackQuery = fallbackQuery.eq('specifications->>brand', effectiveBrand);
+      if (effectiveMinPrice !== null) fallbackQuery = fallbackQuery.gte('price', effectiveMinPrice);
+      if (effectiveMaxPrice !== null) fallbackQuery = fallbackQuery.lte('price', effectiveMaxPrice);
+      fallbackQuery = fallbackQuery.eq('is_sold', false);
+      if (sort === 'price_asc' || parsedSmart?.wantsHotDeals) fallbackQuery = fallbackQuery.order('price', { ascending: true });
       else if (sort === 'price_desc') fallbackQuery = fallbackQuery.order('price', { ascending: false });
       else fallbackQuery = fallbackQuery.order('created_at', { ascending: false });
       const { data: fallbackData } = await fallbackQuery.order('position', { referencedTable: 'product_images', ascending: true }).limit(50);
@@ -304,11 +326,13 @@ export default async function MobilesPage(props: Props) {
       .select(productSelection, { count: 'exact' });
     query = filterByCountry(query, selectedCountry);
     if (category) query = query.ilike('category', `%${category}%`);
-    if (condition) query = query.eq('condition', condition);
-    if (location) query = query.ilike('location', `%${location}%`);
-    if (brand) query = query.eq('specifications->>brand', brand);
+    if (effectiveCondition) query = query.eq('condition', effectiveCondition);
+    if (effectiveLocation) query = query.ilike('location', `%${effectiveLocation}%`);
+    if (effectiveBrand) query = query.eq('specifications->>brand', effectiveBrand);
+    if (effectiveMinPrice !== null) query = query.gte('price', effectiveMinPrice);
+    if (effectiveMaxPrice !== null) query = query.lte('price', effectiveMaxPrice);
     query = query.eq('is_sold', false);
-    if (sort === 'price_asc') query = query.order('price', { ascending: true });
+    if (sort === 'price_asc' || parsedSmart?.wantsHotDeals) query = query.order('price', { ascending: true });
     else if (sort === 'price_desc') query = query.order('price', { ascending: false });
     else query = query.order('created_at', { ascending: false });
     const from = (page - 1) * PAGE_SIZE;
@@ -499,6 +523,23 @@ export default async function MobilesPage(props: Props) {
             selectedCountry={selectedCountry}
           />
         </div>
+
+        {/* Smart Natural-Language Parsed Search Strip */}
+        {smartChips.length > 0 && (
+          <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-500/25 bg-[#ecfdf5] px-3.5 py-2.5 text-[11px] dark:border-emerald-500/30 dark:bg-[#0d231a]">
+            <span className="font-black text-[#047857] dark:text-[#6ee7b7]">
+              ⚡ تم فهم بحثك تلقائياً:
+            </span>
+            {smartChips.map((chip) => (
+              <span
+                key={chip}
+                className="rounded-xl bg-white px-2.5 py-1 font-extrabold text-[#0f172a] shadow-xs dark:bg-white/10 dark:text-white"
+              >
+                {chip}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Active Filters */}
         {hasFilters && (

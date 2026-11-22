@@ -28,8 +28,17 @@ import ProductCard from '@/components/ProductCard';
 import ProductComments from '@/components/ProductComments';
 import ProductGallery from '@/components/ProductGallery';
 import ProductLikeButton from '@/components/ProductLikeButton';
+import ProductPriceIntelligenceCard from '@/components/ProductPriceIntelligenceCard';
+import ProductTrustShieldCard from '@/components/ProductTrustShieldCard';
 import ProductViewCounter from '@/components/ProductViewCounter';
 import ShareProductButton from '@/components/ShareProductButton';
+import {
+  assessProductDeal,
+  buildBenchmarksFromProducts,
+  normalizeMarketModelKey,
+  type PricedProductLike,
+} from '@/lib/market-deal-intelligence';
+import { analyzeListingTrust } from '@/lib/trust-safety-analyzer';
 import { productImageUrls } from '@/lib/product-images';
 import { isSaudiMarketLocation, SAUDI_MARKET_ENABLED } from '@/lib/market-config';
 import { absoluteUrl, productConditionUrl } from '@/lib/seo';
@@ -126,21 +135,47 @@ export default async function ProductPage({ params }: Props) {
   if (productError || !product) notFound();
   if (!SAUDI_MARKET_ENABLED && isSaudiLocation(product.location)) notFound();
 
-  const [{ data: seller }, { data: similarProducts }] = await Promise.all([
-    supabase
-      .from('public_profiles')
-      .select('phone,contact_phone,is_contact_phone_visible,contact_whatsapp,is_contact_whatsapp_visible,name,profile_image_url,is_verified,seller_rating,followers_count,created_at,bio')
-      .eq('id', product.seller_id)
-      .single(),
-    supabase
-      .from('products')
-      .select('id,name,price,location,condition,slug,created_at,views_count,likes_count,comments_count,is_negotiable,is_sold,product_images(image_url,position),specifications')
-      .neq('id', product.id)
-      .eq('category', product.category)
-      .order('created_at', { ascending: false })
-      .order('position', { referencedTable: 'product_images', ascending: true })
-      .limit(5),
-  ]);
+  const specsForQuery = (product.specifications ?? {}) as Record<string, unknown>;
+  const rawModelToken = String(specsForQuery.model ?? product.name ?? '')
+    .replace(/[%_,()]/g, ' ')
+    .trim()
+    .slice(0, 45);
+  const isSaudiForQuery = isSaudiLocation(product.location);
+
+  const [{ data: seller }, { data: similarProducts }, { data: marketComps }, { data: officialPriceRows }] =
+    await Promise.all([
+      supabase
+        .from('public_profiles')
+        .select('phone,contact_phone,is_contact_phone_visible,contact_whatsapp,is_contact_whatsapp_visible,name,profile_image_url,is_verified,seller_rating,followers_count,created_at,bio')
+        .eq('id', product.seller_id)
+        .single(),
+      supabase
+        .from('products')
+        .select('id,name,price,location,condition,slug,created_at,views_count,likes_count,comments_count,is_negotiable,is_sold,product_images(image_url,position),specifications')
+        .neq('id', product.id)
+        .eq('category', product.category)
+        .order('created_at', { ascending: false })
+        .order('position', { referencedTable: 'product_images', ascending: true })
+        .limit(5),
+      rawModelToken.length >= 2 && Number(product.price) > 0
+        ? supabase
+            .from('products')
+            .select('id,name,price,location,condition,is_sold,created_at,specifications')
+            .eq('is_sold', false)
+            .gt('price', 0)
+            .ilike('name', `%${rawModelToken}%`)
+            .order('created_at', { ascending: false })
+            .limit(30)
+        : Promise.resolve({ data: [] }),
+      !isSaudiForQuery && rawModelToken.length >= 2
+        ? supabase
+            .from('phone_market_prices')
+            .select('model_name,market_price')
+            .eq('is_active', true)
+            .ilike('model_name', `%${rawModelToken}%`)
+            .limit(5)
+        : Promise.resolve({ data: [] }),
+    ]);
 
   const specs = (product.specifications ?? {}) as Record<string, unknown>;
   const brand = textValue(specs.brand, '');
@@ -162,6 +197,39 @@ export default async function ProductPage({ params }: Props) {
   const whatsappNumber = formatWhatsAppNumber(sellerWhatsapp, isSaudi);
   const productPath = `/mobiles/${encodeURIComponent(product.slug)}`;
   const productUrl = absoluteUrl(productPath);
+
+  // Zero-token Price Intelligence + Trust Shield computation
+  const marketPool: PricedProductLike[] = [
+    product as PricedProductLike,
+    ...((marketComps ?? []) as PricedProductLike[]).filter((item) => item.id !== product.id),
+  ];
+  const officialMap = new Map<string, number>();
+  for (const row of (officialPriceRows ?? []) as Array<{ model_name?: string; market_price?: number }>) {
+    const p = Number(row.market_price ?? 0);
+    if (p > 0 && row.model_name) {
+      const normalizedKey = normalizeMarketModelKey(row.model_name);
+      if (normalizedKey && !officialMap.has(normalizedKey)) officialMap.set(normalizedKey, Math.round(p));
+    }
+  }
+  const marketBenchmarks = buildBenchmarksFromProducts(marketPool, isSaudi, officialMap);
+  const dealAssessment = assessProductDeal(product as PricedProductLike, marketBenchmarks);
+  const isStoreListing =
+    truthy(specs.is_store_product) ||
+    truthy(specs.seller_is_store) ||
+    truthy(specs.enable_cart);
+  const trustReport = analyzeListingTrust({
+    title: displayName,
+    description: product.description,
+    price: Number(product.price ?? 0),
+    isSaudi,
+    imagesCount: images.length,
+    specifications: specs,
+    isStore: isStoreListing,
+    sellerVerified: seller?.is_verified ?? null,
+    sellerRating: seller?.seller_rating != null ? Number(seller.seller_rating) : null,
+    sellerCreatedAt: seller?.created_at ?? null,
+    dealAssessment,
+  });
 
   const additionalProperty = [
     ['المساحة', specs.storage],
@@ -320,6 +388,10 @@ export default async function ProductPage({ params }: Props) {
                 {product.is_negotiable && <span className="rounded-full bg-[#ffe68a] px-3 py-1 text-[10px] font-black text-[#5a4300]">قابل للتفاوض</span>}
               </div>
 
+              {dealAssessment && (
+                <ProductPriceIntelligenceCard assessment={dealAssessment} isSaudi={isSaudi} />
+              )}
+
               <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl bg-gradient-to-l from-[#fafcfb] to-[#f4f7f5] p-2 dark:from-[#272727] dark:to-[#242424]">
                 <ProductLikeButton productId={product.id} initialCount={product.likes_count ?? 0} />
                 <Link href="#comments" className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#e3e7e5] px-3 py-2.5 text-xs font-black text-[#4f555a] transition hover:text-[#078b43] dark:border-[#3a3a3a] dark:text-[#d0d0d0]">
@@ -395,6 +467,8 @@ export default async function ProductPage({ params }: Props) {
           </div>
 
           <aside className="space-y-4 lg:col-span-4">
+            <ProductTrustShieldCard report={trustReport} />
+
             <section className="rounded-[22px] border border-[#e7e9ec] bg-white p-5 shadow-sm dark:border-[#343434] dark:bg-[#1f1f1f]">
               <p className="text-[10px] font-bold text-[#959b9f]">معلومات البائع</p>
               <Link href={`/store/${product.seller_id}`} className="mt-3 flex items-center gap-3">

@@ -16,6 +16,7 @@ import BrandSlider from '@/components/BrandSlider';
 import HomeAccountPrompt from '@/components/HomeAccountPrompt';
 import HomeBannerCarousel from '@/components/HomeBannerCarousel';
 import HomeCustomSectionRail from '@/components/HomeCustomSectionRail';
+import HomeHotDealsSection from '@/components/HomeHotDealsSection';
 import HomeMaintenanceBanner from '@/components/HomeMaintenanceBanner';
 import CountryBanner from '@/components/CountryBanner';
 import JsonLd from '@/components/JsonLd';
@@ -89,6 +90,7 @@ export default async function Home() {
     latestProducts,
     trendingProducts,
     storeProducts,
+    hotDeals,
     categories,
     pinnedAds,
     cinematicAds,
@@ -456,6 +458,9 @@ export default async function Home() {
         {inFeedCustomSections.map((section) => (
           <HomeCustomSectionRail key={section.id} section={section} />
         ))}
+
+        {/* 🔥 TODAY'S HOT DEALS (لقطات اليوم — داخل الفيد بعيداً عن صدارة VIP والمتاجر) */}
+        <HomeHotDealsSection deals={hotDeals} isSaudi={isSaudi} />
 
         <BrandSlider />
 

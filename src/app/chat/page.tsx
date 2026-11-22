@@ -13,8 +13,14 @@ import {
   Clock,
   Check,
   CheckCheck,
-  Trash2
+  Trash2,
+  ShieldAlert,
+  X
 } from 'lucide-react';
+import {
+  scanIncomingMessagesForFraud,
+  scanTextForFraud,
+} from '@/lib/trust-safety-analyzer';
 
 function ChatRoom() {
   const searchParams = useSearchParams();
@@ -32,6 +38,7 @@ function ChatRoom() {
   const [loadingConvs, setLoadingConvs] = useState(true);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [sending, setSending] = useState(false);
+  const [dismissedAlertCode, setDismissedAlertCode] = useState<string | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -315,8 +322,18 @@ function ChatRoom() {
     e.preventDefault();
     if (!messageText.trim() || !activeConvId || sending) return;
 
-    setSending(true);
     const textToSend = messageText.trim();
+    const outgoingRisk = scanTextForFraud(textToSend);
+    if (
+      outgoingRisk?.code === 'OTP_PHISHING' &&
+      !window.confirm(
+        'تنبيه أمان: رسالتك تحتوي على عبارات مرتبطة برمز تحقق (OTP) أو كلمة سر. لا تشارك أي رموز سرية مع أي شخص. هل تريد الإرسال على مسؤوليتك؟',
+      )
+    ) {
+      return;
+    }
+
+    setSending(true);
     setMessageText('');
 
     try {
@@ -362,6 +379,14 @@ function ChatRoom() {
   const otherUser = activeConv
     ? profiles[activeConv.user1_id === user?.id ? activeConv.user2_id : activeConv.user1_id]
     : null;
+  const recentIncomingTexts = messages
+    .filter((m) => m.sender_id !== user?.id && typeof m.content === 'string')
+    .slice(-12)
+    .map((m) => m.content as string);
+  const chatRiskAlert = scanIncomingMessagesForFraud(recentIncomingTexts);
+  const showChatRiskAlert = Boolean(
+    chatRiskAlert && chatRiskAlert.code !== dismissedAlertCode,
+  );
 
   return (
     <main className="min-h-[calc(100vh-68px)] bg-slate-50 dark:bg-slate-950 flex transition-colors duration-200" dir="rtl">
@@ -528,6 +553,32 @@ function ChatRoom() {
                   </div>
                 </div>
               </div>
+
+              {/* Smart Anti-Fraud Shield Banner (Zero API / Real-Time) */}
+              {showChatRiskAlert && chatRiskAlert && (
+                <div
+                  role="alert"
+                  className={`mx-4 mt-3 flex items-start gap-3 rounded-2xl border p-3.5 text-xs shadow-xs ${
+                    chatRiskAlert.severity === 'high'
+                      ? 'border-rose-500/40 bg-rose-50 text-rose-900 dark:border-rose-500/40 dark:bg-rose-950/50 dark:text-rose-100'
+                      : 'border-amber-500/40 bg-amber-50 text-amber-900 dark:border-amber-500/40 dark:bg-amber-950/50 dark:text-amber-100'
+                  }`}
+                >
+                  <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-black">{chatRiskAlert.title}</p>
+                    <p className="mt-0.5 leading-5 opacity-90">{chatRiskAlert.advice}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDismissedAlertCode(chatRiskAlert.code)}
+                    aria-label="إغلاق التنبيه"
+                    className="rounded-lg p-1 opacity-70 transition hover:opacity-100"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
 
               {/* Chat Messages Log */}
               <div className="flex-1 overflow-y-auto bg-slate-50/50 dark:bg-slate-950/40 p-5 space-y-4">
