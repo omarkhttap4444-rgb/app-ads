@@ -171,7 +171,6 @@ export default async function ProductPage({ params }: Props) {
         ? supabase
             .from('phone_market_prices')
             .select('model_name,market_price')
-            .eq('is_active', true)
             .ilike('model_name', `%${rawModelToken}%`)
             .limit(5)
         : Promise.resolve({ data: [] }),
