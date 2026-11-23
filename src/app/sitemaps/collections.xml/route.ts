@@ -43,11 +43,6 @@ export async function GET() {
     addUrl(buildMobilesLandingPath({ brand: brand.name }));
   }
 
-  // Egypt governorates only
-  for (const gov of EGYPT_GOVERNORATES) {
-    addUrl(buildMobilesLandingPath({ location: gov }));
-  }
-
   // Valid categories (is_active = true)
   try {
     const { data: categories } = await supabase
@@ -64,8 +59,11 @@ export async function GET() {
     console.error('[collections sitemap] categories fetch failed', e);
   }
 
-  // Brand+Location only if active unsold count >= 3 (Egypt only, single aggregation — no N+1)
+  // Single Egypt-only aggregation (no N+1):
+  // - Governorates only if active unsold count >= 1 (avoids thin 0-product pages)
+  // - Brand+Location only if active unsold count >= 3
   try {
+    const governorateCounts = new Map<string, number>();
     const brandLocationCounts = new Map<string, number>();
 
     // Load products to aggregate — max 45000 handled via pagination
@@ -84,15 +82,23 @@ export async function GET() {
 
       for (const p of page) {
         if (isSaudiMarketLocation(p.location)) continue;
-        const brand = (p.specifications as { brand?: string | null } | null)?.brand ?? null;
-        if (!brand || !isKnownSeoBrand(brand)) continue;
         const gov = EGYPT_GOVERNORATES.find((g) => p.location?.startsWith(g));
         if (!gov) continue;
+        governorateCounts.set(gov, (governorateCounts.get(gov) ?? 0) + 1);
+        const brand = (p.specifications as { brand?: string | null } | null)?.brand ?? null;
+        if (!brand || !isKnownSeoBrand(brand)) continue;
         const key = `${brand}||${gov}`;
         brandLocationCounts.set(key, (brandLocationCounts.get(key) ?? 0) + 1);
       }
 
       if (page.length < pageSize) break;
+    }
+
+    // Emit Egypt governorates in canonical order only when they have active listings
+    for (const gov of EGYPT_GOVERNORATES) {
+      if ((governorateCounts.get(gov) ?? 0) >= 1) {
+        addUrl(buildMobilesLandingPath({ location: gov }));
+      }
     }
 
     for (const [key, count] of brandLocationCounts) {
@@ -102,7 +108,11 @@ export async function GET() {
       }
     }
   } catch (e) {
-    console.error('[collections sitemap] brand+location aggregation failed', e);
+    console.error('[collections sitemap] governorate/brand+location aggregation failed', e);
+    // Safe fallback to top populated Egypt governorates if aggregation fails
+    for (const gov of ['القاهرة', 'الجيزة', 'الإسكندرية']) {
+      addUrl(buildMobilesLandingPath({ location: gov }));
+    }
   }
 
   // Deduplicate and exclude invalid / thin combos already handled

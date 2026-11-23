@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 
+import { SAUDI_MARKET_ENABLED } from '@/lib/market-config';
 import { SITE_URL } from '@/lib/seo';
 
 export default function robots(): MetadataRoute.Robots {
@@ -15,10 +16,14 @@ export default function robots(): MetadataRoute.Robots {
           '/favorites',
           '/login',
           '/signup',
+          '/forgot-password',
+          '/reset-password',
+          '/profile$',
           '/notifications',
           '/mobiles/add',
           '/mobiles?*q=*',
           '/mobiles?*sort=*',
+          ...(SAUDI_MARKET_ENABLED ? [] : ['/mobiles?*country=SA*']),
         ],
       },
       {

@@ -15,23 +15,25 @@ function escapeXml(value: string): string {
 export async function GET() {
 
   // Public indexable static URLs only — no auth/chat/admin/private
-  const staticPaths: string[] = [
-    '/',
-    '/mobiles',
-    '/help/buying-used-phone',
-    '/help/selling-used-phone',
-    '/help/check-used-phone',
-    '/help/phone-safety',
-    '/about',
-    '/privacy',
-    '/terms',
-    '/contact',
+  // Note: /maintenance is emitted in /sitemaps/maintenance.xml
+  const staticEntries: Array<{ path: string; changefreq: string; priority: string }> = [
+    { path: '/', changefreq: 'daily', priority: '1.0' },
+    { path: '/mobiles', changefreq: 'hourly', priority: '0.95' },
+    { path: '/stores', changefreq: 'daily', priority: '0.9' },
+    { path: '/help/buying-used-phone', changefreq: 'weekly', priority: '0.8' },
+    { path: '/help/selling-used-phone', changefreq: 'weekly', priority: '0.8' },
+    { path: '/help/check-used-phone', changefreq: 'weekly', priority: '0.8' },
+    { path: '/help/phone-safety', changefreq: 'weekly', priority: '0.8' },
+    { path: '/about', changefreq: 'monthly', priority: '0.5' },
+    { path: '/contact', changefreq: 'monthly', priority: '0.5' },
+    { path: '/privacy', changefreq: 'monthly', priority: '0.3' },
+    { path: '/terms', changefreq: 'monthly', priority: '0.3' },
   ];
 
-  const urls = staticPaths.map((path) => ({
-    loc: `${SITE_URL}${path}`,
-    changefreq: path === '/' ? 'daily' : 'hourly',
-    priority: path === '/' ? '1.0' : '0.95',
+  const urls = staticEntries.map((entry) => ({
+    loc: `${SITE_URL}${entry.path}`,
+    changefreq: entry.changefreq,
+    priority: entry.priority,
   }));
 
   const xmlEntries = urls
