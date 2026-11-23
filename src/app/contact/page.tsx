@@ -63,11 +63,11 @@ export default function ContactPage() {
       '@type': 'Organization',
       name: 'سوق فون',
       url: absoluteUrl('/'),
-      email: 'suoqphone@gmail.com',
+      email: 'support@souqphone.com',
       contactPoint: {
         '@type': 'ContactPoint',
         contactType: 'customer support',
-        email: 'suoqphone@gmail.com',
+        email: 'support@souqphone.com',
         availableLanguage: ['Arabic', 'English'],
       },
     },
@@ -119,11 +119,11 @@ export default function ContactPage() {
             </p>
             <div className="mt-4">
               <a
-                href="mailto:suoqphone@gmail.com"
+                href="mailto:support@souqphone.com"
                 className="inline-flex items-center gap-2.5 rounded-xl bg-[#078b43] px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-[#06783a]"
               >
                 <Mail className="h-4 w-4" />
-                <span dir="ltr">suoqphone@gmail.com</span>
+                <span dir="ltr">support@souqphone.com</span>
               </a>
             </div>
           </div>

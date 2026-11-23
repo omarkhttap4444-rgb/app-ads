@@ -230,11 +230,11 @@ export default function TermsPage() {
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <a
-                href="mailto:suoqphone@gmail.com"
+                href="mailto:support@souqphone.com"
                 className="inline-flex items-center gap-2 rounded-xl bg-[#078b43] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#06783a]"
               >
                 <Mail className="h-4 w-4" />
-                <span dir="ltr">suoqphone@gmail.com</span>
+                <span dir="ltr">support@souqphone.com</span>
               </a>
               <Link
                 href="/contact"
