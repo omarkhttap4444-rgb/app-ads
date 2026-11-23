@@ -20,6 +20,7 @@ import {
   X,
 } from 'lucide-react';
 
+import { SAUDI_MARKET_ENABLED } from '@/lib/market-config';
 import { supabase } from '@/lib/supabase';
 import ThemeToggle from './ThemeToggle';
 
@@ -53,6 +54,10 @@ export default function Header() {
   const [countryMenuOpen, setCountryMenuOpen] = useState(false);
 
   useEffect(() => {
+    if (!SAUDI_MARKET_ENABLED) {
+      setCurrentCountry('EG');
+      return;
+    }
     // Read current country from cookie or searchParams
     const match = document.cookie.match(/user_country=(EG|SA)/i);
     if (match) {
@@ -261,6 +266,7 @@ export default function Header() {
 
           <div className="flex shrink-0 items-center gap-2" dir="ltr">
             {/* Country Switcher Dropdown */}
+            {SAUDI_MARKET_ENABLED && (
             <div className="relative" dir="rtl">
               <button
                 type="button"
@@ -294,6 +300,7 @@ export default function Header() {
                 </div>
               )}
             </div>
+            )}
 
             <ThemeToggle />
             <Link href="/stores" className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/10 backdrop-blur-sm transition hover:bg-black/20" aria-label="المتاجر المعتمدة" title="المتاجر المعتمدة">
@@ -348,6 +355,7 @@ export default function Header() {
           <button onClick={() => setDrawerOpen(true)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/10 backdrop-blur-sm" aria-label="فتح القائمة">
             <Menu className="h-7 w-7" strokeWidth={2.8} />
           </button>
+          {SAUDI_MARKET_ENABLED && (
           <button
             type="button"
             onClick={() => setCountryMenuOpen(true)}
@@ -358,6 +366,7 @@ export default function Header() {
             <span className="hidden min-[380px]:inline">{currentCountry === 'SA' ? 'السعودية' : 'مصر'}</span>
             <ChevronDown className="h-3 w-3 opacity-80" />
           </button>
+          )}
           <ThemeToggle />
           <form action="/mobiles" className="app-search-pill flex h-11 min-w-0 flex-1 items-center rounded-full bg-white px-3 text-[#202124]">
             <Search className="h-5 w-5 shrink-0 text-[#48b765]" strokeWidth={2.8} />
@@ -430,6 +439,7 @@ export default function Header() {
             </div>
 
             {/* Country Selector in Drawer */}
+            {SAUDI_MARKET_ENABLED && (
             <div className="mt-4 rounded-2xl border border-[#eceeed] bg-[#f8faf9] p-2 dark:border-[#343434] dark:bg-[#252525]">
               <p className="px-2 pb-1.5 text-[10px] font-bold text-[#7a8086]">الدولة الحالية</p>
               <div className="grid grid-cols-2 gap-1.5">
@@ -457,6 +467,7 @@ export default function Header() {
                 </button>
               </div>
             </div>
+            )}
 
             {!user && (
               <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl border border-[#b7efcf] bg-[#f5fff8] p-4 dark:border-[#164c31] dark:bg-[#12261b]">
@@ -494,7 +505,7 @@ export default function Header() {
       )}
 
       {/* Mobile Country Selector Modal */}
-      {countryMenuOpen && (
+      {SAUDI_MARKET_ENABLED && countryMenuOpen && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 md:hidden" dir="rtl">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-xs" onClick={() => setCountryMenuOpen(false)} />
           <div className="relative z-10 w-full max-w-xs overflow-hidden rounded-3xl border border-[#e7e9ec] bg-white p-5 text-[#202124] shadow-2xl dark:border-[#353535] dark:bg-[#1f1f1f] dark:text-white animate-scaleIn">

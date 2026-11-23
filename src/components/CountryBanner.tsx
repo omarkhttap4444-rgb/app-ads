@@ -2,10 +2,12 @@
 
 import { useRouter, usePathname } from 'next/navigation';
 import { Check } from 'lucide-react';
+import { SAUDI_MARKET_ENABLED } from '@/lib/market-config';
 
 export default function CountryBanner({ country }: { country: 'EG' | 'SA' }) {
   const router = useRouter();
   const pathname = usePathname();
+  if (!SAUDI_MARKET_ENABLED) return null;
   const isSaudi = country === 'SA';
 
   const switchCountry = (target: 'EG' | 'SA') => {

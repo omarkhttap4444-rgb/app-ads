@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { SAUDI_MARKET_ENABLED } from '@/lib/market-config';
 
 /**
  * مكون الكشف التلقائي عن الدولة حسب الـ IP:
@@ -15,6 +16,14 @@ export default function AutoCountryDetector() {
   const pathname = usePathname();
 
   useEffect(() => {
+    if (!SAUDI_MARKET_ENABLED) {
+      // Clear any previously saved SA cookie so returning visitors land cleanly on Egypt
+      if (/user_country=SA/i.test(document.cookie)) {
+        document.cookie = 'user_country=EG; path=/; max-age=31536000; SameSite=Lax';
+      }
+      return;
+    }
+
     // 1. إذا كان الكوكيز موجوداً بالفعل، احترم اختيار المستخدم
     const match = document.cookie.match(/user_country=(EG|SA)/i);
     if (match) return;

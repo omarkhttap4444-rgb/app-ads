@@ -25,6 +25,7 @@ import ProductCard from '@/components/ProductCard';
 import CinematicAdCard from '@/components/CinematicAdCard';
 import { getCategoryImageUrl } from '@/lib/category-images';
 import { getCachedHomeData } from '@/lib/home-data';
+import { SAUDI_MARKET_ENABLED } from '@/lib/market-config';
 import { getRequestCountry } from '@/lib/request-country';
 import { INDEXABLE_ROBOTS, SITE_URL } from '@/lib/seo';
 import { buildMobilesLandingPath, EGYPT_GOVERNORATES } from '@/lib/seo-content';
@@ -45,14 +46,15 @@ function isNextImageSafeSrc(src: string): boolean {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
+  const marketsLabel = SAUDI_MARKET_ENABLED ? 'مصر والسعودية' : 'مصر';
   return {
     title: { absolute: 'سوق فون | بيع وشراء الموبايلات والإلكترونيات' },
-    description: 'بيع واشتري الموبايلات والإلكترونيات الجديدة والمستعملة في مصر والسعودية. إعلانات حقيقية، بحث ذكي وتواصل مباشر مع البائع بدون عمولة.',
+    description: `بيع واشتري الموبايلات والإلكترونيات الجديدة والمستعملة في ${marketsLabel}. إعلانات حقيقية، بحث ذكي وتواصل مباشر مع البائع بدون عمولة.`,
     alternates: { canonical: 'https://souqphone.com/' },
     robots: INDEXABLE_ROBOTS,
     openGraph: {
       title: `سوق فون | كل السوق في إيدك`,
-      description: 'بيع واشتري الموبايلات والإلكترونيات مباشرة وبدون عمولة في مصر والسعودية.',
+      description: `بيع واشتري الموبايلات والإلكترونيات مباشرة وبدون عمولة في ${marketsLabel}.`,
       url: 'https://souqphone.com/',
       siteName: 'سوق فون',
       locale: 'ar_EG',

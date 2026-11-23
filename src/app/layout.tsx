@@ -9,6 +9,7 @@ import GoogleAdSense from "@/components/GoogleAdSense";
 import { AdSenseProvider } from "@/lib/ads-context";
 import { UserInteractionsProvider } from "@/lib/user-interactions-context";
 import JsonLd from "@/components/JsonLd";
+import { SAUDI_MARKET_ENABLED } from "@/lib/market-config";
 import { INDEXABLE_ROBOTS, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 const cairo = Cairo({
@@ -98,7 +99,7 @@ const websiteJsonLd = {
       contactPoint: {
         "@type": "ContactPoint",
         contactType: "customer support",
-        areaServed: ["EG", "SA"],
+        areaServed: SAUDI_MARKET_ENABLED ? ["EG", "SA"] : ["EG"],
         availableLanguage: ["Arabic"],
         url: `${SITE_URL}/contact`,
       },
